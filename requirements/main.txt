@@ -1,0 +1,4 @@
+hydra-core==1.1.2
+torch==1.11.0
+numpy==1.22.3
+tqdm==4.64.0
