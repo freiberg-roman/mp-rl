@@ -10,6 +10,7 @@ DEFAULT_CAMERA_CONFIG = {
 class HalfCheetahEnv(MujocoEnv):
     def __init__(
         self,
+        base,
         xml_file="half_cheetah.xml",
         forward_reward_weight=1.0,
         ctrl_cost_weight=0.1,
@@ -22,7 +23,7 @@ class HalfCheetahEnv(MujocoEnv):
         self._exclude_current_positions_from_observation = (
             exclude_current_positions_from_observation
         )
-        MujocoEnv.__init__(self, xml_file, 5)
+        MujocoEnv.__init__(self, base + xml_file, 5)
 
     def control_cost(self, action):
         control_cost = self._ctrl_cost_weight * np.sum(np.square(action))
@@ -64,12 +65,12 @@ class HalfCheetahEnv(MujocoEnv):
         noise_low = -self._reset_noise_scale
         noise_high = self._reset_noise_scale
 
-        qpos = self.init_qpos + self.np_random.uniform(
+        qpos = self.init_qpos + np.random.uniform(
             low=noise_low, high=noise_high, size=self.model.nq
         )
         qvel = (
             self.init_qvel
-            + self._reset_noise_scale * self.np_random.standard_normal(self.model.nv)
+            + self._reset_noise_scale * np.random.standard_normal(self.model.nv)
         )
 
         self.set_state(qpos, qvel)

@@ -1,0 +1,12 @@
+defaults:
+  - _self_
+
+root_dir: "../experiments"
+mode: "test"
+
+hydra:
+  run:
+    dir: ${root_dir}/${mode}/${now:%Y-%m-%d}/${now:%H-%M-%S}
+  sweep:
+    dir: ${root_dir}/${mode}/${now:%Y-%m-%d}/${now:%H-%M-%S}
+

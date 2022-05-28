@@ -9,8 +9,8 @@ DEFAULT_SIZE = 480
 class MujocoEnv:
     def __init__(self, path, frame_skip):
 
-        self.model = self._mujoco_bindings.MjModel.from_xml_path(path)
-        self.data = self._mujoco_bindings.MjData(self.model)
+        self.model = mujoco.MjModel.from_xml_path(path)
+        self.data = mujoco.MjData(self.model)
 
         self.init_qpos = self.data.qpos.ravel().copy()
         self.init_qvel = self.data.qvel.ravel().copy()
