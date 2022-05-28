@@ -18,4 +18,4 @@ repos:
     rev: 5.5.2
     hooks:
       - id: isort
-        files: 'dads/.*'
+        files: 'mprl/.*'
