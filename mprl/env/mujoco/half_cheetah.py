@@ -68,9 +68,8 @@ class HalfCheetahEnv(MujocoEnv):
         qpos = self.init_qpos + np.random.uniform(
             low=noise_low, high=noise_high, size=self.model.nq
         )
-        qvel = (
-            self.init_qvel
-            + self._reset_noise_scale * np.random.standard_normal(self.model.nv)
+        qvel = self.init_qvel + self._reset_noise_scale * np.random.standard_normal(
+            self.model.nv
         )
 
         self.set_state(qpos, qvel)

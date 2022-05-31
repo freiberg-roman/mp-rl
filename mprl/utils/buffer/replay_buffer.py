@@ -1,11 +1,11 @@
 from abc import ABC, abstractmethod
 
-from dads.utils import EnvStep, EnvSteps
+from mprl.utils import EnvStep, EnvSteps
 
 
 class ReplayBuffer(ABC):
     @abstractmethod
-    def add(self, state, next_state, action, reward, done, skill):
+    def add(self, state, next_state, action, reward, done):
         pass
 
     def add_step(self, time_step: EnvStep):
@@ -15,11 +15,10 @@ class ReplayBuffer(ABC):
             time_step.action,
             time_step.reward,
             time_step.done,
-            time_step.skill,
         )
 
     @abstractmethod
-    def add_batch(self, states, next_states, actions, rewards, dones, skills):
+    def add_batch(self, states, next_states, actions, rewards, dones):
         pass
 
     def add_batch_steps(self, time_steps: EnvSteps):
@@ -29,7 +28,6 @@ class ReplayBuffer(ABC):
             time_steps.actions,
             time_steps.rewards,
             time_steps.dones,
-            time_steps.skills,
         )
 
     @abstractmethod

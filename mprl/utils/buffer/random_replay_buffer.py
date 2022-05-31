@@ -3,8 +3,8 @@ from pathlib import Path
 
 import numpy as np
 
-from dads.utils.buffer import EnvStep, EnvSteps
-from dads.utils.buffer.replay_buffer import ReplayBuffer
+from mprl.utils.buffer import EnvStep, EnvSteps
+from mprl.utils.buffer.replay_buffer import ReplayBuffer
 
 
 class RandomRB(ReplayBuffer):
@@ -17,23 +17,18 @@ class RandomRB(ReplayBuffer):
         self._acts = np.empty((cfg.capacity, cfg.env.action_dim), dtype=np.float32)
         self._rews = np.empty(cfg.capacity, dtype=np.float32)
         self._dones = np.empty(cfg.capacity, dtype=bool)
-        if cfg.env.skill_continuous:
-            self._skills = np.empty((cfg.capacity, cfg.env.skill_dim), dtype=np.float32)
-        else:
-            self._skills = np.empty((cfg.capacity, cfg.env.skill_dim), dtype=np.int32)
 
-    def add(self, state, next_state, action, reward, done, skill):
+    def add(self, state, next_state, action, reward, done):
         self._s[self._ind, :] = state
         self._next_s[self._ind, :] = next_state
         self._acts[self._ind, :] = action
         self._rews[self._ind] = reward
         self._dones[self._ind] = done
-        self._skills[self._ind, :] = skill
 
         self._capacity = min(self._capacity + 1, self._cfg.capacity)
         self._ind = (self._ind + 1) % self._cfg.capacity
 
-    def add_batch(self, states, next_states, actions, rewards, dones, skills):
+    def add_batch(self, states, next_states, actions, rewards, dones):
         length_batch = len(states)
         start_ind = self._ind
         end_ind = min(start_ind + length_batch, self._cfg.capacity)
@@ -44,7 +39,6 @@ class RandomRB(ReplayBuffer):
         self._acts[start_ind:end_ind, :] = actions[:stored_ind]
         self._rews[start_ind:end_ind] = rewards[:stored_ind]
         self._dones[start_ind:end_ind] = dones[:stored_ind]
-        self._skills[start_ind:end_ind, :] = skills[:stored_ind]
 
         if start_ind + length_batch > self._cfg.capacity:
             self._ind = 0
@@ -55,7 +49,6 @@ class RandomRB(ReplayBuffer):
                 actions[stored_ind:, :],
                 rewards[stored_ind:],
                 dones[stored_ind:],
-                skills[stored_ind:, :],
             )
         else:
             self._ind = self._ind + length_batch
@@ -72,7 +65,6 @@ class RandomRB(ReplayBuffer):
                 self._acts[item],
                 self._rews[item],
                 self._dones[item],
-                self._skills[item],
             )
         else:
             raise ValueError(
@@ -90,7 +82,6 @@ class RandomRB(ReplayBuffer):
         np.save(path + "actions.npy", self._acts)
         np.save(path + "rewards.npy", self._rews)
         np.save(path + "dones.npy", self._dones)
-        np.save(path + "skills.npy", self._skills)
         np.save(path + "capacity.npy", np.array([self._capacity], dtype=int))
         np.save(path + "index.npy", np.array([self._ind], dtype=int))
 
@@ -101,7 +92,6 @@ class RandomRB(ReplayBuffer):
         self._acts = np.load(path + "actions.npy")
         self._rews = np.load(path + "rewards.npy")
         self._dones = np.load(path + "dones.npy")
-        self._skills = np.load(path + "skills.npy")
         self._capacity = np.load(path + "capacity.npy").item()
         self._ind = np.load(path + "index.npy").item()
 
@@ -120,27 +110,23 @@ class RandomValidationRB(ReplayBuffer):
             it, batch_size
         )
 
-    def add(self, state, next_state, action, reward, done, skill):
+    def add(self, state, next_state, action, reward, done):
         if (
             len(self._train_buffer) == 0
             or len(self._val_buffer) / len(self) >= self._val_percentage
         ):
-            self._train_buffer.add(state, next_state, action, reward, done, skill)
+            self._train_buffer.add(state, next_state, action, reward, done)
         else:
-            self._val_buffer.add(state, next_state, action, reward, done, skill)
+            self._val_buffer.add(state, next_state, action, reward, done)
 
-    def add_batch(self, states, next_states, actions, rewards, dones, skills):
+    def add_batch(self, states, next_states, actions, rewards, dones):
         if (
             len(self._train_buffer) == 0
             or len(self._val_buffer) / len(self) >= self._val_percentage
         ):
-            self._train_buffer.add_batch(
-                states, next_states, actions, rewards, dones, skills
-            )
+            self._train_buffer.add_batch(states, next_states, actions, rewards, dones)
         else:
-            self._val_buffer.add_batch(
-                states, next_states, actions, rewards, dones, skills
-            )
+            self._val_buffer.add_batch(states, next_states, actions, rewards, dones)
 
     def __getitem__(self, item):
         if item > len(self._train_buffer):
@@ -177,7 +163,6 @@ class RandomBatchIter:
                 self._buffer._acts[idxs],
                 self._buffer._rews[idxs],
                 self._buffer._dones[idxs],
-                self._buffer._skills[idxs],
             )
         else:
             raise StopIteration

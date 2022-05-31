@@ -2,7 +2,6 @@ import random
 import warnings
 
 import numpy as np
-
 from dads.utils.buffer.replay_buffer import EnvSteps, ReplayBuffer
 
 
@@ -16,22 +15,18 @@ class SequenceRB(ReplayBuffer):
         self._acts = np.empty((cfg.capacity, cfg.env.action_dim), dtype=np.float32)
         self._rews = np.empty(cfg.capacity, dtype=np.float32)
         self._dones = np.empty(cfg.capacity, dtype=bool)
-        if cfg.env.skill_continuous:
-            self._skills = np.empty((cfg.capacity, cfg.env.skill_dim), dtype=np.float32)
-        else:
-            self._skills = np.empty((cfg.capacity, cfg.env.skill_dim), dtype=np.int32)
 
         self._seq = []
         self._valid_seq = []
 
-    def add(self, state, next_state, action, reward, done, skill):
-        self._seq.append((state, next_state, action, reward, done, skill))
+    def add(self, state, next_state, action, reward, done):
+        self._seq.append((state, next_state, action, reward, done))
 
-    def add_batch(self, states, next_states, actions, rewards, dones, skills):
-        for state, next_state, action, reward, done, skill in zip(
-            states, next_states, actions, rewards, dones, skills
+    def add_batch(self, states, next_states, actions, rewards, dones):
+        for state, next_state, action, reward, done in zip(
+            states, next_states, actions, rewards, dones
         ):
-            self.add(state, next_state, action, reward, done, skill)
+            self.add(state, next_state, action, reward, done)
 
     def close_sequence(self):
         len_seq = len(self._seq)
@@ -48,13 +43,12 @@ class SequenceRB(ReplayBuffer):
         self._remove_overlapping_seqs((valid_start, valid_end))
         self._valid_seq.append((valid_start, valid_end))
 
-        for state, next_state, action, reward, done, skill in self._seq:
+        for state, next_state, action, reward, done in self._seq:
             self._s[self._ind, :] = state
             self._next_s[self._ind, :] = next_state
             self._acts[self._ind, :] = action
             self._rews[self._ind] = reward
             self._dones[self._ind] = done
-            self._skills[self._ind, :] = skill
             self._ind += 1
 
         assert self._ind == valid_end
@@ -110,7 +104,6 @@ class SequenceRB(ReplayBuffer):
             self._acts[s:e],
             self._rews[s:e],
             self._dones[s:e],
-            self._skills[s:e],
         )
 
     def __len__(self):
@@ -168,7 +161,6 @@ class FullSequenceIter:
                 self._buffer.actions[start:end],
                 self._buffer.rewards[start:end],
                 self._buffer.dones[start:end],
-                self._buffer.skills[start:end],
             )
         else:
             raise StopIteration
@@ -201,7 +193,6 @@ class VirtualSequenceIter:
                 self._buffer.actions[s_from:e],
                 self._buffer.rewards[s_from:e],
                 self._buffer.dones[s_from:e],
-                self._buffer.skills[s_from:e],
             )
         else:
             raise StopIteration

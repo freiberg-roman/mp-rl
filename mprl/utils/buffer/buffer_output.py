@@ -11,7 +11,6 @@ class EnvStep:
     action: np.ndarray
     reward: float
     done: bool
-    skill: float
 
     def to_torch_batch(self):
         return (
@@ -20,7 +19,6 @@ class EnvStep:
             torch.unsqueeze(torch.from_numpy(self.action).to(torch.float32), 0),
             torch.unsqueeze(torch.tensor(self.reward).to(torch.float32), 0),
             torch.unsqueeze(torch.tensor(self.done), 0),
-            torch.unsqueeze(torch.from_numpy(self.skill).to(torch.float32), 0),
         )
 
 
@@ -31,7 +29,6 @@ class EnvSteps:
     actions: np.ndarray
     rewards: np.ndarray
     dones: np.ndarray
-    skills: np.ndarray
 
     def __len__(self):
         return len(self.states)
@@ -43,5 +40,4 @@ class EnvSteps:
             torch.from_numpy(self.actions),
             torch.unsqueeze(torch.from_numpy(self.rewards), 1),
             torch.unsqueeze(torch.from_numpy(self.dones), 1),
-            torch.from_numpy(self.skills),
         )
