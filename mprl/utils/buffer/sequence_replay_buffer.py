@@ -2,7 +2,8 @@ import random
 import warnings
 
 import numpy as np
-from dads.utils.buffer.replay_buffer import EnvSteps, ReplayBuffer
+
+from mprl.utils.buffer.replay_buffer import EnvSteps, ReplayBuffer
 
 
 class SequenceRB(ReplayBuffer):

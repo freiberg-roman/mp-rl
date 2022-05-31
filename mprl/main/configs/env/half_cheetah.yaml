@@ -1,0 +1,16 @@
+name: "HalfCheetah"
+
+num_dof: 6
+q_dim: 8
+vel_dim: 8
+
+action_dim: 6
+state_dim: 17
+coordinate_dim: 1
+
+pd:
+  pgains: [10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0]
+  dgains: [10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0]
+
+promp:
+  num_basis: 10

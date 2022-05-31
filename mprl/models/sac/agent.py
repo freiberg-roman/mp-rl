@@ -16,27 +16,33 @@ class SAC:
         self.gamma = cfg.gamma
         self.tau = cfg.tau
         self.alpha = cfg.alpha
-
-        self.target_update_interval = cfg.target_update_interval
         self.automatic_entropy_tuning = cfg.automatic_entropy_tuning
-
         self.device = torch.device("cuda" if cfg.device == "cuda" else "cpu")
+        state_dim = cfg.env.state_dim
+        if cfg.name == "ssac":
+            if cfg.learn_full_cov:
+                # learning mean and Cholensky decomposition of covariance + time
+                action_dim = (
+                    cfg.env.action_dim * (cfg.env.action_dim + 1) // 2
+                    + cfg.env.action_dim
+                    + 1
+                )
+            else:
+                action_dim = 2 * cfg.env.action_dim + 1
+        else:
+            action_dim = cfg.env.action_dim
+        hidden_size = cfg.hidden_size
 
-        self.critic = QNetwork(
-            cfg.env.state_dim - cfg.env.num_coordinates,
-            cfg.env.action_dim,
-            cfg.hidden_size,
-        ).to(device=self.device)
+        self.critic = QNetwork(state_dim, action_dim, hidden_size).to(
+            device=self.device
+        )
         self.critic_optim = Adam(self.critic.parameters(), lr=cfg.lr)
 
-        self.critic_target = QNetwork(
-            cfg.env.state_dim - cfg.env.num_coordinates,
-            cfg.env.action_dim,
-            cfg.hidden_size,
-        ).to(self.device)
+        self.critic_target = QNetwork(state_dim, action_dim, hidden_size).to(
+            self.device
+        )
         hard_update(self.critic_target, self.critic)
 
-        # Target Entropy = −dim(A) (e.g. , -6 for HalfCheetah-v2) as given in the paper
         if self.automatic_entropy_tuning is True:
             self.target_entropy = -torch.prod(
                 torch.Tensor(cfg.env.action_dim).to(self.device)
@@ -44,11 +50,7 @@ class SAC:
             self.log_alpha = torch.zeros(1, requires_grad=True, device=self.device)
             self.alpha_optim = Adam([self.log_alpha], lr=cfg.lr)
 
-        self.policy = GaussianPolicy(
-            cfg.env.state_dim - cfg.env.num_coordinates,
-            cfg.env.action_dim,
-            cfg.hidden_size,
-        ).to(self.device)
+        self.policy = GaussianPolicy(state_dim, action_dim, hidden_size).to(self.device)
         self.policy_optim = Adam(self.policy.parameters(), lr=cfg.lr)
 
     def select_action(self, state, evaluate=False):

@@ -83,3 +83,6 @@ class HalfCheetahEnv(MujocoEnv):
                 getattr(self.viewer.cam, key)[:] = value
             else:
                 setattr(self.viewer.cam, key, value)
+
+    def get_forces(self):
+        return super(HalfCheetahEnv, self).get_forces()[8:]

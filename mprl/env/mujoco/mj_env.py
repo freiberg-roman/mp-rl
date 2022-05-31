@@ -131,3 +131,6 @@ class MujocoEnv:
 
     def state_vector(self):
         return np.concatenate([self.data.qpos.flat, self.data.qvel.flat])
+
+    def get_forces(self):
+        return self.data.qfrc_bias.flat
