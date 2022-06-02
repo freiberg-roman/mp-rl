@@ -1,14 +1,14 @@
 defaults:
   - _self_
-  - agent: ssac
-  - buffer: sequence_buffer
-  - ctrl: pd
   - env: half_cheetah
+  - agent: sac
+  - ctrl: pd
   - mp: promp
   - train: off_policy
+  - buffer: random_replay_buffer
 
 root_dir: "../experiments"
-mode: "train_mprl"
+mode: "train_sac"
 device: "cpu"
 
 hydra:

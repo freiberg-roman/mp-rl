@@ -7,7 +7,9 @@ from mprl.utils import EnvSteps
 from mprl.utils.math_helper import soft_update
 
 
-def train_mdp_sac(agent: MDPSAC, optimizer: Adam, batch: EnvSteps):
+def train_mdp_sac(
+    agent: MDPSAC, optimizer_policy: Adam, optimizer_critic: Adam, batch: EnvSteps
+):
     # Sample a batch from memory
     states, next_states, actions, rewards, dones = batch.to_torch_batch()
 
@@ -34,9 +36,9 @@ def train_mdp_sac(agent: MDPSAC, optimizer: Adam, batch: EnvSteps):
     )  # JQ = 𝔼(st,at)~D[0.5(Q1(st,at) - r(st,at) - γ(𝔼st+1~p[V(st+1)]))^2]
     qf_loss = qf1_loss + qf2_loss
 
-    agent.critic_optim.zero_grad()
+    optimizer_critic.zero_grad()
     qf_loss.backward()
-    agent.critic_optim.step()
+    optimizer_critic.step()
 
     pi, log_pi, _ = agent.policy.sample(states)
 
@@ -47,9 +49,9 @@ def train_mdp_sac(agent: MDPSAC, optimizer: Adam, batch: EnvSteps):
         (agent.alpha * log_pi) - min_qf_pi
     ).mean()  # Jπ = 𝔼st∼D,εt∼N[α * logπ(f(εt;st)|st) − Q(st,f(εt;st))]
 
-    agent.policy_optim.zero_grad()
+    optimizer_policy.zero_grad()
     policy_loss.backward()
-    agent.policy_optim.step()
+    optimizer_policy.step()
 
     if agent.automatic_entropy_tuning:
         alpha_loss = -(

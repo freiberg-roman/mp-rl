@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 
 import torch
@@ -10,6 +9,7 @@ from mprl.utils.math_helper import hard_update
 
 class MDPSAC:
     def __init__(self, cfg):
+        # Parameters
         self.gamma = cfg.gamma
         self.tau = cfg.tau
         self.alpha = cfg.alpha
@@ -19,24 +19,23 @@ class MDPSAC:
         action_dim = cfg.env.action_dim
         hidden_size = cfg.hidden_size
 
+        # Networks
         self.critic = QNetwork(state_dim, action_dim, hidden_size).to(
             device=self.device
         )
-        self.critic_optim = Adam(self.critic.parameters(), lr=cfg.lr)
-
         self.critic_target = QNetwork(state_dim, action_dim, hidden_size).to(
             self.device
         )
         hard_update(self.critic_target, self.critic)
+        self.policy = GaussianPolicy(state_dim, action_dim, hidden_size).to(self.device)
 
+        # Entropy
         if self.automatic_entropy_tuning is True:
             self.target_entropy = -torch.prod(
                 torch.Tensor(cfg.env.action_dim).to(self.device)
             ).item()
             self.log_alpha = torch.zeros(1, requires_grad=True, device=self.device)
             self.alpha_optim = Adam([self.log_alpha], lr=cfg.lr)
-
-        self.policy = GaussianPolicy(state_dim, action_dim, hidden_size).to(self.device)
 
     def select_action(self, state, evaluate=False):
         state = torch.FloatTensor(state).to(self.device).unsqueeze(0)
@@ -45,6 +44,9 @@ class MDPSAC:
         else:
             _, _, action = self.policy.sample(state)
         return action.detach().cpu().numpy()[0]
+
+    def parameters(self):
+        return self.policy.parameters()
 
     # Save model parameters
     def save(self, base_path, folder):

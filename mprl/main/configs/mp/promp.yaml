@@ -1,5 +1,5 @@
 name: "promp"
 
 alpha: 25
-num_basis: {$env.promp.num_basis}
-num_dof: {$env.num_dof}
+num_basis: ${env.promp.num_basis}
+num_dof: ${env.num_dof}

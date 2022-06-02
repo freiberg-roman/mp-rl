@@ -3,14 +3,15 @@ name: "HalfCheetah"
 num_dof: 6
 q_dim: 8
 vel_dim: 8
+time_out: 1000  # only for SAC activated
 
 action_dim: 6
 state_dim: 17
 coordinate_dim: 1
 
 pd:
-  pgains: [10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0]
-  dgains: [10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0]
+  pgains: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+  dgains: [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
 
-promp:
+idmp:
   num_basis: 10

@@ -1,0 +1,4 @@
+total_steps: 5000000
+steps_per_epoch: 1000
+update_agent_every: 50
+batch_size: 128

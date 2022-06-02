@@ -551,4 +551,3 @@ class Viewer(RenderContext):
 
     def close(self):
         glfw.terminate()
-        sys.exit(0)

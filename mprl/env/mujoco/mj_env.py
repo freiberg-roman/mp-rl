@@ -15,6 +15,9 @@ class MujocoEnv:
         self.init_qpos = self.data.qpos.ravel().copy()
         self.init_qvel = self.data.qvel.ravel().copy()
         self._viewers = {}
+        self.time_out_after = None
+        self.current_steps = 0
+        self._total_steps = 0
 
         self.frame_skip = frame_skip
 
@@ -45,7 +48,9 @@ class MujocoEnv:
         Optionally implement this method, if you need to tinker with camera position and so forth.
         """
 
-    def reset(self):
+    def reset(self, time_out_after=None):
+        self.time_out_after = time_out_after
+        self.current_steps = 0
         mujoco.mj_resetData(self.model, self.data)
         ob = self.reset_model()
         return ob
@@ -109,7 +114,7 @@ class MujocoEnv:
 
     def close(self):
         if self.viewer is not None:
-            self.viewer = None
+            self.viewer.close()
             self._viewers = {}
 
     def _get_viewer(self, mode, width=DEFAULT_SIZE, height=DEFAULT_SIZE):

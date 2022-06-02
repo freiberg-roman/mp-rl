@@ -36,19 +36,23 @@ class HalfCheetahEnv(MujocoEnv):
         x_velocity = (x_position_after - x_position_before) / self.dt
 
         ctrl_cost = self.control_cost(action)
-
         forward_reward = self._forward_reward_weight * x_velocity
-
         observation = self._get_obs()
         reward = forward_reward - ctrl_cost
-        done = False
+
+        self.current_steps += 1
+        self._total_steps += 1
+        done = (
+            self.time_out_after is not None
+            and self.current_steps >= self.time_out_after
+        )
+
         info = {
             "x_position": x_position_after,
             "x_velocity": x_velocity,
             "reward_run": forward_reward,
             "reward_ctrl": -ctrl_cost,
         }
-
         return observation, reward, done, info
 
     def _get_obs(self):
@@ -86,3 +90,7 @@ class HalfCheetahEnv(MujocoEnv):
 
     def get_forces(self):
         return super(HalfCheetahEnv, self).get_forces()[8:]  # gravity
+
+    @property
+    def total_steps(self):
+        return self._total_steps
