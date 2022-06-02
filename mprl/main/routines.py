@@ -45,7 +45,7 @@ def train_sac(cfg: OmegaConf):
                 ):
                     train_mdp_sac(agent, optimizer_policy, optimizer_critic, batch)
 
-        # Evaluate each epoch
+        # Evaluate
         env_eval = create_mj_env(cfg.env)
         state = env_eval.reset()
         eval_reward = 0
@@ -64,7 +64,7 @@ def train_sac(cfg: OmegaConf):
         env_eval.close()
         del env_eval
 
-        # Save each epoch this model
+        # Save
 
 
 def train_mp_sac_vanilla(cfg: OmegaConf):
