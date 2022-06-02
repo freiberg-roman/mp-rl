@@ -1,1 +1,1 @@
-from .networks import GaussianPolicy, QNetwork
+from .mdp_agent import MDPSAC

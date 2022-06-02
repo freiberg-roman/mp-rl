@@ -5,7 +5,7 @@ from omegaconf import OmegaConf
 
 class MPTrajectory:
     def __init__(self, cfg: OmegaConf):
-        cfg.mp_type = "promp"
+        cfg.mp_type = "idmp"
         self.mp = MPFactory.init_mp(cfg)
         self.dt = cfg["mp_args"]["dt"]
         self.current_traj = None

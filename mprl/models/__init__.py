@@ -1,1 +1,1 @@
-from .sac.agent import SAC
+from .sac.mdp_agent import MDPSAC

@@ -85,4 +85,4 @@ class HalfCheetahEnv(MujocoEnv):
                 setattr(self.viewer.cam, key, value)
 
     def get_forces(self):
-        return super(HalfCheetahEnv, self).get_forces()[8:]
+        return super(HalfCheetahEnv, self).get_forces()[8:]  # gravity
