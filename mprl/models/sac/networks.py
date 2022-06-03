@@ -1,7 +1,9 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.distributions import Exponential, Independent, MultivariateNormal, Normal
+from torch.distributions import Exponential, MultivariateNormal, Normal
+
+from mprl.utils.math_helper import build_lower_matrix
 
 LOG_SIG_MAX = 2
 LOG_SIG_MIN = -20
@@ -107,23 +109,29 @@ class GaussianPolicy(nn.Module):
 
 
 class GaussianMPTimePolicy(nn.Module):
-    def __init__(self, num_inputs, num_weights, hidden_dim, full_std=False):
-        super(GaussianPolicy, self).__init__()
+    def __init__(
+        self, num_inputs, num_weights, hidden_dim, full_std=False, learn_time=True
+    ):
+        super(GaussianMPTimePolicy, self).__init__()
         self.full_std = full_std
+        self.learn_time = learn_time
+        self.num_weights = num_weights
 
         self.linear1 = nn.Linear(num_inputs, hidden_dim)
         self.linear2 = nn.Linear(hidden_dim, hidden_dim)
-
         self.mean_linear = nn.Linear(hidden_dim, num_weights)
-        self.time_linear = nn.Linear(hidden_dim, 1)
-        self.time_scalar = torch.tensor(1.0, requires_grad=True)
-        self.sp = nn.Softplus()
+        if learn_time:
+            self.time_linear = nn.Linear(hidden_dim, 1)
+            self.time_scalar = nn.Parameter(torch.tensor([1.0]), requires_grad=True)
+            self.sp = nn.Softplus()
 
         if self.full_std:
             # Learn lower L of log Choleric decomposition
             self.log_std_linear = nn.Linear(
-                hidden_dim, (num_weights * (num_weights + 1)) / 2
+                hidden_dim, ((num_weights * (num_weights + 1)) // 2)
             )
+        else:
+            self.log_std_linear = nn.Linear(hidden_dim, num_weights)
 
         self.apply(weights_init_)
 
@@ -133,21 +141,41 @@ class GaussianMPTimePolicy(nn.Module):
         mean = self.mean_linear(x)
         log_std = self.log_std_linear(x)
         log_std = torch.clamp(log_std, min=LOG_SIG_MIN, max=LOG_SIG_MAX)
-        time = self.time_scalar * self.sp(self.time_linear(x))
+        if self.learn_time:
+            time = self.sp(self.time_scalar * self.time_linear(x))
+        else:
+            time = None
         return mean, log_std, time
 
     def sample(self, state):
         mean, log_std, t = self.forward(state)
         std = log_std.exp()
+
         if self.full_std:
-            normal = MultivariateNormal(mean, scale_tril=std)
+            std_matrix = build_lower_matrix(
+                std[..., : self.num_weights], std[..., self.num_weights :]
+            )
+            normal = MultivariateNormal(mean, scale_tril=std_matrix)
+            weights = (
+                normal.rsample()
+            )  # for reparameterization trick (mean + std * N(0,1))
+            log_prob = normal.log_prob(weights)
         else:
-            normal = Independent(Normal(mean, std))
-        weights = normal.rsample()  # for reparameterization trick (mean + std * N(0,1))
-        exp_dist = Exponential(t)  # time is sampled from an exponential distribution
-        time = exp_dist.rsample()
-        log_prob = exp_dist.log_prob(time) + normal.log_prob(weights)
+            normal = Normal(mean, std)
+            weights = (
+                normal.rsample()
+            )  # for reparameterization trick (mean + std * N(0,1))
+            log_prob = torch.sum(normal.log_prob(weights), dim=-1)
+
+        if self.learn_time:
+            exp_dist = Exponential(
+                t
+            )  # time is sampled from an exponential distribution
+            time = exp_dist.rsample()
+            log_prob += torch.sum(exp_dist.log_prob(time), dim=-1)
+        else:
+            time = None
         return weights, time, log_prob, mean, t
 
     def to(self, device):
-        return super(GaussianPolicy, self).to(device)
+        return super(GaussianMPTimePolicy, self).to(device)

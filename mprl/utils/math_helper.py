@@ -1,3 +1,5 @@
+from typing import Optional
+
 import torch
 
 
@@ -24,3 +26,28 @@ def truncated_normal(
             mean, std, size=(bound_violations,), device=tensor.device
         )
     return tensor
+
+
+def build_lower_matrix(
+    param_diag: torch.Tensor, param_off_diag: Optional[torch.Tensor]
+) -> torch.Tensor:
+    """
+    Compose the lower triangular matrix L from diag and off-diag elements
+    It seems like faster than using the cholesky transformation from PyTorch
+    Args:
+        param_diag: diagonal parameters
+        param_off_diag: off-diagonal parameters
+
+    Returns:
+        Lower triangular matrix L
+
+    """
+    dim_pred = param_diag.shape[-1]
+    # Fill diagonal terms
+    L = param_diag.diag_embed()
+    if param_off_diag is not None:
+        # Fill off-diagonal terms
+        [row, col] = torch.tril_indices(dim_pred, dim_pred, -1)
+        L[..., row, col] = param_off_diag[..., :]
+
+    return L

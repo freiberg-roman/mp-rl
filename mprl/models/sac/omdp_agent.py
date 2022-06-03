@@ -3,7 +3,7 @@ from pathlib import Path
 import torch
 from torch.optim import Adam
 
-from mprl.models.sac.networks import GaussianPolicy, QNetwork
+from mprl.models.sac.networks import GaussianMPTimePolicy, QNetwork
 from mprl.utils.math_helper import hard_update
 
 
@@ -27,7 +27,9 @@ class OMDPSAC:
             self.device
         )
         hard_update(self.critic_target, self.critic)
-        self.policy = GaussianPolicy(state_dim, action_dim, hidden_size).to(self.device)
+        self.policy = GaussianMPTimePolicy(state_dim, action_dim, hidden_size).to(
+            self.device
+        )
 
         # Entropy
         if self.automatic_entropy_tuning is True:
