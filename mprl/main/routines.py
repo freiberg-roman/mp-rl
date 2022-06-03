@@ -4,9 +4,9 @@ from tqdm import tqdm
 
 from mprl.controllers import MPTrajectory, PDController
 from mprl.env import create_mj_env
-from mprl.models import MDPSAC
+from mprl.models import MDPSAC, OMDPSAC
 from mprl.models.sac import train_mdp_sac
-from mprl.utils import RandomRB, SequenceRB
+from mprl.utils import RandomRB
 
 
 def train_sac(cfg: OmegaConf):
@@ -69,7 +69,7 @@ def train_sac(cfg: OmegaConf):
 
 def train_mp_sac_vanilla(cfg: OmegaConf):
     env = create_mj_env(cfg.env)
-    mpsac_agent = MDPSAC(cfg.agent)
+    agent = OMDPSAC(cfg.agent)
     buffer = RandomRB(
         cfg.buffer
     )  # in this case the next step corresponds to the next sequence
@@ -80,8 +80,8 @@ def train_mp_sac_vanilla(cfg: OmegaConf):
     c_pos, c_vel = env.decompose(state)
     while env.total_steps < cfg.train.total_env_steps:
         for _ in range(cfg.train.steps_per_epoch):
-            mean, L, time = mpsac_agent.select_action(state)
-            mp_trajectory.re_init(mean, L, time, c_pos, c_vel)
+            weights, time = agent.select_weights_and_time(state)
+            mp_trajectory.re_init(weights, time, c_pos, c_vel)
 
             # Execute primitive
             for q, v in mp_trajectory:

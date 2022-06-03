@@ -15,8 +15,9 @@ class OMDPSAC:
         self.alpha = cfg.alpha
         self.automatic_entropy_tuning = cfg.automatic_entropy_tuning
         self.device = torch.device("cuda" if cfg.device == "cuda" else "cpu")
+        self.learn_time = cfg.learn_time
         state_dim = cfg.env.state_dim
-        action_dim = cfg.num_basis + 1  # weights and re-planning time
+        action_dim = cfg.num_basis
         hidden_size = cfg.hidden_size
 
         # Networks
@@ -27,9 +28,13 @@ class OMDPSAC:
             self.device
         )
         hard_update(self.critic_target, self.critic)
-        self.policy = GaussianMPTimePolicy(state_dim, action_dim, hidden_size).to(
-            self.device
-        )
+        self.policy = GaussianMPTimePolicy(
+            state_dim,
+            action_dim,
+            hidden_size,
+            full_std=cfg.full_std,
+            learn_time=self.learn_time,
+        ).to(self.device)
 
         # Entropy
         if self.automatic_entropy_tuning is True:
@@ -39,13 +44,21 @@ class OMDPSAC:
             self.log_alpha = torch.zeros(1, requires_grad=True, device=self.device)
             self.alpha_optim = Adam([self.log_alpha], lr=cfg.lr)
 
-    def select_action(self, state, evaluate=False):
+    def select_weights_and_time(self, state, evaluate=False):
         state = torch.FloatTensor(state).to(self.device).unsqueeze(0)
-        if evaluate is False:
-            action, _, _ = self.policy.sample(state)
+        if not evaluate:
+            weights, time, _, _, _ = self.policy.sample(state)
         else:
-            _, _, action = self.policy.sample(state)
-        return action.detach().cpu().numpy()[0]
+            _, _, _, weights, time = self.policy.sample(state)
+        return weights, time
+
+    def select_weights(self, state, evaluate=False):
+        state = torch.FloatTensor(state).to(self.device).unsqueeze(0)
+        if not evaluate:
+            weights, _, _, _, _ = self.policy.sample(state)
+        else:
+            _, _, _, weights, _ = self.policy.sample(state)
+        return weights
 
     def parameters(self):
         return self.policy.parameters()

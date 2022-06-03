@@ -1,0 +1,16 @@
+name: "mp_t_sac"
+gamma: 0.99
+tau: 0.9995
+alpha: 0.2
+lr: 0.001
+learn_time: True
+full_std: False
+automatic_entropy_tuning: True
+device: ${device}
+hidden_size: 1024
+num_basis: ${env.idmp.num_basis}
+
+env:
+  action_dim: ${env.action_dim}
+  state_dim: ${env.state_dim}
+

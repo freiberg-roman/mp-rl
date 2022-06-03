@@ -17,40 +17,29 @@ def weights_init_(m):
         torch.nn.init.constant_(m.bias, 0)
 
 
-class ValueNetwork(nn.Module):
-    def __init__(self, num_inputs, hidden_dim):
-        super(ValueNetwork, self).__init__()
-
-        self.linear1 = nn.Linear(num_inputs, hidden_dim)
-        self.linear2 = nn.Linear(hidden_dim, hidden_dim)
-        self.linear3 = nn.Linear(hidden_dim, 1)
-
-        self.apply(weights_init_)
-
-    def forward(self, state):
-        x = F.silu(self.linear1(state))
-        x = F.silu(self.linear2(x))
-        x = self.linear3(x)
-        return x
-
-
 class QNetwork(nn.Module):
-    def __init__(self, num_inputs, num_actions, hidden_dim):
+    def __init__(self, num_inputs, num_actions, hidden_dim, use_time=False):
         super(QNetwork, self).__init__()
+        self.use_time = use_time
+        add_action = 1 if use_time else 0
 
         # Q1 architecture
-        self.linear1 = nn.Linear(num_inputs + num_actions, hidden_dim)
+        self.linear1 = nn.Linear(num_inputs + num_actions + add_action, hidden_dim)
         self.linear2 = nn.Linear(hidden_dim, hidden_dim)
         self.linear3 = nn.Linear(hidden_dim, 1)
 
         # Q2 architecture
-        self.linear4 = nn.Linear(num_inputs + num_actions, hidden_dim)
+        self.linear4 = nn.Linear(num_inputs + num_actions + add_action, hidden_dim)
         self.linear5 = nn.Linear(hidden_dim, hidden_dim)
         self.linear6 = nn.Linear(hidden_dim, 1)
 
         self.apply(weights_init_)
 
-    def forward(self, state, action):
+    def forward(self, state, action, time=None):
+        if time is not None:
+            assert self.use_time
+            action = torch.cat([action, time], 1)
+
         xu = torch.cat([state, action], 1)
 
         x1 = F.silu(self.linear1(xu))

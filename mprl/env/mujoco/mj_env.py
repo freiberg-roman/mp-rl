@@ -139,3 +139,6 @@ class MujocoEnv:
 
     def get_forces(self):
         return self.data.qfrc_bias.flat
+
+    def decompose(self):
+        pass

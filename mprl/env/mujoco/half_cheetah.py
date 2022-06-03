@@ -94,3 +94,10 @@ class HalfCheetahEnv(MujocoEnv):
     @property
     def total_steps(self):
         return self._total_steps
+
+    def decompose(self, state, full_obs=False):
+        coord = 2
+        if full_obs:
+            return state[0 + coord : 9], state[9 + coord :]  # qpos, qvel
+        else:
+            return state[1:8], state[8 + coord :]

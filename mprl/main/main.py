@@ -17,7 +17,7 @@ def run(cfg: DictConfig):
         train_sac(cfg)
 
     if cfg.mode == "train_mp_sac":
-        if cfg.buffer.mode == "sequences":
+        if cfg.buffer.mode == "step_wise":  # in this case sequence wise
             train_mp_sac_vanilla(cfg)
 
         elif cfg.buffer.mode == "virtual":

@@ -8,6 +8,7 @@ time_out: 1000  # only for SAC activated
 action_dim: 6
 state_dim: 17
 coordinate_dim: 1
+dt: 0.05
 
 pd:
   pgains: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
@@ -15,3 +16,4 @@ pd:
 
 idmp:
   num_basis: 10
+  basis_bandwidth_factor: 1.0
