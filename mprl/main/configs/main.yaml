@@ -5,7 +5,7 @@ defaults:
   - ctrl: pd
   - mp: idmp
   - train: off_policy
-  - buffer: random_replay_buffer
+  - buffer: sequence_buffer
 
 root_dir: "../experiments"
 mode: "train_mp_sac"

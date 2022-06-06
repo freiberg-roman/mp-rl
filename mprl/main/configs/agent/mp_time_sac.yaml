@@ -9,6 +9,7 @@ automatic_entropy_tuning: True
 device: ${device}
 hidden_size: 1024
 num_basis: ${env.idmp.num_basis}
+num_dof: ${env.num_dof}
 
 env:
   action_dim: ${env.action_dim}

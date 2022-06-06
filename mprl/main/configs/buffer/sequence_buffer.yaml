@@ -1,0 +1,6 @@
+capacity: 1000000
+mode: "step_wise"
+
+env:
+  state_dim: ${env.state_dim}
+  action_dim: ${env.action_dim} * (${env.idmp.num_basis} + 1) + 1  # last one is the time dimension

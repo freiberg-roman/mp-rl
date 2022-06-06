@@ -1,4 +1,4 @@
 name: "dp_ctrl"
 
-pgains: {$env.pd.pgains}
-dgains: {$env.pd.dgains}
+pgains: ${env.pd.pgains}
+dgains: ${env.pd.dgains}

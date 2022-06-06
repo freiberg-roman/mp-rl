@@ -7,6 +7,7 @@ from mprl.utils.math_helper import build_lower_matrix
 
 LOG_SIG_MAX = 2
 LOG_SIG_MIN = -20
+MAX_TIME = 5
 epsilon = 1e-6
 
 
@@ -20,8 +21,9 @@ def weights_init_(m):
 class QNetwork(nn.Module):
     def __init__(self, num_inputs, num_actions, hidden_dim, use_time=False):
         super(QNetwork, self).__init__()
-        self.use_time = use_time
-        add_action = 1 if use_time else 0
+        if use_time:
+            self.use_time = use_time
+            add_action = 1 if use_time else 0
 
         # Q1 architecture
         self.linear1 = nn.Linear(num_inputs + num_actions + add_action, hidden_dim)
@@ -131,7 +133,7 @@ class GaussianMPTimePolicy(nn.Module):
         log_std = self.log_std_linear(x)
         log_std = torch.clamp(log_std, min=LOG_SIG_MIN, max=LOG_SIG_MAX)
         if self.learn_time:
-            time = self.sp(self.time_scalar * self.time_linear(x))
+            time = self.sp(self.time_scalar * self.time_linear(x)) + epsilon
         else:
             time = None
         return mean, log_std, time
@@ -160,11 +162,17 @@ class GaussianMPTimePolicy(nn.Module):
             exp_dist = Exponential(
                 t
             )  # time is sampled from an exponential distribution
-            time = exp_dist.rsample()
+            time = torch.clamp(
+                exp_dist.rsample(), torch.tensor(epsilon), torch.tensor(MAX_TIME)
+            )
             log_prob += torch.sum(exp_dist.log_prob(time), dim=-1)
+            return (
+                torch.cat([weights, time], 1),
+                log_prob.unsqueeze(dim=-1),
+                torch.cat([mean, t], 1),
+            )
         else:
-            time = None
-        return weights, time, log_prob, mean, t
+            return weights, log_prob.unsqueeze(dim=-1), mean
 
     def to(self, device):
         return super(GaussianMPTimePolicy, self).to(device)

@@ -4,6 +4,7 @@ alpha: 25
 tau: 1.0
 num_basis: ${env.idmp.num_basis}
 num_dof: ${env.num_dof}
+device: ${device}
 
 mp_args:
   alpha_phase: 25.0

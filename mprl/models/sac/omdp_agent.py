@@ -17,16 +17,16 @@ class OMDPSAC:
         self.device = torch.device("cuda" if cfg.device == "cuda" else "cpu")
         self.learn_time = cfg.learn_time
         state_dim = cfg.env.state_dim
-        action_dim = cfg.num_basis
+        action_dim = (cfg.num_basis + 1) * cfg.num_dof
         hidden_size = cfg.hidden_size
 
         # Networks
-        self.critic = QNetwork(state_dim, action_dim, hidden_size).to(
+        self.critic = QNetwork(state_dim, action_dim, hidden_size, use_time=True).to(
             device=self.device
         )
-        self.critic_target = QNetwork(state_dim, action_dim, hidden_size).to(
-            self.device
-        )
+        self.critic_target = QNetwork(
+            state_dim, action_dim, hidden_size, use_time=True
+        ).to(self.device)
         hard_update(self.critic_target, self.critic)
         self.policy = GaussianMPTimePolicy(
             state_dim,
@@ -47,18 +47,10 @@ class OMDPSAC:
     def select_weights_and_time(self, state, evaluate=False):
         state = torch.FloatTensor(state).to(self.device).unsqueeze(0)
         if not evaluate:
-            weights, time, _, _, _ = self.policy.sample(state)
+            weight_times, _, _ = self.policy.sample(state)
         else:
-            _, _, _, weights, time = self.policy.sample(state)
-        return weights, time
-
-    def select_weights(self, state, evaluate=False):
-        state = torch.FloatTensor(state).to(self.device).unsqueeze(0)
-        if not evaluate:
-            weights, _, _, _, _ = self.policy.sample(state)
-        else:
-            _, _, _, weights, _ = self.policy.sample(state)
-        return weights
+            _, _, weight_time = self.policy.sample(state)
+        return weight_times.squeeze()
 
     def parameters(self):
         return self.policy.parameters()

@@ -142,3 +142,7 @@ class MujocoEnv:
 
     def decompose(self):
         pass
+
+    @property
+    def reset_after(self):
+        return self.time_out_after

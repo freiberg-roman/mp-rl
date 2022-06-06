@@ -96,6 +96,19 @@ class RandomRB(ReplayBuffer):
         self._ind = np.load(path + "index.npy").item()
 
 
+class RandomSequenceBasedRB(RandomRB):
+    def __init__(self, cfg):
+        self._cfg = cfg
+        self._capacity = 0
+        self._ind = 0
+        self._s = np.empty((cfg.capacity, cfg.env.state_dim), dtype=np.float32)
+        self._next_s = np.empty((cfg.capacity, cfg.env.state_dim), dtype=np.float32)
+        cfg.env.action_dim = eval(cfg.env.action_dim)
+        self._acts = np.empty((cfg.capacity, cfg.env.action_dim), dtype=np.float32)
+        self._rews = np.empty(cfg.capacity, dtype=np.float32)
+        self._dones = np.empty(cfg.capacity, dtype=bool)
+
+
 class RandomValidationRB(ReplayBuffer):
     def __init__(self, cfg, val_percentage):
         self._train_buffer = RandomRB(cfg)
