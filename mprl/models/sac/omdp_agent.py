@@ -52,6 +52,9 @@ class OMDPSAC:
             _, _, weight_time = self.policy.sample(state)
         return weight_times.squeeze()
 
+    def sample(self, state):
+        return self.policy.sample(state)
+
     def parameters(self):
         return self.policy.parameters()
 

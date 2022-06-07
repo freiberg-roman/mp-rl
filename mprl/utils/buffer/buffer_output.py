@@ -41,3 +41,26 @@ class EnvSteps:
             torch.unsqueeze(torch.from_numpy(self.rewards), 1),
             torch.unsqueeze(torch.from_numpy(self.dones), 1),
         )
+
+
+@dataclass
+class EnvStepsWithBias:
+    states: np.ndarray
+    next_states: np.ndarray
+    actions: np.ndarray
+    rewards: np.ndarray
+    dones: np.ndarray
+    biases: np.ndarray
+
+    def __len__(self):
+        return len(self.states)
+
+    def to_torch_batch(self):
+        return (
+            torch.from_numpy(self.states),
+            torch.from_numpy(self.next_states),
+            torch.from_numpy(self.actions),
+            torch.unsqueeze(torch.from_numpy(self.rewards), 1),
+            torch.unsqueeze(torch.from_numpy(self.dones), 1),
+            torch.from_numpy(self.biases),
+        )

@@ -5,7 +5,7 @@ from tqdm import tqdm
 
 from mprl.controllers import MPTrajectory, PDController
 from mprl.env import create_mj_env
-from mprl.models import MDPSAC, OMDPSAC
+from mprl.models import MDPSAC, OMDPSAC, MixedSAC
 from mprl.models.sac import train_mdp_sac
 from mprl.utils import RandomRB, RandomSequenceBasedRB
 
@@ -24,12 +24,12 @@ def train_sac(cfg: OmegaConf):
         # Train
         for i in tqdm(range(cfg.train.steps_per_epoch)):
             action = agent.select_action(state)
-            next_state, reward, done, _ = env.step(action)
+            next_state, reward, done, time_out = env.step(action)
             buffer.add(state, next_state, action, reward, done)
             state = next_state
             total_reward += reward
 
-            if done:
+            if time_out:
                 print(
                     "Total episode reward: ",
                     total_reward,
@@ -89,26 +89,29 @@ def train_mp_sac_vanilla(cfg: OmegaConf):
             # Execute primitive
             acc_reward = 0.0
             for q, v in mp_trajectory:
-                action = pd_ctrl.ctrl(q, v, c_pos, c_vel, bias=env.get_forces())
+                action = pd_ctrl.get_action(q, v, c_pos, c_vel, bias=env.get_forces())
                 next_state, reward, done, _ = env.step(action)
                 acc_reward += reward
                 c_pos, c_vel = env.decompose(next_state)
-            else:
-                acc_reward /= mp_trajectory.steps_planned
-                buffer.add(
-                    state,
-                    next_state,
-                    weight_time.cpu().detach().numpy(),
-                    acc_reward,
-                    done,
-                )
+
+            acc_reward /= mp_trajectory.steps_planned
+            buffer.add(
+                state,
+                next_state,
+                weight_time.cpu().detach().numpy(),
+                acc_reward,
+                done,
+            )
+            state = next_state
 
             if env.steps_after_reset > cfg.env.time_out:
                 state = env.reset()
                 c_pos, c_vel = env.decompose(state)
 
             # Perform one update step
-            if len(buffer) < 1000:  # we first collect few sequences
+            if (
+                len(buffer) < cfg.train.min_steps_before_training
+            ):  # we first collect few sequences
                 continue
             for batch in buffer.get_iter(it=1, batch_size=cfg.train.batch_size):
                 train_mdp_sac(agent, optimizer_policy, optimizer_critic, batch)
@@ -126,4 +129,31 @@ def train_mp_sac_augmented(cfg: OmegaConf):
 
 
 def train_stepwise_mp_sac(cfg: OmegaConf):
-    pass
+    env = create_mj_env(cfg.env)
+    mp_trajectory = MPTrajectory(cfg.mp)
+    pd_ctrl = PDController(cfg.ctrl)
+    agent = MixedSAC(
+        cfg.agent, planner=mp_trajectory, ctrl=pd_ctrl, decompose_state_fn=env.decompose
+    )
+    optimizer_policy = Adam(agent.policy.parameters(), lr=cfg.agent.lr)
+    optimizer_critic = Adam(agent.critic.parameters(), lr=cfg.agent.lr)
+    buffer = RandomRB(cfg.buffer, use_bias=True)
+
+    state = env.reset()
+    while env.total_steps < cfg.train.total_steps:
+        for _ in tqdm(range(cfg.train.steps_per_epoch)):
+            bias = env.get_forces()
+            action = agent.select_action(state, bias=bias)
+            next_state, reward, done, _ = env.step(action)
+            buffer.add(state, next_state, action, reward, done, bias=bias)
+            state = next_state
+
+            if env.steps_after_reset > cfg.env.time_out:
+                state = env.reset()
+                c_pos, c_vel = env.decompose(state)
+
+            # Perform one update step
+            for batch in buffer.get_iter(it=1, batch_size=cfg.train.batch_size):
+                train_mdp_sac(
+                    agent, optimizer_policy, optimizer_critic, batch, use_bias=True
+                )

@@ -21,9 +21,8 @@ def weights_init_(m):
 class QNetwork(nn.Module):
     def __init__(self, num_inputs, num_actions, hidden_dim, use_time=False):
         super(QNetwork, self).__init__()
-        if use_time:
-            self.use_time = use_time
-            add_action = 1 if use_time else 0
+        self.use_time = use_time
+        add_action = 1 if use_time else 0
 
         # Q1 architecture
         self.linear1 = nn.Linear(num_inputs + num_actions + add_action, hidden_dim)

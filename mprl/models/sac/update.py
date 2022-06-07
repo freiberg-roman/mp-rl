@@ -8,13 +8,20 @@ from mprl.utils.math_helper import soft_update
 
 
 def train_mdp_sac(
-    agent: MDPSAC, optimizer_policy: Adam, optimizer_critic: Adam, batch: EnvSteps
+    agent: MDPSAC,
+    optimizer_policy: Adam,
+    optimizer_critic: Adam,
+    batch: EnvSteps,
+    use_bias=False,
 ):
     # Sample a batch from memory
-    states, next_states, actions, rewards, dones = batch.to_torch_batch()
+    if use_bias:
+        states, next_states, actions, rewards, dones, biases = batch.to_torch_batch()
+    else:
+        states, next_states, actions, rewards, dones = batch.to_torch_batch()
 
     with torch.no_grad():
-        next_state_action, next_state_log_pi, _ = agent.policy.sample(next_states)
+        next_state_action, next_state_log_pi, _ = agent.sample(next_states)
         qf1_next_target, qf2_next_target = agent.critic_target(
             next_states, next_state_action
         )

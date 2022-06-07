@@ -47,13 +47,13 @@ class HalfCheetahEnv(MujocoEnv):
             and self.current_steps >= self.time_out_after
         )
 
-        info = {
+        _ = {
             "x_position": x_position_after,
             "x_velocity": x_velocity,
             "reward_run": forward_reward,
             "reward_ctrl": -ctrl_cost,
         }
-        return observation, reward, done, info
+        return observation, reward, False, done
 
     def _get_obs(self):
         position = self.data.qpos.flat.copy()
