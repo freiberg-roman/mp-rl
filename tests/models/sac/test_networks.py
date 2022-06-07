@@ -11,20 +11,18 @@ def test_sampling_no_time_no_full_cov_single():
     policy_net = GaussianMPTimePolicy(
         num_inputs=3, num_weights=5, hidden_dim=10, full_std=False, learn_time=False
     ).to(torch.device("cpu"))
-    weights, time, logp, _, _ = policy_net.sample(torch.randn(size=(3,)))
-    assert weights.shape == torch.Size([5])
-    assert time is None
-    assert logp.shape == torch.Size([])
+    weights, logp, _ = policy_net.sample(torch.randn(size=(1, 3)))
+    assert weights.shape == torch.Size([1, 5])
+    assert logp.shape == torch.Size([1, 1])
 
 
 def test_sampling_no_time_no_full_cov_batch():
     policy_net = GaussianMPTimePolicy(
         num_inputs=3, num_weights=5, hidden_dim=10, full_std=False, learn_time=False
     ).to(torch.device("cpu"))
-    weights, time, logp, _, _ = policy_net.sample(torch.randn(size=(100, 3)))
+    weights, logp, _ = policy_net.sample(torch.randn(size=(100, 3)))
     assert weights.shape == torch.Size([100, 5])
-    assert time is None
-    assert logp.shape == torch.Size([100])
+    assert logp.shape == torch.Size([100, 1])
 
 
 def test_sampling_time_no_full_cov_single():
@@ -34,10 +32,9 @@ def test_sampling_time_no_full_cov_single():
     optimizer = Adam(
         policy_net.parameters(), lr=1.0
     )  # we simply want to notice change in variables
-    weights, time, logp, _, _ = policy_net.sample(torch.randn(size=(3,)))
-    assert weights.shape == torch.Size([5])
-    assert time.shape == torch.Size([1])
-    assert logp.shape == torch.Size([])
+    weight_time, logp, _ = policy_net.sample(torch.randn(size=(1, 3)))
+    assert weight_time.shape == torch.Size([1, 6])
+    assert logp.shape == torch.Size([1, 1])
 
     old_val = policy_net.time_scalar.item()
     optimizer.zero_grad()
@@ -52,10 +49,9 @@ def test_sampling_time_no_full_cov_batch():
     policy_net = GaussianMPTimePolicy(
         num_inputs=3, num_weights=5, hidden_dim=10, full_std=False
     ).to(torch.device("cpu"))
-    weights, time, logp, _, _ = policy_net.sample(torch.randn(size=(100, 3)))
-    assert weights.shape == torch.Size([100, 5])
-    assert time.shape == torch.Size([100, 1])
-    assert logp.shape == torch.Size([100])
+    weight_times, logp, _ = policy_net.sample(torch.randn(size=(100, 3)))
+    assert weight_times.shape == torch.Size([100, 6])
+    assert logp.shape == torch.Size([100, 1])
 
 
 def test_sampling_time_full_cov_single():
@@ -65,10 +61,9 @@ def test_sampling_time_full_cov_single():
     optimizer = Adam(
         policy_net.parameters(), lr=1.0
     )  # we simply want to notice change in variables
-    weights, time, logp, _, _ = policy_net.sample(torch.randn(size=(3,)))
-    assert weights.shape == torch.Size([5])
-    assert time.shape == torch.Size([1])
-    assert logp.shape == torch.Size([])
+    weight_time, logp, _ = policy_net.sample(torch.randn(size=(1, 3)))
+    assert weight_time.shape == torch.Size([1, 6])
+    assert logp.shape == torch.Size([1, 1])
 
     old_val = policy_net.log_std_linear.weight.tolist()
     optimizer.zero_grad()
@@ -81,7 +76,6 @@ def test_sampling_time_full_cov_batch():
     policy_net = GaussianMPTimePolicy(
         num_inputs=3, num_weights=5, hidden_dim=10, full_std=True
     ).to(torch.device("cpu"))
-    weights, time, logp, _, _ = policy_net.sample(torch.randn(size=(100, 3)))
-    assert weights.shape == torch.Size([100, 5])
-    assert time.shape == torch.Size([100, 1])
-    assert logp.shape == torch.Size([100])
+    weight_times, logp, _ = policy_net.sample(torch.randn(size=(100, 3)))
+    assert weight_times.shape == torch.Size([100, 6])
+    assert logp.shape == torch.Size([100, 1])
