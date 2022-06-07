@@ -59,24 +59,24 @@ class MPTrajectory:
     def __iter__(self):
         return self
 
-    def one_step_ctrl(self, weight, bc_pos, bc_vel):
+    def one_step_ctrl(self, weights, bc_pos, bc_vel):
 
         times = tensor_linspace(0, self.dt, 2).unsqueeze(dim=0)
-        bc_pos = torch.from_numpy(np.expand_dims(bc_pos, axis=0)).to(self.device)
-        bc_vel = torch.from_numpy(np.expand_dims(bc_vel, axis=0)).to(self.device)
-        weights = weight.unsqueeze(dim=0)
-        bc_time = torch.tensor([0.0], device=self.device)
+        bc_time = torch.tensor([0.0] * weights.shape[0], device=self.device)
         self.current_traj = self.mp.get_traj_pos(
             times=times,
             params=weights,
             bc_time=bc_time,
             bc_pos=bc_pos,
             bc_vel=bc_vel,
-        ).squeeze()
+        )
         self.current_traj_v = (
-            self.current_traj[1:, ...] - self.current_traj[:-1, ...]
+            self.current_traj[:, 1:, ...] - self.current_traj[:, :-1, ...]
         ) / self.dt
-        return self.current_traj_v[1, :], self.current_traj_v[0, :]
+        return (
+            self.current_traj[:, 1, :].squeeze(),
+            self.current_traj_v[:, 0, :].squeeze(),
+        )
 
     @property
     def steps_planned(self):

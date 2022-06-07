@@ -150,7 +150,6 @@ def train_stepwise_mp_sac(cfg: OmegaConf):
 
             if env.steps_after_reset > cfg.env.time_out:
                 state = env.reset()
-                c_pos, c_vel = env.decompose(state)
 
             # Perform one update step
             for batch in buffer.get_iter(it=1, batch_size=cfg.train.batch_size):

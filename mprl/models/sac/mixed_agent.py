@@ -4,6 +4,7 @@ import torch
 from torch.optim import Adam
 
 from mprl.models.sac.networks import GaussianMPTimePolicy, QNetwork
+from mprl.utils.ds_helper import to_ts
 from mprl.utils.math_helper import hard_update
 
 
@@ -57,11 +58,12 @@ class MixedSAC:
         action = self.ctrl.get_action(q, v, b_q, b_v, bias=bias)
         return action
 
-    def sample(self, state):
+    def sample(self, state, bias):
         weight, logp, mean = self.policy.sample(state)
         b_q, b_v = self.decompose_fn(state)
-        action = self.ctrl.one_step_ctrl(weight, b_q, b_v)
-        return action, logp, mean
+        q, v = self.planner.one_step_ctrl(weight, b_q, b_v)
+        action = self.ctrl.get_action(q, v, b_q, b_v, bias=bias)
+        return to_ts(action), logp, mean
 
     def parameters(self):
         return self.policy.parameters()

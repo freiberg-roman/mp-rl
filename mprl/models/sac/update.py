@@ -21,7 +21,12 @@ def train_mdp_sac(
         states, next_states, actions, rewards, dones = batch.to_torch_batch()
 
     with torch.no_grad():
-        next_state_action, next_state_log_pi, _ = agent.sample(next_states)
+        if use_bias:
+            next_state_action, next_state_log_pi, _ = agent.sample(
+                next_states, bias=biases
+            )
+        else:
+            next_state_action, next_state_log_pi, _ = agent.sample(next_states)
         qf1_next_target, qf2_next_target = agent.critic_target(
             next_states, next_state_action
         )
@@ -47,7 +52,10 @@ def train_mdp_sac(
     qf_loss.backward()
     optimizer_critic.step()
 
-    pi, log_pi, _ = agent.policy.sample(states)
+    if use_bias:
+        pi, log_pi, _ = agent.sample(next_states, bias=biases)
+    else:
+        pi, log_pi, _ = agent.sample(states)
 
     qf1_pi, qf2_pi = agent.critic(states, pi)
     min_qf_pi = torch.min(qf1_pi, qf2_pi)
