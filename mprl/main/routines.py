@@ -1,4 +1,4 @@
-import numpy as np
+import wandb
 from omegaconf import OmegaConf
 from torch.optim import Adam
 from tqdm import tqdm
@@ -20,6 +20,12 @@ def train_sac(cfg: OmegaConf):
 
     state = env.reset(time_out_after=time_out_after)
     total_reward = 0
+    wandb.init(
+        entity="freiberg-roman",
+        project="sac",
+        name=cfg.env.name + "_" + str(cfg.run),
+        config=OmegaConf.to_container(cfg),
+    )
     while env.total_steps < cfg.train.total_steps:
         # Train
         for i in tqdm(range(cfg.train.steps_per_epoch)):
@@ -67,6 +73,7 @@ def train_sac(cfg: OmegaConf):
             env.total_steps,
             " steps.",
         )
+        wandb.log({"total_reward": eval_reward, "total_steps": env.total_steps})
         env_eval.close()
         del env_eval
 

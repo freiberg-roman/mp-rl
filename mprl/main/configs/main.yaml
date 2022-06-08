@@ -1,6 +1,6 @@
 defaults:
   - _self_
-  - env: humanoid
+  - env: half_cheetah
   - agent: sac
   - ctrl: pd
   - mp: idmp
@@ -10,6 +10,7 @@ defaults:
 root_dir: "../experiments"
 mode: "train_sac"
 device: "cpu"
+run: 0
 
 hydra:
   run:
