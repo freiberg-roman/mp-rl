@@ -1,14 +1,14 @@
 defaults:
   - _self_
-  - env: half_cheetah
-  - agent: mp_time_sac
+  - env: humanoid
+  - agent: sac
   - ctrl: pd
   - mp: idmp
   - train: off_policy
   - buffer: random_replay_buffer
 
 root_dir: "../experiments"
-mode: "train_stepwise_mp_sac"
+mode: "train_sac"
 device: "cpu"
 
 hydra:

@@ -8,7 +8,6 @@ from mprl.utils.buffer.replay_buffer import EnvSteps, ReplayBuffer
 
 class SequenceRB(ReplayBuffer):
     def __init__(self, cfg):
-        self._cfg = cfg
         self._capacity = 0
         self._ind = 0
         self._s = np.empty((cfg.capacity, cfg.env.state_dim), dtype=np.float32)
@@ -55,6 +54,9 @@ class SequenceRB(ReplayBuffer):
         assert self._ind == valid_end
         self._capacity += len_seq
         self._seq = []
+
+    def close_trajectory(self):
+        self.close_sequence()
 
     def get_iter(self, it, batch_size):
         return self.get_full_sequence_iter(it)

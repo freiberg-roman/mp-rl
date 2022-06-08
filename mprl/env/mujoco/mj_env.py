@@ -55,6 +55,11 @@ class MujocoEnv:
         ob = self.reset_model()
         return ob
 
+    def sample_random_action(self):
+        """
+        Uniform sampling in environment space.
+        """
+
     def set_state(self, qpos, qvel):
         assert qpos.shape == (self.model.nq,) and qvel.shape == (self.model.nv,)
         self.data.qpos[:] = np.copy(qpos)

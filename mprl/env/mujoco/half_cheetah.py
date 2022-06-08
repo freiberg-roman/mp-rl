@@ -46,14 +46,10 @@ class HalfCheetahEnv(MujocoEnv):
             self.time_out_after is not None
             and self.current_steps >= self.time_out_after
         )
-
-        _ = {
-            "x_position": x_position_after,
-            "x_velocity": x_velocity,
-            "reward_run": forward_reward,
-            "reward_ctrl": -ctrl_cost,
-        }
         return observation, reward, False, done
+
+    def sample_random_action(self):
+        return np.random.uniform(-1, 1, (6,))
 
     def _get_obs(self):
         position = self.data.qpos.flat.copy()

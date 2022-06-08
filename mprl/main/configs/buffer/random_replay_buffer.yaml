@@ -1,4 +1,4 @@
-capacity: 1000000
+capacity: 2000000
 mode: "step_wise"
 
 env:

@@ -17,3 +17,7 @@ pd:
 idmp:
   num_basis: 5
   basis_bandwidth_factor: 1.0
+
+sac:
+  alpha: 0.2
+  hidden_size: 256

@@ -23,13 +23,17 @@ def train_sac(cfg: OmegaConf):
     while env.total_steps < cfg.train.total_steps:
         # Train
         for i in tqdm(range(cfg.train.steps_per_epoch)):
-            action = agent.select_action(state)
+            if env.total_steps < cfg.train.warm_start_steps:
+                action = env.sample_random_action()
+            else:
+                action = agent.select_action(state)
+
             next_state, reward, done, time_out = env.step(action)
             buffer.add(state, next_state, action, reward, done)
             state = next_state
             total_reward += reward
 
-            if time_out:
+            if time_out or done:
                 print(
                     "Total episode reward: ",
                     total_reward,
@@ -52,9 +56,10 @@ def train_sac(cfg: OmegaConf):
         eval_reward = 0
         for _ in range(time_out_after):
             action = agent.select_action(state, evaluate=True)
-            state, reward, done, _ = env_eval.step(action)
+            state, reward, done, time_out = env_eval.step(action)
             eval_reward += reward
-            env_eval.render(mode="human")
+            if done or time_out:
+                break
         print(
             "Total evaluation reward: ",
             eval_reward,
