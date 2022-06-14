@@ -58,7 +58,7 @@ class MixedSAC:
         action = self.ctrl.get_action(q, v, b_q, b_v, bias=bias)
         return action
 
-    def sample(self, state, bias):
+    def sample(self, state, bias=None):
         weight, logp, mean = self.policy.sample(state)
         b_q, b_v = self.decompose_fn(state)
         q, v = self.planner.one_step_ctrl(weight, b_q, b_v)

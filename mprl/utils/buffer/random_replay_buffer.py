@@ -114,10 +114,12 @@ class RandomSequenceBasedRB(RandomRB):
         self._ind = 0
         self._s = np.empty((cfg.capacity, cfg.env.state_dim), dtype=np.float32)
         self._next_s = np.empty((cfg.capacity, cfg.env.state_dim), dtype=np.float32)
-        cfg.env.action_dim = eval(cfg.env.action_dim)
+        if not isinstance(cfg.env.action_dim, int):
+            cfg.env.action_dim = eval(cfg.env.action_dim)
         self._acts = np.empty((cfg.capacity, cfg.env.action_dim), dtype=np.float32)
         self._rews = np.empty(cfg.capacity, dtype=np.float32)
         self._dones = np.empty(cfg.capacity, dtype=bool)
+        self._use_bias = False
 
 
 class RandomValidationRB(ReplayBuffer):

@@ -8,6 +8,7 @@ from mprl.env import create_mj_env
 from mprl.models import MDPSAC, OMDPSAC, MixedSAC
 from mprl.models.sac import train_mdp_sac
 from mprl.utils import RandomRB, RandomSequenceBasedRB
+from mprl.utils.ds_helper import to_np
 
 
 def train_sac(cfg: OmegaConf):
@@ -101,7 +102,7 @@ def train_mp_sac_vanilla(cfg: OmegaConf):
             # Execute primitive
             acc_reward = 0.0
             for q, v in mp_trajectory:
-                action = pd_ctrl.get_action(q, v, c_pos, c_vel, bias=env.get_forces())
+                action = to_np(pd_ctrl.get_action(q, v, c_pos, c_vel, bias=None))
                 next_state, reward, done, _ = env.step(action)
                 acc_reward += reward
                 c_pos, c_vel = env.decompose(next_state)
@@ -122,7 +123,7 @@ def train_mp_sac_vanilla(cfg: OmegaConf):
 
             # Perform one update step
             if (
-                len(buffer) < cfg.train.min_steps_before_training
+                len(buffer) < cfg.train.warm_start_steps
             ):  # we first collect few sequences
                 continue
             for batch in buffer.get_iter(it=1, batch_size=cfg.train.batch_size):
@@ -149,22 +150,23 @@ def train_stepwise_mp_sac(cfg: OmegaConf):
     )
     optimizer_policy = Adam(agent.policy.parameters(), lr=cfg.agent.lr)
     optimizer_critic = Adam(agent.critic.parameters(), lr=cfg.agent.lr)
-    buffer = RandomRB(cfg.buffer, use_bias=True)
+    buffer = RandomRB(cfg.buffer, use_bias=False)
 
     state = env.reset()
     while env.total_steps < cfg.train.total_steps:
         for _ in tqdm(range(cfg.train.steps_per_epoch)):
-            bias = env.get_forces()
-            action = agent.select_action(state, bias=bias)
+            action = to_np(agent.select_action(state))
             next_state, reward, done, _ = env.step(action)
-            buffer.add(state, next_state, action, reward, done, bias=bias)
+            buffer.add(state, next_state, action, reward, done)
             state = next_state
 
             if env.steps_after_reset > cfg.env.time_out:
                 state = env.reset()
+            if (
+                len(buffer) < cfg.train.warm_start_steps
+            ):  # we first collect few sequences
+                continue
 
             # Perform one update step
             for batch in buffer.get_iter(it=1, batch_size=cfg.train.batch_size):
-                train_mdp_sac(
-                    agent, optimizer_policy, optimizer_critic, batch, use_bias=True
-                )
+                train_mdp_sac(agent, optimizer_policy, optimizer_critic, batch)

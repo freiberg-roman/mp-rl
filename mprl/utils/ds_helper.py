@@ -95,7 +95,7 @@ def to_ts(
     if isinstance(data, (float, int)):
         return torch.tensor(data, dtype=data_type, device=device)
     elif is_ts(data):
-        return data.clone().detach().to(device).type(data_type)
+        return data
 
     elif is_np(data):
         return torch.tensor(data, dtype=data_type, device=device)
