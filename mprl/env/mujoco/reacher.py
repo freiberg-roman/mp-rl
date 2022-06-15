@@ -43,20 +43,24 @@ class Reacher(MujocoEnv):
 
     def reset_model(self):
         qpos = (
-            self.np_random.uniform(low=-0.1, high=0.1, size=self.model.nq)
-            + self.init_qpos
+            np.random.uniform(low=-0.1, high=0.1, size=self.model.nq) + self.init_qpos
         )
         while True:
-            self.goal = self.np_random.uniform(low=-0.2, high=0.2, size=2)
+            self.goal = np.random.uniform(low=-0.2, high=0.2, size=2)
             if np.linalg.norm(self.goal) < 0.2:
                 break
         qpos[-2:] = self.goal
-        qvel = self.init_qvel + self.np_random.uniform(
+        qvel = self.init_qvel + np.random.uniform(
             low=-0.005, high=0.005, size=self.model.nv
         )
         qvel[-2:] = 0
         self.set_state(qpos, qvel)
         return self._get_obs()
+
+    def set_robot_to(self, qpos):
+        qpos_state = np.zeros((4,))
+        qpos_state[:2] = qpos
+        self.set_state(qpos_state, qvel=np.zeros((4,)))
 
     def viewer_setup(self):
         self.viewer.cam.trackbodyid = 0

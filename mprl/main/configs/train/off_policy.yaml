@@ -1,5 +1,5 @@
 total_steps: 5000000
-steps_per_epoch: 1000
+steps_per_epoch: 10000
 update_agent_every: 1
 batch_size: 256
-warm_start_steps: 1000
+warm_start_steps: 10000

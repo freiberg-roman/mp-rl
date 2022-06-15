@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import torch
+import wandb
 from torch.optim import Adam
 
 from mprl.models.sac.networks import GaussianMPTimePolicy, QNetwork
@@ -8,7 +9,7 @@ from mprl.utils.math_helper import hard_update
 
 
 class OMDPSAC:
-    def __init__(self, cfg):
+    def __init__(self, cfg, use_wandb=False):
         # Parameters
         self.gamma = cfg.gamma
         self.tau = cfg.tau
@@ -16,16 +17,19 @@ class OMDPSAC:
         self.automatic_entropy_tuning = cfg.automatic_entropy_tuning
         self.device = torch.device("cuda" if cfg.device == "cuda" else "cpu")
         self.learn_time = cfg.learn_time
+        if not self.learn_time:
+            self.time_steps = cfg.time_steps
         state_dim = cfg.env.state_dim
         action_dim = (cfg.num_basis + 1) * cfg.num_dof
         hidden_size = cfg.hidden_size
+        self.use_wandb = use_wandb
 
         # Networks
-        self.critic = QNetwork(state_dim, action_dim, hidden_size, use_time=True).to(
-            device=self.device
-        )
+        self.critic = QNetwork(
+            state_dim, action_dim, hidden_size, use_time=self.learn_time
+        ).to(device=self.device)
         self.critic_target = QNetwork(
-            state_dim, action_dim, hidden_size, use_time=True
+            state_dim, action_dim, hidden_size, use_time=self.learn_time
         ).to(self.device)
         hard_update(self.critic_target, self.critic)
         self.policy = GaussianMPTimePolicy(
@@ -35,6 +39,10 @@ class OMDPSAC:
             full_std=cfg.full_std,
             learn_time=self.learn_time,
         ).to(self.device)
+        if self.use_wandb:
+            wandb.watch(self.critic, log="all")
+            wandb.watch(self.critic_target, log="all")
+            wandb.watch(self.policy, log="all")
 
         # Entropy
         if self.automatic_entropy_tuning is True:
@@ -49,7 +57,8 @@ class OMDPSAC:
         if not evaluate:
             weight_times, _, _ = self.policy.sample(state)
         else:
-            _, _, weight_time = self.policy.sample(state)
+            _, _, weight_times = self.policy.sample(state)
+        wandb.log({"mp_weights": weight_times})
         return weight_times.squeeze()
 
     def sample(self, state):

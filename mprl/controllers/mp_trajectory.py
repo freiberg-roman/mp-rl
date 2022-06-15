@@ -1,11 +1,12 @@
 import numpy as np
 import torch
+import wandb
 from mp_pytorch import MPFactory, ProMP, tensor_linspace
 from omegaconf import OmegaConf, open_dict
 
 
 class MPTrajectory:
-    def __init__(self, cfg: OmegaConf):
+    def __init__(self, cfg: OmegaConf, use_wandb=False):
         with open_dict(cfg):
             cfg.mp_type = "idmp"
         self.mp = MPFactory.init_mp(cfg)
@@ -14,6 +15,7 @@ class MPTrajectory:
         self.current_traj_v = None
         self.current_t = 0
         self.device = torch.device(cfg.device)
+        self.use_wandb = use_wandb
 
     def re_init(self, weight_time, bc_pos, bc_vel, num_t=None):
         if num_t is None:
@@ -43,6 +45,8 @@ class MPTrajectory:
             self.current_traj[1:, ...] - self.current_traj[:-1, ...]
         ) / self.dt
         self.current_t = 0
+        if self.use_wandb:
+            wandb.log({"traj": self.current_traj})
         return self
 
     def __next__(self):
