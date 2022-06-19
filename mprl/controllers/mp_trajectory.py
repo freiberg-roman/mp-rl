@@ -21,15 +21,12 @@ class MPTrajectory:
         if num_t is None:
             t = weight_time[-1].item()
             weight = weight_time[:-1]
-            num_t = int(t / self.dt) + 1
+            num_t = int(t / self.dt)
         else:
-            t = self.dt
+            t = self.dt * num_t
             weight = weight_time
 
-        if num_t == 1:
-            num_t += 1
-
-        times = tensor_linspace(0, t, num_t).unsqueeze(dim=0)
+        times = tensor_linspace(0, t, num_t + 1).unsqueeze(dim=0)
         bc_pos = torch.from_numpy(np.expand_dims(bc_pos, axis=0)).to(self.device)
         bc_vel = torch.from_numpy(np.expand_dims(bc_vel, axis=0)).to(self.device)
         weights = weight.unsqueeze(dim=0)
@@ -46,7 +43,15 @@ class MPTrajectory:
         ) / self.dt
         self.current_t = 0
         if self.use_wandb:
-            wandb.log({"traj": self.current_traj})
+            wandb.log(
+                {
+                    "traj": wandb.Histogram(
+                        np_histogram=np.histogram(
+                            self.current_traj.squeeze().detach().cpu().numpy()
+                        )
+                    )
+                }
+            )
         return self
 
     def __next__(self):

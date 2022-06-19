@@ -15,7 +15,7 @@ pd:
   dgains: [0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
 
 idmp:
-  num_basis: 5
+  num_basis: 10
   basis_bandwidth_factor: 1.0
 
 sac:

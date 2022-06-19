@@ -1,6 +1,6 @@
 defaults:
   - _self_
-  - env: reacher
+  - env: half_cheetah
   - agent: mp_time_sac
   - ctrl: pd
   - mp: idmp
@@ -8,10 +8,10 @@ defaults:
   - buffer: sequence_buffer
 
 root_dir: "../experiments"
-mode: "train_sac"
+mode: "train_mp_sac"
 device: "cpu"
 use_wandb: False
-run: 0
+run: 1
 
 hydra:
   run:

@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 import wandb
 
@@ -21,7 +22,15 @@ class PDController:
         vd_d = desired_vel - current_vel
         target_j_acc = self.pgains * qd_d + self.dgains * vd_d
         if self.use_wandb:
-            wandb.log({"acc_pd": target_j_acc})
+            wandb.log(
+                {
+                    "acc_pd": wandb.Histogram(
+                        np_histogram=np.histogram(
+                            target_j_acc.squeeze().detach().cpu().numpy()
+                        )
+                    )
+                }
+            )
         if bias is not None:
             return torch.clamp(
                 target_j_acc + bias, -1, 1

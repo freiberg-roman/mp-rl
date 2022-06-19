@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import numpy as np
 import torch
 import wandb
 from torch.optim import Adam
@@ -41,7 +42,6 @@ class OMDPSAC:
         ).to(self.device)
         if self.use_wandb:
             wandb.watch(self.critic, log="all")
-            wandb.watch(self.critic_target, log="all")
             wandb.watch(self.policy, log="all")
 
         # Entropy
@@ -58,7 +58,11 @@ class OMDPSAC:
             weight_times, _, _ = self.policy.sample(state)
         else:
             _, _, weight_times = self.policy.sample(state)
-        wandb.log({"mp_weights": weight_times})
+        if self.use_wandb:
+            hist_value = weight_times.squeeze().detach().cpu().numpy()
+            wandb.log(
+                {"net_weights": wandb.Histogram(np_histogram=np.histogram(hist_value))}
+            )
         return weight_times.squeeze()
 
     def sample(self, state):

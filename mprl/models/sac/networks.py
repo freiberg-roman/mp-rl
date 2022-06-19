@@ -124,6 +124,8 @@ class GaussianMPTimePolicy(nn.Module):
             self.log_std_linear = nn.Linear(hidden_dim, num_weights)
 
         self.apply(weights_init_)
+        self.action_scale = torch.tensor(1.0)
+        self.action_bias = torch.tensor(0.0)
 
     def forward(self, state):
         x = F.silu(self.linear1(state))
@@ -150,12 +152,26 @@ class GaussianMPTimePolicy(nn.Module):
                 normal.rsample()
             )  # for reparameterization trick (mean + std * N(0,1))
             log_prob = normal.log_prob(weights)
+
+            # tanh transformation
+            weights = torch.tanh(weights)
+            weights = weights * self.action_scale + self.action_bias
+            log_prob -= torch.log(self.action_scale * (1 - weights.pow(2)) + epsilon)
+            log_prob = log_prob.sum(1, keepdim=True)
         else:
             normal = Normal(mean, std)
             weights = (
                 normal.rsample()
             )  # for reparameterization trick (mean + std * N(0,1))
-            log_prob = torch.sum(normal.log_prob(weights), dim=-1)
+            log_prob = normal.log_prob(weights)
+
+            # tanh transformation
+            weights = torch.tanh(weights)
+            weights = weights * self.action_scale + self.action_bias
+            log_prob -= torch.log(self.action_scale * (1 - weights.pow(2)) + epsilon)
+            log_prob = log_prob.sum(dim=-1)
+
+        # reparametrization
 
         if self.learn_time:
             exp_dist = Exponential(

@@ -115,7 +115,9 @@ class RandomSequenceBasedRB(RandomRB):
         self._s = np.empty((cfg.capacity, cfg.env.state_dim), dtype=np.float32)
         self._next_s = np.empty((cfg.capacity, cfg.env.state_dim), dtype=np.float32)
         if not isinstance(cfg.env.action_dim, int):
-            cfg.env.action_dim = eval(cfg.env.action_dim)
+            time_action = 1 if cfg.env.learn_time else 0
+            cfg.env.action_dim = eval(cfg.env.action_dim) + time_action
+
         self._acts = np.empty((cfg.capacity, cfg.env.action_dim), dtype=np.float32)
         self._rews = np.empty(cfg.capacity, dtype=np.float32)
         self._dones = np.empty(cfg.capacity, dtype=bool)
