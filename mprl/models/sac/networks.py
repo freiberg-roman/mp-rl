@@ -1,14 +1,16 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import wandb
 from torch.distributions import Exponential, MultivariateNormal, Normal
 
 from mprl.utils.math_helper import build_lower_matrix
 
 LOG_SIG_MAX = 2
 LOG_SIG_MIN = -20
-MAX_TIME = 5
+MAX_TIME = 1
 epsilon = 1e-6
+DT = 0.05
 
 
 # Initialize Policy weights
@@ -114,6 +116,7 @@ class GaussianMPTimePolicy(nn.Module):
             self.time_linear = nn.Linear(hidden_dim, 1)
             self.time_scalar = nn.Parameter(torch.tensor([1.0]), requires_grad=True)
             self.sp = nn.Softplus()
+            self.sig = nn.Sigmoid()
 
         if self.full_std:
             # Learn lower L of log Choleric decomposition
@@ -134,7 +137,17 @@ class GaussianMPTimePolicy(nn.Module):
         log_std = self.log_std_linear(x)
         log_std = torch.clamp(log_std, min=LOG_SIG_MIN, max=LOG_SIG_MAX)
         if self.learn_time:
-            time = self.sp(self.time_scalar * self.time_linear(x)) + epsilon
+            lin_out = self.time_linear(x)
+            net_out_time = self.sp(self.time_scalar) * self.sig(lin_out)
+            time = torch.clamp(
+                net_out_time,
+                min=DT,
+                max=MAX_TIME,
+            )
+            wandb.log({"net_time_linear_out": lin_out.detach()[0].cpu().item()})
+            wandb.log({"net_time_sig": net_out_time.detach()[0].cpu().item()})
+            wandb.log({"net_time_out": time.detach()[0].cpu().item()})
+            wandb.log({"time_scalar": self.time_scalar.detach().cpu().item()})
         else:
             time = None
         return mean, log_std, time
@@ -152,12 +165,6 @@ class GaussianMPTimePolicy(nn.Module):
                 normal.rsample()
             )  # for reparameterization trick (mean + std * N(0,1))
             log_prob = normal.log_prob(weights)
-
-            # tanh transformation
-            weights = torch.tanh(weights)
-            weights = weights * self.action_scale + self.action_bias
-            log_prob -= torch.log(self.action_scale * (1 - weights.pow(2)) + epsilon)
-            log_prob = log_prob.sum(1, keepdim=True)
         else:
             normal = Normal(mean, std)
             weights = (
@@ -166,9 +173,9 @@ class GaussianMPTimePolicy(nn.Module):
             log_prob = normal.log_prob(weights)
 
             # tanh transformation
-            weights = torch.tanh(weights)
-            weights = weights * self.action_scale + self.action_bias
-            log_prob -= torch.log(self.action_scale * (1 - weights.pow(2)) + epsilon)
+            # weights = torch.tanh(weights)
+            # weights = weights * self.action_scale + self.action_bias
+            # log_prob -= torch.log(self.action_scale * (1 - weights.pow(2)) + epsilon)
             log_prob = log_prob.sum(dim=-1)
 
         # reparametrization
@@ -177,10 +184,9 @@ class GaussianMPTimePolicy(nn.Module):
             exp_dist = Exponential(
                 t
             )  # time is sampled from an exponential distribution
-            time = torch.clamp(
-                exp_dist.rsample(), torch.tensor(epsilon), torch.tensor(MAX_TIME)
-            )
+            time = torch.clamp(exp_dist.rsample(), min=epsilon, max=MAX_TIME * 2)
             log_prob += torch.sum(exp_dist.log_prob(time), dim=-1)
+            wandb.log({"agent_time_out": time.detach()[0].cpu().item()})
             return (
                 torch.cat([weights, time], 1),
                 log_prob.unsqueeze(dim=-1),

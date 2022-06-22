@@ -1,14 +1,14 @@
 name: "mp_t_sac"
 gamma: 0.99
 tau: 0.005
-alpha: 0.2
+alpha: 0.0
 lr: 0.0003
-learn_time: False
+learn_time: True
 time_steps: 2  # will be used if learn time is False
 full_std: False
 automatic_entropy_tuning: False
 device: ${device}
-hidden_size: 256
+hidden_size: 512
 num_basis: ${env.idmp.num_basis}
 num_dof: ${env.num_dof}
 

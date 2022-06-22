@@ -5,12 +5,12 @@ defaults:
   - ctrl: pd
   - mp: idmp
   - train: off_policy
-  - buffer: sequence_buffer
+  - buffer: random_replay_buffer
 
 root_dir: "../experiments"
-mode: "train_mp_sac"
+mode: "train_stepwise_mp_sac"
 device: "cpu"
-use_wandb: False
+use_wandb: True
 run: 1
 
 hydra:

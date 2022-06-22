@@ -21,7 +21,7 @@ class MPTrajectory:
         if num_t is None:
             t = weight_time[-1].item()
             weight = weight_time[:-1]
-            num_t = int(t / self.dt)
+            num_t = int((t + self.dt) / self.dt)
         else:
             t = self.dt * num_t
             weight = weight_time
@@ -49,7 +49,9 @@ class MPTrajectory:
                         np_histogram=np.histogram(
                             self.current_traj.squeeze().detach().cpu().numpy()
                         )
-                    )
+                    ),
+                    "planned time_steps": num_t - 1,
+                    "incomming_t": t,
                 }
             )
         return self

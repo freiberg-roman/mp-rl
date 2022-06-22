@@ -222,6 +222,9 @@ class RenderContext:
 
         self.scn.ngeom += 1
 
+    def close(self):
+        pass
+
 
 class RenderContextOffscreen(RenderContext):
     """Offscreen rendering class with opengl context."""

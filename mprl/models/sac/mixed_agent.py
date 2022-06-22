@@ -58,6 +58,14 @@ class MixedSAC:
         action = self.ctrl.get_action(q, v, b_q, b_v, bias=bias)
         return action
 
+    def select_weights_and_time(self, state, evaluate=False):
+        state = torch.FloatTensor(state).to(self.device).unsqueeze(0)
+        if not evaluate:
+            weight_times, _, _ = self.policy.sample(state)
+        else:
+            _, _, weight_times = self.policy.sample(state)
+        return weight_times.squeeze()
+
     def sample(self, state, bias=None):
         weight, logp, mean = self.policy.sample(state)
         b_q, b_v = self.decompose_fn(state)
