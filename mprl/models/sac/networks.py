@@ -144,10 +144,11 @@ class GaussianMPTimePolicy(nn.Module):
                 min=DT,
                 max=MAX_TIME,
             )
-            wandb.log({"net_time_linear_out": lin_out.detach()[0].cpu().item()})
-            wandb.log({"net_time_sig": net_out_time.detach()[0].cpu().item()})
-            wandb.log({"net_time_out": time.detach()[0].cpu().item()})
-            wandb.log({"time_scalar": self.time_scalar.detach().cpu().item()})
+
+            # wandb.log({"net_time_linear_out": lin_out.detach()[0].cpu().item()})
+            # wandb.log({"net_time_sig": net_out_time.detach()[0].cpu().item()})
+            # wandb.log({"net_time_out": time.detach()[0].cpu().item()})
+            # wandb.log({"time_scalar": self.time_scalar.detach().cpu().item()})
         else:
             time = None
         return mean, log_std, time
@@ -173,9 +174,9 @@ class GaussianMPTimePolicy(nn.Module):
             log_prob = normal.log_prob(weights)
 
             # tanh transformation
-            # weights = torch.tanh(weights)
-            # weights = weights * self.action_scale + self.action_bias
-            # log_prob -= torch.log(self.action_scale * (1 - weights.pow(2)) + epsilon)
+            weights = torch.tanh(weights)
+            weights = weights * self.action_scale + self.action_bias
+            log_prob -= torch.log(self.action_scale * (1 - weights.pow(2)) + epsilon)
             log_prob = log_prob.sum(dim=-1)
 
         # reparametrization
@@ -186,7 +187,7 @@ class GaussianMPTimePolicy(nn.Module):
             )  # time is sampled from an exponential distribution
             time = torch.clamp(exp_dist.rsample(), min=epsilon, max=MAX_TIME * 2)
             log_prob += torch.sum(exp_dist.log_prob(time), dim=-1)
-            wandb.log({"agent_time_out": time.detach()[0].cpu().item()})
+            # wandb.log({"agent_time_out": time.detach()[0].cpu().item()})
             return (
                 torch.cat([weights, time], 1),
                 log_prob.unsqueeze(dim=-1),

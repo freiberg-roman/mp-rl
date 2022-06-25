@@ -1,3 +1,4 @@
+import cv2
 import torch
 import wandb
 from omegaconf import OmegaConf
@@ -10,7 +11,6 @@ from mprl.models import MDPSAC, OMDPSAC, MixedSAC
 from mprl.models.sac import train_mdp_sac
 from mprl.utils import RandomRB, RandomSequenceBasedRB
 from mprl.utils.ds_helper import to_np
-import cv2
 
 
 @torch.no_grad()
@@ -41,7 +41,9 @@ def evaluate_agent(
     env_eval.close()
     del env_eval
 
-    out: cv2.VideoWriter = cv2.VideoWriter('hc_video.avi', cv2.VideoWriter_fourcc(*'DIVX'), 60, (480, 480))
+    out: cv2.VideoWriter = cv2.VideoWriter(
+        "hc_video_time.avi", cv2.VideoWriter_fourcc(*"DIVX"), 60, (480, 480)
+    )
     # save video
     for im in images:
         out.write(im)
@@ -94,7 +96,9 @@ def evaluate_mp_agent(
         wandb.log({"total_reward": eval_reward, "total_steps": total_training_steps})
     env_eval.close()
     del env_eval
-    out: cv2.VideoWriter = cv2.VideoWriter('hc_mp_video.avi', cv2.VideoWriter_fourcc(*'DIVX'), 60, (480, 480))
+    out: cv2.VideoWriter = cv2.VideoWriter(
+        "hc_mp_video.avi", cv2.VideoWriter_fourcc(*"DIVX"), 60, (480, 480)
+    )
     # save video
     for im in images:
         out.write(im)
