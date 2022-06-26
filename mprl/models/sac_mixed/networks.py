@@ -1,0 +1,55 @@
+import torch
+from torch import nn
+from torch.distributions import Normal
+from torch.nn import functional as F
+
+from mprl.models.sac_common.networks import weights_init_
+
+LOG_SIG_MAX = 2
+LOG_SIG_MIN = -20
+epsilon = 1e-6
+
+
+class GaussianMotionPrimitivePolicy(nn.Module):
+    def __init__(
+        self,
+        num_inputs,
+        num_weights,
+        hidden_dim,
+    ):
+        super(GaussianMotionPrimitivePolicy, self).__init__()
+        self.num_weights = num_weights
+
+        self.linear1 = nn.Linear(num_inputs, hidden_dim)
+        self.linear2 = nn.Linear(hidden_dim, hidden_dim)
+        self.mean_linear = nn.Linear(hidden_dim, num_weights)
+
+        self.log_std_linear = nn.Linear(hidden_dim, num_weights)
+
+        self.apply(weights_init_)
+
+    def forward(self, state):
+        x = F.silu(self.linear1(state))
+        x = F.silu(self.linear2(x))
+        mean = self.mean_linear(x)
+        log_std = self.log_std_linear(x)
+        log_std = torch.clamp(log_std, min=LOG_SIG_MIN, max=LOG_SIG_MAX)
+        lin_out_alpha = self.time_alpha_linear(x)
+        lin_out_beta = self.time_beta_linear(x)
+        gamma_alpha = self.sp(self.scalar_alpha) * self.sig(lin_out_alpha)
+        gamma_beta = self.sp(self.scalar_beta) * self.sig(lin_out_beta)
+
+        return mean, log_std, (gamma_alpha, gamma_beta)
+
+    def sample(self, state):
+        mean, log_std, t = self.forward(state)
+        std = log_std.exp()
+
+        normal = Normal(mean, std)
+        weights = normal.rsample()  # for reparameterization trick (mean + std * N(0,1))
+        log_prob = normal.log_prob(weights).sum(dim=-1)
+
+        return (weights, log_prob.unsqueeze(dim=-1), mean, {})  # used for logging
+
+    def to(self, device):
+        return super(GaussianMotionPrimitivePolicy, self).to(device)
