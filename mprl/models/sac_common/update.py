@@ -1,8 +1,12 @@
+from typing import Union
+
 import torch
 import torch.nn.functional as F
 from torch.optim import Adam
 
-from mprl.models.sac.mdp_agent import MDPSAC
+from mprl.models.sac.agent import SAC
+from mprl.models.sac_mixed.agent import SACMixed
+from mprl.models.sac_mp.agent import SACMP
 from mprl.utils import EnvSteps
 from mprl.utils.math_helper import soft_update
 
@@ -13,11 +17,11 @@ class SacUpdate:
 
     def __call__(
         self,
-        agent: MDPSAC,
+        agent: Union[SAC, SACMixed, SACMP],
         optimizer_policy: Adam,
         optimizer_critic: Adam,
         batch: EnvSteps,
-    ):
+    ) -> dict:
         # Sample a batch from memory
         states, next_states, actions, rewards, dones = batch.to_torch_batch()
 

@@ -1,3 +1,5 @@
+from typing import Tuple
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -20,22 +22,24 @@ class QNetwork(nn.Module):
         super(QNetwork, self).__init__()
 
         # Q1 architecture
-        self.linear1 = nn.Linear(
+        self.linear1: nn.Linear = nn.Linear(
             num_inputs + num_actions + additional_actions, hidden_dim
         )
-        self.linear2 = nn.Linear(hidden_dim, hidden_dim)
-        self.linear3 = nn.Linear(hidden_dim, 1)
+        self.linear2: nn.Linear = nn.Linear(hidden_dim, hidden_dim)
+        self.linear3: nn.Linear = nn.Linear(hidden_dim, 1)
 
         # Q2 architecture
-        self.linear4 = nn.Linear(
+        self.linear4: nn.Linear = nn.Linear(
             num_inputs + num_actions + additional_actions, hidden_dim
         )
-        self.linear5 = nn.Linear(hidden_dim, hidden_dim)
-        self.linear6 = nn.Linear(hidden_dim, 1)
+        self.linear5: nn.Linear = nn.Linear(hidden_dim, hidden_dim)
+        self.linear6: nn.Linear = nn.Linear(hidden_dim, 1)
 
         self.apply(weights_init_)
 
-    def forward(self, state, action):
+    def forward(
+        self, state: torch.Tensor, action: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         xu = torch.cat([state, action], 1)
 
         x1 = F.silu(self.linear1(xu))

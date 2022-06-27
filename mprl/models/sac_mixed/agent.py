@@ -1,6 +1,9 @@
 from pathlib import Path
+from typing import Callable
 
+import numpy as np
 import torch
+from omegaconf import OmegaConf
 from torch.optim import Adam
 
 from mprl.models.sac.networks import GaussianMPTimePolicy, QNetwork
@@ -8,8 +11,14 @@ from mprl.utils.ds_helper import to_ts
 from mprl.utils.math_helper import hard_update
 
 
-class MixedSAC:
-    def __init__(self, cfg, planner, ctrl, decompose_state_fn=lambda x: x):
+class SACMixed:
+    def __init__(
+        self,
+        cfg: OmegaConf,
+        planner,
+        ctrl,
+        decompose_state_fn: Callable[[np.ndarray], np.ndarray] = lambda x: x,
+    ):
         # Parameters
         self.gamma = cfg.gamma
         self.tau = cfg.tau

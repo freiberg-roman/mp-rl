@@ -12,7 +12,12 @@ epsilon = 1e-6
 
 class GaussianMotionPrimitiveTimePolicy(nn.Module):
     def __init__(
-        self, num_inputs, num_weights, hidden_dim, min_time=0.05, max_time=1.0
+        self,
+        num_inputs: int,
+        num_weights: int,
+        hidden_dim: int,
+        min_time: float = 0.05,
+        max_time: float = 1.0,
     ):
         super(GaussianMotionPrimitiveTimePolicy, self).__init__()
         self.num_weights = num_weights
