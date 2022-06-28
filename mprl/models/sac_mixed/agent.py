@@ -35,19 +35,17 @@ class SACMixed:
         self.decompose_fn = decompose_state_fn
 
         # Networks
-        self.critic = QNetwork(state_dim, action_dim, hidden_size, use_time=False).to(
+        self.critic = QNetwork(state_dim, action_dim, hidden_size).to(
             device=self.device
         )
-        self.critic_target = QNetwork(
-            state_dim, action_dim, hidden_size, use_time=False
-        ).to(self.device)
+        self.critic_target = QNetwork(state_dim, action_dim, hidden_size).to(
+            self.device
+        )
         hard_update(self.critic_target, self.critic)
         self.policy = GaussianMotionPrimitivePolicy(
             state_dim,
             (cfg.num_basis + 1) * cfg.num_dof,
             hidden_size,
-            full_std=cfg.full_std,
-            learn_time=False,
         ).to(self.device)
 
         # Entropy
@@ -58,30 +56,30 @@ class SACMixed:
             self.log_alpha = torch.zeros(1, requires_grad=True, device=self.device)
             self.alpha_optim = Adam([self.log_alpha], lr=cfg.lr)
 
-    def select_action(self, state, bias=None, evaluate=False):
+    def select_action(self, state, evaluate=False):
         state = torch.FloatTensor(state).to(self.device).unsqueeze(0)
         if not evaluate:
-            weight, _, _ = self.policy.sample(state)
+            weight, _, _, _ = self.policy.sample(state)
         else:
-            _, _, weight = self.policy.sample(state)
+            _, _, weight, _ = self.policy.sample(state)
         b_q, b_v = self.decompose_fn(state)
         q, v = self.planner.one_step_ctrl(weight, b_q, b_v)
-        action = self.ctrl.get_action(q, v, b_q, b_v, bias=bias)
+        action = self.ctrl.get_action(q, v, b_q, b_v)
         return action
 
     def select_weights_and_time(self, state, evaluate=False):
         state = torch.FloatTensor(state).to(self.device).unsqueeze(0)
         if not evaluate:
-            weight_times, _, _ = self.policy.sample(state)
+            weight_times, _, _, _ = self.policy.sample(state)
         else:
-            _, _, weight_times = self.policy.sample(state)
+            _, _, weight_times, _ = self.policy.sample(state)
         return weight_times.squeeze()
 
     def sample(self, state, bias=None):
-        weight, logp, mean = self.policy.sample(state)
+        weight, logp, mean, _ = self.policy.sample(state)
         b_q, b_v = self.decompose_fn(state)
         q, v = self.planner.one_step_ctrl(weight, b_q, b_v)
-        action = self.ctrl.get_action(q, v, b_q, b_v, bias=bias)
+        action, _ = self.ctrl.get_action(q, v, b_q, b_v)
         return to_ts(action), logp, mean
 
     def parameters(self):

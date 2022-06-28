@@ -55,7 +55,7 @@ class SAC:
             action, _, _ = self.policy.sample(state)
         else:
             _, _, action = self.policy.sample(state)
-        return action.detach().cpu().numpy()[0]
+        return action.detach().cpu().numpy()[0], {}
 
     def sample(self, state) -> torch.Tensor:
         return self.policy.sample(state)

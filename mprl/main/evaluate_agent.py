@@ -27,7 +27,8 @@ class EvaluateAgent:
         state = env_eval.reset(time_out_after=self.cfg_env.time_out)
         done, time_out = False, False
         while not done and not time_out:
-            action = to_np(agent.select_action(state, evaluate=True))
+            raw_action, _ = agent.select_action(state, evaluate=True)
+            action = to_np(raw_action)
             state, reward, done, time_out = env_eval.step(action)
             total_reward += reward
             if self.record:
@@ -46,7 +47,7 @@ class EvaluateAgent:
             out: cv2.VideoWriter = cv2.VideoWriter(
                 env_eval.name + "_" + str(performed_steps) + ".avi",
                 cv2.VideoWriter_fourcc(*"DIVX"),
-                60,
+                30,
                 (480, 480),
             )
             # save video
@@ -118,7 +119,7 @@ class EvaluateMPAgent:
             out: cv2.VideoWriter = cv2.VideoWriter(
                 env_eval.name + "_" + str(performed_steps) + ".avi",
                 cv2.VideoWriter_fourcc(*"DIVX"),
-                60,
+                30,
                 (480, 480),
             )
             # save video

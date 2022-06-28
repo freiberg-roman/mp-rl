@@ -42,7 +42,8 @@ def train_sac(cfg_alg: DictConfig, cfg_env: DictConfig, cfg_wandb: DictConfig):
             if env.total_steps < cfg_alg.train.warm_start_steps:
                 action = env.sample_random_action()
             else:
-                action = agent.select_action(state)
+                raw_action, _ = agent.select_action(state)
+                action = to_np(raw_action)
 
             next_state, reward, done, time_out = env.step(action)
             buffer.add(state, next_state, action, reward, done)
@@ -59,7 +60,7 @@ def train_sac(cfg_alg: DictConfig, cfg_env: DictConfig, cfg_wandb: DictConfig):
                 continue
 
             for batch in buffer.get_iter(
-                it=cfg_alg.train.update_agent_every,
+                it=1,
                 batch_size=cfg_alg.train.batch_size,
             ):
 
@@ -152,10 +153,14 @@ def train_stepwise_mp_sac(
 ):
     env = create_mj_env(cfg_env)
     buffer = RandomRB(cfg_alg.buffer)
-    agent = SACMixed(cfg_alg.agent)
+    mp_trajectory = MPTrajectory(cfg_alg.mp)
+    pd_ctrl = PDController(cfg_alg.ctrl)
+    agent = SACMixed(
+        cfg_alg.agent, mp_trajectory, pd_ctrl, decompose_state_fn=env.decompose
+    )
     update = SACUpdate()
 
-    num_t = None if cfg_alg.agent.learn_time else cfg_alg.agent.time_steps
+    num_t = cfg_alg.agent.time_steps
     eval_mp = EvaluateMPAgent(cfg_env, record=cfg_wandb.record, num_t=num_t)
     eval = EvaluateAgent(cfg_env, record=cfg_wandb.record)
 
@@ -169,8 +174,6 @@ def train_stepwise_mp_sac(
         ),
         mode=cfg_wandb.mode,
     )
-    mp_trajectory = MPTrajectory(cfg_alg.mp)
-    pd_ctrl = PDController(cfg_alg.ctrl)
 
     state = env.reset()
     while env.total_steps < cfg_alg.train.total_steps:
@@ -178,7 +181,9 @@ def train_stepwise_mp_sac(
             if env.total_steps < cfg_alg.train.warm_start_steps:
                 action = env.sample_random_action()
             else:
-                action = to_np(agent.select_action(state))
+                raw_action, logging_info = agent.select_action(state)
+                action = to_np(raw_action)
+                wandb.log(logging_info)
             next_state, reward, done, _ = env.step(action)
             buffer.add(state, next_state, action, reward, done)
             state = next_state
@@ -196,7 +201,7 @@ def train_stepwise_mp_sac(
 
         # Evaluate
         eval_mp_results = eval_mp(
-            agent, mp_trajectory, pd_ctrl, performed_steps=env.total_steps, num_t=num_t
+            agent, mp_trajectory, pd_ctrl, performed_steps=env.total_steps
         )
         wandb.log(eval_mp_results)
         eval_results = eval(agent, performed_steps=env.total_steps)

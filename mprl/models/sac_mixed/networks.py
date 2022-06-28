@@ -42,7 +42,7 @@ class GaussianMotionPrimitivePolicy(nn.Module):
     def sample(
         self, state: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, dict]:
-        mean, log_std, t = self.forward(state)
+        mean, log_std = self.forward(state)
         std = log_std.exp()
 
         normal = Normal(mean, std)
