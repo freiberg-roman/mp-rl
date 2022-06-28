@@ -33,7 +33,6 @@ class EvaluateAgent:
             if self.record:
                 images.append(env_eval.render(mode="rgb_array"))
         env_eval.close()
-        del env_eval
 
         print(
             "Total episode reward: ",
@@ -55,6 +54,7 @@ class EvaluateAgent:
                 out.write(im)
             out.release()
 
+        del env_eval
         return {
             "total_reward": total_reward,
             "performed_steps": performed_steps,

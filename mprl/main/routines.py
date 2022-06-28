@@ -11,6 +11,7 @@ from mprl.env import create_mj_env
 from mprl.main.evaluate_agent import EvaluateAgent, EvaluateMPAgent
 from mprl.models.sac import SAC
 from mprl.models.sac_common import SACUpdate
+from mprl.models.sac_mixed import SACMixed
 from mprl.models.sac_mp import SACMP
 from mprl.utils import RandomRB, RandomSequenceBasedRB
 from mprl.utils.ds_helper import to_np
@@ -37,7 +38,7 @@ def train_sac(cfg_alg: DictConfig, cfg_env: DictConfig, cfg_wandb: DictConfig):
     state = env.reset(time_out_after=cfg_env.time_out)
     total_reward = 0
     while env.total_steps < cfg_alg.train.total_steps:
-        for i in tqdm(range(cfg_alg.train.steps_per_epoch)):
+        for _ in tqdm(range(cfg_alg.train.steps_per_epoch)):
             if env.total_steps < cfg_alg.train.warm_start_steps:
                 action = env.sample_random_action()
             else:
@@ -107,7 +108,7 @@ def train_mp_sac_vanilla(
 
             # Execute primitive
             acc_reward = 0.0
-            for i, qv in enumerate(mp_trajectory):
+            for _, qv in enumerate(mp_trajectory):
                 q, v = qv
                 raw_action, logging_info = pd_ctrl.get_action(q, v, c_pos, c_vel)
                 wandb.log(logging_info)
@@ -140,26 +141,41 @@ def train_mp_sac_vanilla(
                 wandb.log(losses)
 
         # After epoch evaluation and saving
-        eval_results = eval(agent, mp_trajectory, pd_ctrl, performed_steps=env.total_steps)
+        eval_results = eval(
+            agent, mp_trajectory, pd_ctrl, performed_steps=env.total_steps
+        )
         wandb.log(eval_results)
 
 
-def train_stepwise_mp_sac(cfg: OmegaConf):
-    env = create_mj_env(cfg.env)
-    time_out_after = cfg.env.time_out
-    mp_trajectory = MPTrajectory(cfg.mp)
-    pd_ctrl = PDController(cfg.ctrl)
-    agent = MixedSAC(
-        cfg.agent, planner=mp_trajectory, ctrl=pd_ctrl, decompose_state_fn=env.decompose
+def train_stepwise_mp_sac(
+    cfg_alg: DictConfig, cfg_env: DictConfig, cfg_wandb: DictConfig
+):
+    env = create_mj_env(cfg_env)
+    buffer = RandomRB(cfg_alg.buffer)
+    agent = SACMixed(cfg_alg.agent)
+    update = SACUpdate()
+
+    num_t = None if cfg_alg.agent.learn_time else cfg_alg.agent.time_steps
+    eval_mp = EvaluateMPAgent(cfg_env, record=cfg_wandb.record, num_t=num_t)
+    eval = EvaluateAgent(cfg_env, record=cfg_wandb.record)
+
+    optimizer_policy = Adam(agent.policy.parameters(), lr=cfg_alg.agent.lr)
+    optimizer_critic = Adam(agent.critic.parameters(), lr=cfg_alg.agent.lr)
+    wandb.init(
+        project=cfg_wandb.project,
+        name=cfg_wandb.name + "_" + str(cfg_wandb.run_id),
+        config=OmegaConf.to_container(deepcopy(cfg_alg)).update(
+            OmegaConf.to_container(cfg_env)
+        ),
+        mode=cfg_wandb.mode,
     )
-    optimizer_policy = Adam(agent.policy.parameters(), lr=cfg.agent.lr)
-    optimizer_critic = Adam(agent.critic.parameters(), lr=cfg.agent.lr)
-    buffer = RandomRB(cfg.buffer, use_bias=False)
+    mp_trajectory = MPTrajectory(cfg_alg.mp)
+    pd_ctrl = PDController(cfg_alg.ctrl)
 
     state = env.reset()
-    while env.total_steps < cfg.train.total_steps:
-        for _ in tqdm(range(cfg.train.steps_per_epoch)):
-            if env.total_steps < cfg.train.warm_start_steps:
+    while env.total_steps < cfg_alg.train.total_steps:
+        for _ in tqdm(range(cfg_alg.train.steps_per_epoch)):
+            if env.total_steps < cfg_alg.train.warm_start_steps:
                 action = env.sample_random_action()
             else:
                 action = to_np(agent.select_action(state))
@@ -167,35 +183,21 @@ def train_stepwise_mp_sac(cfg: OmegaConf):
             buffer.add(state, next_state, action, reward, done)
             state = next_state
 
-            if env.steps_after_reset > cfg.env.time_out:
+            if env.steps_after_reset > cfg_env.time_out:
                 state = env.reset()
             if (
-                len(buffer) < cfg.train.warm_start_steps
+                len(buffer) < cfg_alg.train.warm_start_steps
             ):  # we first collect few sequences
                 continue
 
             # Perform one update step
-            for batch in buffer.get_iter(it=1, batch_size=cfg.train.batch_size):
-                train_mdp_sac(agent, optimizer_policy, optimizer_critic, batch)
+            for batch in buffer.get_iter(it=1, batch_size=cfg_alg.train.batch_size):
+                update(agent, optimizer_policy, optimizer_critic, batch)
 
         # Evaluate
-        evaluate_agent(
-            cfg.env,
-            agent,
-            env.total_steps,
-            time_out_after,
-            record=True,
-            use_wandb=False,
+        eval_mp_results = eval_mp(
+            agent, mp_trajectory, pd_ctrl, performed_steps=env.total_steps, num_t=num_t
         )
-
-        evaluate_mp_agent(
-            cfg.env,
-            agent,
-            mp_trajectory,
-            pd_ctrl,
-            env.total_steps,
-            time_out_after,
-            record=True,
-            use_wandb=False,
-            num_t=5,
-        )
+        wandb.log(eval_mp_results)
+        eval_results = eval(agent, performed_steps=env.total_steps)
+        wandb.log(eval_results)

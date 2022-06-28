@@ -15,8 +15,8 @@ def run(cfg: DictConfig):
             cfg.algorithm, cfg.env, cfg.logger
         )  # inefficient version as reference
 
-    if cfg.mode == "stepwise_mp_sac":
-        train_stepwise_mp_sac(cfg)
+    if cfg.mode == "sac_mp_stepwise":
+        train_stepwise_mp_sac(cfg.algorithm, cfg.env, cfg.logger)
 
 
 if __name__ == "__main__":
