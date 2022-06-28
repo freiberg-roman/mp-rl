@@ -1,0 +1,7 @@
+defaults:
+  - agent: sac_vanilla
+  - train: off_policy
+  - buffer: random_replay_buffer
+
+name: "sac"
+mode: "train"

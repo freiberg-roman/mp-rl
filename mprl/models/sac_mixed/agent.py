@@ -6,9 +6,11 @@ import torch
 from omegaconf import OmegaConf
 from torch.optim import Adam
 
-from mprl.models.sac.networks import GaussianMPTimePolicy, QNetwork
+from mprl.models.sac_common import QNetwork
 from mprl.utils.ds_helper import to_ts
 from mprl.utils.math_helper import hard_update
+
+from .networks import GaussianMotionPrimitivePolicy
 
 
 class SACMixed:
@@ -40,7 +42,7 @@ class SACMixed:
             state_dim, action_dim, hidden_size, use_time=False
         ).to(self.device)
         hard_update(self.critic_target, self.critic)
-        self.policy = GaussianMPTimePolicy(
+        self.policy = GaussianMotionPrimitivePolicy(
             state_dim,
             (cfg.num_basis + 1) * cfg.num_dof,
             hidden_size,

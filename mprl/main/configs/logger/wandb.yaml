@@ -1,0 +1,5 @@
+name: ${env.name}
+mode: "disabled"  # use option "online" to enable
+record: False
+project: ${algorithm.name}
+run_id: ${run_id}

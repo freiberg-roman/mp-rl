@@ -7,9 +7,10 @@ from omegaconf import OmegaConf
 from torch.nn import Parameter
 from torch.optim import Adam
 
-from mprl.models.sac.networks import GaussianPolicy
 from mprl.models.sac_common.networks import QNetwork
 from mprl.utils.math_helper import hard_update
+
+from .networks import GaussianPolicy
 
 
 class SAC:

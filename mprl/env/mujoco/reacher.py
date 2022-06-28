@@ -3,7 +3,7 @@ import numpy as np
 from mprl.env.mujoco.mj_env import MujocoEnv
 
 
-class Reacher(MujocoEnv):
+class ReacherEnv(MujocoEnv):
     def __init__(
         self,
         base,
@@ -66,7 +66,7 @@ class Reacher(MujocoEnv):
         self.viewer.cam.trackbodyid = 0
 
     def get_forces(self):
-        return super(Reacher, self).get_forces()[-6:]  # gravity
+        return super(ReacherEnv, self).get_forces()[-6:]  # gravity
 
     @property
     def total_steps(self):

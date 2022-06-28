@@ -1,5 +1,4 @@
 capacity: 2000000
-mode: "step_wise"
 
 env:
   state_dim: ${env.state_dim}

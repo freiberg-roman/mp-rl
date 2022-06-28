@@ -1,21 +1,16 @@
 defaults:
   - _self_
-  - env: half_cheetah
-  - agent: mp_time_sac
-  - ctrl: pd
-  - mp: idmp
-  - train: off_policy
-  - buffer: sequence_buffer # random_replay_buffer
+  - algorithm: sac_mp
+  - env: half_cheetah  # this includes values for environment specific overrides
+  - logger: wandb
 
 root_dir: "../experiments"
-mode: "train_mp_sac"
 device: "cpu"
-use_wandb: False
-run: 1
+run_id: 0
 
 hydra:
   run:
-    dir: ${root_dir}/${mode}/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    dir: ${root_dir}/${algorithm.name}/${now:%Y-%m-%d}/${now:%H-%M-%S}
   sweep:
-    dir: ${root_dir}/${mode}/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    dir: ${root_dir}/${algorithm.name}/${now:%Y-%m-%d}/${now:%H-%M-%S}
 

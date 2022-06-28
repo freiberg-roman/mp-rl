@@ -4,20 +4,17 @@ import torch
 import torch.nn.functional as F
 from torch.optim import Adam
 
-from mprl.models.sac.agent import SAC
-from mprl.models.sac_mixed.agent import SACMixed
-from mprl.models.sac_mp.agent import SACMP
 from mprl.utils import EnvSteps
 from mprl.utils.math_helper import soft_update
 
 
-class SacUpdate:
+class SACUpdate:
     def __init__(self):
         self.times_called = 0
 
     def __call__(
         self,
-        agent: Union[SAC, SACMixed, SACMP],
+        agent: any,
         optimizer_policy: Adam,
         optimizer_critic: Adam,
         batch: EnvSteps,

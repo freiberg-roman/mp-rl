@@ -1,11 +1,11 @@
-from typing import Self, Tuple
+from typing import Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions import Normal
 
-from mprl.models.sac_common.networks import weights_init_
+from mprl.models.sac_common import weights_init_
 
 LOG_SIG_MAX = 2
 LOG_SIG_MIN = -20
@@ -52,7 +52,7 @@ class GaussianPolicy(nn.Module):
         mean = torch.tanh(mean) * self.action_scale + self.action_bias
         return action, log_prob, mean
 
-    def to(self, device: torch.device) -> Self:
+    def to(self, device: torch.device) -> "GaussianPolicy":
         self.action_scale = self.action_scale.to(device)
         self.action_bias = self.action_bias.to(device)
         return super(GaussianPolicy, self).to(device)

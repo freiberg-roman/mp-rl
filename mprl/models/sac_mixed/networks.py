@@ -1,4 +1,4 @@
-from typing import Self, Tuple
+from typing import Tuple
 
 import torch
 from torch import nn
@@ -51,5 +51,5 @@ class GaussianMotionPrimitivePolicy(nn.Module):
 
         return weights, log_prob.unsqueeze(dim=-1), mean, {}  # used for logging
 
-    def to(self, device: torch.device) -> Self:
+    def to(self, device: torch.device) -> "GaussianMotionPrimitivePolicy":
         return super(GaussianMotionPrimitivePolicy, self).to(device)

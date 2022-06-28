@@ -1,17 +1,17 @@
 from pathlib import Path
 
-import numpy as np
 import torch
-import wandb
-from omegaconf import OmegaConf
+from omegaconf import DictConfig
 from torch.optim import Adam
 
-from mprl.models.sac.networks import GaussianMPTimePolicy, QNetwork
+from mprl.models.sac_common import QNetwork
 from mprl.utils.math_helper import hard_update
+
+from .networks import GaussianMotionPrimitiveTimePolicy
 
 
 class SACMP:
-    def __init__(self, cfg: OmegaConf):
+    def __init__(self, cfg: DictConfig):
         # Parameters
         self.gamma: float = cfg.gamma
         self.tau: float = cfg.tau
@@ -20,31 +20,23 @@ class SACMP:
         self.device: torch.device = torch.device(
             "cuda" if cfg.device == "cuda" else "cpu"
         )
-        self.learn_time: bool = cfg.learn_time
-        if not self.learn_time:
-            self.time_steps = cfg.time_steps
         state_dim = cfg.env.state_dim
         action_dim = (cfg.num_basis + 1) * cfg.num_dof
         hidden_size = cfg.hidden_size
 
         # Networks
         self.critic = QNetwork(
-            state_dim, action_dim, hidden_size, use_time=self.learn_time
+            state_dim, action_dim, hidden_size, additional_actions=1
         ).to(device=self.device)
         self.critic_target = QNetwork(
-            state_dim, action_dim, hidden_size, use_time=self.learn_time
+            state_dim, action_dim, hidden_size, additional_actions=1
         ).to(self.device)
         hard_update(self.critic_target, self.critic)
-        self.policy = GaussianMPTimePolicy(
+        self.policy = GaussianMotionPrimitiveTimePolicy(
             state_dim,
             action_dim,
             hidden_size,
-            full_std=cfg.full_std,
-            learn_time=self.learn_time,
         ).to(self.device)
-        if self.use_wandb:
-            wandb.watch(self.critic, log="all")
-            wandb.watch(self.policy, log="all")
 
         # Entropy
         if self.automatic_entropy_tuning is True:
@@ -57,14 +49,9 @@ class SACMP:
     def select_weights_and_time(self, state, evaluate=False):
         state = torch.FloatTensor(state).to(self.device).unsqueeze(0)
         if not evaluate:
-            weight_times, _, _ = self.policy.sample(state)
+            weight_times, _, _, _ = self.policy.sample(state)
         else:
-            _, _, weight_times = self.policy.sample(state)
-        if self.use_wandb:
-            hist_value = weight_times.squeeze().detach().cpu().numpy()
-            wandb.log(
-                {"net_weights": wandb.Histogram(np_histogram=np.histogram(hist_value))}
-            )
+            _, _, weight_times, _ = self.policy.sample(state)
         return weight_times.squeeze()
 
     def sample(self, state):
