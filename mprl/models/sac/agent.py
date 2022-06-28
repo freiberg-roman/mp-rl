@@ -1,78 +1,70 @@
 from pathlib import Path
+from typing import Iterator
 
 import numpy as np
 import torch
-import wandb
+from omegaconf import OmegaConf
+from torch.nn import Parameter
 from torch.optim import Adam
 
-from mprl.models.sac.networks import GaussianMPTimePolicy, QNetwork
+from mprl.models.sac_common.networks import QNetwork
 from mprl.utils.math_helper import hard_update
 
+from .networks import GaussianPolicy
 
-class OMDPSAC:
-    def __init__(self, cfg, use_wandb=False):
+
+class SAC:
+    def __init__(self, cfg: OmegaConf):
         # Parameters
-        self.gamma = cfg.gamma
-        self.tau = cfg.tau
-        self.alpha = cfg.alpha
-        self.automatic_entropy_tuning = cfg.automatic_entropy_tuning
-        self.device = torch.device("cuda" if cfg.device == "cuda" else "cpu")
-        self.learn_time = cfg.learn_time
-        if not self.learn_time:
-            self.time_steps = cfg.time_steps
-        state_dim = cfg.env.state_dim
-        action_dim = (cfg.num_basis + 1) * cfg.num_dof
-        hidden_size = cfg.hidden_size
-        self.use_wandb = use_wandb
+        self.gamma: float = cfg.gamma
+        self.tau: float = cfg.tau
+        self.alpha: float = cfg.alpha
+        self.automatic_entropy_tuning: bool = cfg.automatic_entropy_tuning
+        self.device: torch.device = torch.device(
+            "cuda" if cfg.device == "cuda" else "cpu"
+        )
+        state_dim: int = cfg.env.state_dim
+        action_dim: int = cfg.env.action_dim
+        hidden_size: int = cfg.hidden_size
 
         # Networks
-        self.critic = QNetwork(
-            state_dim, action_dim, hidden_size, use_time=self.learn_time
-        ).to(device=self.device)
-        self.critic_target = QNetwork(
-            state_dim, action_dim, hidden_size, use_time=self.learn_time
-        ).to(self.device)
+        self.critic: QNetwork = QNetwork(state_dim, action_dim, hidden_size).to(
+            device=self.device
+        )
+        self.critic_target: QNetwork = QNetwork(state_dim, action_dim, hidden_size).to(
+            self.device
+        )
         hard_update(self.critic_target, self.critic)
-        self.policy = GaussianMPTimePolicy(
-            state_dim,
-            action_dim,
-            hidden_size,
-            full_std=cfg.full_std,
-            learn_time=self.learn_time,
+        self.policy: GaussianPolicy = GaussianPolicy(
+            state_dim, action_dim, hidden_size
         ).to(self.device)
-        if self.use_wandb:
-            wandb.watch(self.critic, log="all")
-            wandb.watch(self.policy, log="all")
 
         # Entropy
         if self.automatic_entropy_tuning is True:
             self.target_entropy = -torch.prod(
                 torch.Tensor(cfg.env.action_dim).to(self.device)
             ).item()
-            self.log_alpha = torch.zeros(1, requires_grad=True, device=self.device)
-            self.alpha_optim = Adam([self.log_alpha], lr=cfg.lr)
-
-    def select_weights_and_time(self, state, evaluate=False):
-        state = torch.FloatTensor(state).to(self.device).unsqueeze(0)
-        if not evaluate:
-            weight_times, _, _ = self.policy.sample(state)
-        else:
-            _, _, weight_times = self.policy.sample(state)
-        if self.use_wandb:
-            hist_value = weight_times.squeeze().detach().cpu().numpy()
-            wandb.log(
-                {"net_weights": wandb.Histogram(np_histogram=np.histogram(hist_value))}
+            self.log_alpha: torch.Tensor = torch.zeros(
+                1, requires_grad=True, device=self.device
             )
-        return weight_times.squeeze()
+            self.alpha_optim: Adam = Adam([self.log_alpha], lr=cfg.lr)
 
-    def sample(self, state):
+    def select_action(self, state: np.ndarray, evaluate: bool = False) -> np.ndarray:
+        state = torch.FloatTensor(state).to(self.device).unsqueeze(0)
+        if evaluate is False:
+            action, _, _ = self.policy.sample(state)
+        else:
+            _, _, action = self.policy.sample(state)
+        return action.detach().cpu().numpy()[0], {}
+
+    def sample(self, state) -> torch.Tensor:
         return self.policy.sample(state)
 
-    def parameters(self):
+    def parameters(self) -> Iterator[Parameter]:
         return self.policy.parameters()
 
     # Save model parameters
-    def save(self, base_path, folder):
+    def save(self, base_path: str, folder: str) -> None:
         path = base_path + folder + "/sac/"
         Path(path).mkdir(parents=True, exist_ok=True)
         torch.save(
@@ -87,7 +79,7 @@ class OMDPSAC:
         )
 
     # Load model parameters
-    def load(self, path, evaluate=False):
+    def load(self, path: str, evaluate: bool = False) -> None:
         ckpt_path = path + "/sac/model.pt"
         if ckpt_path is not None:
             checkpoint = torch.load(ckpt_path)

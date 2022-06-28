@@ -1,33 +1,42 @@
 from pathlib import Path
 
 import torch
+from omegaconf import DictConfig
 from torch.optim import Adam
 
-from mprl.models.sac.networks import GaussianPolicy, QNetwork
+from mprl.models.sac_common import QNetwork
 from mprl.utils.math_helper import hard_update
 
+from .networks import GaussianMotionPrimitiveTimePolicy
 
-class MDPSAC:
-    def __init__(self, cfg):
+
+class SACMP:
+    def __init__(self, cfg: DictConfig):
         # Parameters
-        self.gamma = cfg.gamma
-        self.tau = cfg.tau
-        self.alpha = cfg.alpha
-        self.automatic_entropy_tuning = cfg.automatic_entropy_tuning
-        self.device = torch.device("cuda" if cfg.device == "cuda" else "cpu")
+        self.gamma: float = cfg.gamma
+        self.tau: float = cfg.tau
+        self.alpha: float = cfg.alpha
+        self.automatic_entropy_tuning: bool = cfg.automatic_entropy_tuning
+        self.device: torch.device = torch.device(
+            "cuda" if cfg.device == "cuda" else "cpu"
+        )
         state_dim = cfg.env.state_dim
-        action_dim = cfg.env.action_dim
+        action_dim = (cfg.num_basis + 1) * cfg.num_dof
         hidden_size = cfg.hidden_size
 
         # Networks
-        self.critic = QNetwork(state_dim, action_dim, hidden_size).to(
-            device=self.device
-        )
-        self.critic_target = QNetwork(state_dim, action_dim, hidden_size).to(
-            self.device
-        )
+        self.critic = QNetwork(
+            state_dim, action_dim, hidden_size, additional_actions=1
+        ).to(device=self.device)
+        self.critic_target = QNetwork(
+            state_dim, action_dim, hidden_size, additional_actions=1
+        ).to(self.device)
         hard_update(self.critic_target, self.critic)
-        self.policy = GaussianPolicy(state_dim, action_dim, hidden_size).to(self.device)
+        self.policy = GaussianMotionPrimitiveTimePolicy(
+            state_dim,
+            action_dim,
+            hidden_size,
+        ).to(self.device)
 
         # Entropy
         if self.automatic_entropy_tuning is True:
@@ -37,13 +46,13 @@ class MDPSAC:
             self.log_alpha = torch.zeros(1, requires_grad=True, device=self.device)
             self.alpha_optim = Adam([self.log_alpha], lr=cfg.lr)
 
-    def select_action(self, state, evaluate=False):
+    def select_weights_and_time(self, state, evaluate=False):
         state = torch.FloatTensor(state).to(self.device).unsqueeze(0)
-        if evaluate is False:
-            action, _, _ = self.policy.sample(state)
+        if not evaluate:
+            weight_times, _, _, _ = self.policy.sample(state)
         else:
-            _, _, action = self.policy.sample(state)
-        return action.detach().cpu().numpy()[0]
+            _, _, weight_times, _ = self.policy.sample(state)
+        return weight_times.squeeze()
 
     def sample(self, state):
         return self.policy.sample(state)

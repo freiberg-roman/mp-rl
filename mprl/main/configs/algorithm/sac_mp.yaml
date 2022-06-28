@@ -1,0 +1,9 @@
+defaults:
+  - agent: mp_time_sac
+  - train: off_policy
+  - buffer: sequence_buffer
+  - mp: idmp
+  - ctrl: pd
+
+name: "mp_sac"
+mode: "train"

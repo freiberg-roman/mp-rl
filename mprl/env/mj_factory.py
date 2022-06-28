@@ -1,12 +1,14 @@
 import pathlib
 
-from mprl.env.mujoco import AntEnv, HalfCheetahEnv, HopperEnv, HumanoidEnv, Reacher
+from omegaconf import DictConfig
+
+from mprl.env.mujoco import AntEnv, HalfCheetahEnv, HopperEnv, HumanoidEnv, ReacherEnv
 from mprl.env.mujoco.mj_env import MujocoEnv
 
 BASE = str(pathlib.Path(__file__).parent.resolve()) + "/../../resources/"
 
 
-def create_mj_env(cfg) -> MujocoEnv:
+def create_mj_env(cfg: DictConfig) -> MujocoEnv:
     if cfg.name == "HalfCheetah":
         return HalfCheetahEnv(base=BASE)
     if cfg.name == "Ant":
@@ -16,4 +18,4 @@ def create_mj_env(cfg) -> MujocoEnv:
     if cfg.name == "Humanoid":
         return HumanoidEnv(base=BASE)
     if cfg.name == "Reacher":
-        return Reacher(base=BASE)
+        return ReacherEnv(base=BASE)

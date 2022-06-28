@@ -1,23 +1,30 @@
+from typing import Optional, Tuple
+
 import numpy as np
 import torch
 import wandb
-from mp_pytorch import MPFactory, ProMP, tensor_linspace
-from omegaconf import OmegaConf, open_dict
+from mp_pytorch import IDMP, MPFactory, tensor_linspace
+from omegaconf import DictConfig, OmegaConf, open_dict
 
 
 class MPTrajectory:
-    def __init__(self, cfg: OmegaConf, use_wandb=False):
+    def __init__(self, cfg: DictConfig):
         with open_dict(cfg):
             cfg.mp_type = "idmp"
-        self.mp = MPFactory.init_mp(cfg)
+        self.mp: IDMP = MPFactory.init_mp(cfg)
         self.dt = cfg["mp_args"]["dt"]
-        self.current_traj = None
-        self.current_traj_v = None
-        self.current_t = 0
-        self.device = torch.device(cfg.device)
-        self.use_wandb = use_wandb
+        self.current_traj: torch.Tensor = None
+        self.current_traj_v: torch.Tensor = None
+        self.current_t: int = 0
+        self.device: torch.device = torch.device(cfg.device)
 
-    def re_init(self, weight_time, bc_pos, bc_vel, num_t=None):
+    def re_init(
+        self,
+        weight_time: torch.Tensor,
+        bc_pos: np.ndarray,
+        bc_vel: np.ndarray,
+        num_t: Optional[int] = None,
+    ) -> "MPTrajectory":
         if num_t is None:
             t = weight_time[-1].item()
             weight = weight_time[:-1]
@@ -42,18 +49,6 @@ class MPTrajectory:
             self.current_traj[1:, ...] - self.current_traj[:-1, ...]
         ) / self.dt
         self.current_t = 0
-        if self.use_wandb:
-            wandb.log(
-                {
-                    "traj": wandb.Histogram(
-                        np_histogram=np.histogram(
-                            self.current_traj.squeeze().detach().cpu().numpy()
-                        )
-                    ),
-                    "planned time_steps": num_t - 1,
-                    "incomming_t": t,
-                }
-            )
         return self
 
     def __next__(self):
@@ -70,7 +65,9 @@ class MPTrajectory:
     def __iter__(self):
         return self
 
-    def one_step_ctrl(self, weights, bc_pos, bc_vel):
+    def one_step_ctrl(
+        self, weights: torch.Tensor, bc_pos: torch.Tensor, bc_vel: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
 
         times = tensor_linspace(0, self.dt, 2).unsqueeze(dim=0)
         bc_time = torch.tensor([0.0] * weights.shape[0], device=self.device)

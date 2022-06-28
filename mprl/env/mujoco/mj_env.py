@@ -1,3 +1,5 @@
+from typing import Optional, Tuple
+
 import mujoco
 import numpy as np
 
@@ -9,28 +11,28 @@ DEFAULT_SIZE = 480
 class MujocoEnv:
     def __init__(self, path, frame_skip):
 
-        self.model = mujoco.MjModel.from_xml_path(path)
-        self.data = mujoco.MjData(self.model)
+        self.model: mujoco.MjModel = mujoco.MjModel.from_xml_path(path)
+        self.data: mujoco.MjData = mujoco.MjData(self.model)
 
-        self.init_qpos = self.data.qpos.ravel().copy()
-        self.init_qvel = self.data.qvel.ravel().copy()
-        self._viewers = {}
-        self.time_out_after = None
-        self.current_steps = 0
-        self._total_steps = 0
+        self.init_qpos: np.ndarray = self.data.qpos.ravel().copy()
+        self.init_qvel: np.ndarray = self.data.qvel.ravel().copy()
+        self._viewers: dict = {}
+        self.time_out_after: int = None
+        self.current_steps: int = 0
+        self._total_steps: int = 0
 
-        self.frame_skip = frame_skip
+        self.frame_skip: int = frame_skip
 
-        self.viewer = None
+        self.viewer: Viewer = None
 
-        self.metadata = {
+        self.metadata: dict = {
             "render_modes": ["human", "rgb_array", "depth_array"],
             "render_fps": int(np.round(1.0 / self.dt)),
         }
 
         self.low, self.high = self._set_action_space()
 
-    def _set_action_space(self):
+    def _set_action_space(self) -> Tuple[float, float]:
         bounds = self.model.actuator_ctrlrange.copy().astype(np.float32)
         low, high = bounds.T
         return low, high
@@ -48,7 +50,7 @@ class MujocoEnv:
         Optionally implement this method, if you need to tinker with camera position and so forth.
         """
 
-    def reset(self, time_out_after=None):
+    def reset(self, time_out_after: Optional[int] = None) -> np.ndarray:
         self.time_out_after = time_out_after
         self.current_steps = 0
         mujoco.mj_resetData(self.model, self.data)
