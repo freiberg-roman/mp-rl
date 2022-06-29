@@ -11,8 +11,8 @@ def run():
                     )
                 )
                 file_content = "#!/bin/bash \n" + launch_command
-                file_name = "{}_{}_{}".format(alg, env_name, i)
-                with open(file_name + ".sh", "w") as text_file:
+                file_name = "{}_{}_{}.sh".format(alg, env_name, i)
+                with open(file_name, "w") as text_file:
                     text_file.write(file_content)
                 os.system("chmod +x {}".format(file_name))
                 os.system(
