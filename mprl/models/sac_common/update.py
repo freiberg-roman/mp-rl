@@ -23,7 +23,7 @@ class SACUpdate:
         states, next_states, actions, rewards, dones = batch.to_torch_batch()
 
         with torch.no_grad():
-            next_state_action, next_state_log_pi, _ = agent.sample(next_states)
+            next_state_action, next_state_log_pi, _, _ = agent.sample(next_states)
             qf1_next_target, qf2_next_target = agent.critic_target(
                 next_states, next_state_action
             )
@@ -48,7 +48,7 @@ class SACUpdate:
         optimizer_critic.zero_grad()
         qf_loss.backward()
         optimizer_critic.step()
-        pi, log_pi, _ = agent.sample(states)
+        pi, log_pi, _, _ = agent.sample(states)
         qf1_pi, qf2_pi = agent.critic(states, pi)
         min_qf_pi = torch.min(qf1_pi, qf2_pi)
 

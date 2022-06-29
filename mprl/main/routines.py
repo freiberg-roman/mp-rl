@@ -104,7 +104,13 @@ def train_mp_sac_vanilla(
     while env.total_steps < cfg_alg.train.total_steps:
         for _ in tqdm(range(cfg_alg.train.steps_per_epoch)):
             with torch.no_grad():
-                weight_time = agent.select_weights_and_time(state)
+                weight_time, info = agent.select_weights_and_time(state)
+                info.update(
+                    {
+                        "planned_at": env.total_steps,
+                    }
+                )
+                wandb.log(info)
             mp_trajectory.re_init(weight_time, c_pos, c_vel, num_t=num_t)
 
             # Execute primitive
@@ -112,7 +118,6 @@ def train_mp_sac_vanilla(
             for _, qv in enumerate(mp_trajectory):
                 q, v = qv
                 raw_action, logging_info = pd_ctrl.get_action(q, v, c_pos, c_vel)
-                wandb.log(logging_info)
                 action = to_np(raw_action)
                 next_state, reward, done, _ = env.step(action)
                 acc_reward += reward
@@ -181,9 +186,8 @@ def train_stepwise_mp_sac(
             if env.total_steps < cfg_alg.train.warm_start_steps:
                 action = env.sample_random_action()
             else:
-                raw_action, logging_info = agent.select_action(state)
+                raw_action, _ = agent.select_action(state)
                 action = to_np(raw_action)
-                wandb.log(logging_info)
             next_state, reward, done, _ = env.step(action)
             buffer.add(state, next_state, action, reward, done)
             state = next_state

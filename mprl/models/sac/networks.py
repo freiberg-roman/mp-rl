@@ -50,7 +50,7 @@ class GaussianPolicy(nn.Module):
         log_prob -= torch.log(self.action_scale * (1 - y_t.pow(2)) + epsilon)
         log_prob = log_prob.sum(1, keepdim=True)
         mean = torch.tanh(mean) * self.action_scale + self.action_bias
-        return action, log_prob, mean
+        return action, log_prob, mean, {}  # used for logging
 
     def to(self, device: torch.device) -> "GaussianPolicy":
         self.action_scale = self.action_scale.to(device)

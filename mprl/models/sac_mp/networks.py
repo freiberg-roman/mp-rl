@@ -30,8 +30,8 @@ class GaussianMotionPrimitiveTimePolicy(nn.Module):
 
         self.time_alpha_linear = nn.Linear(hidden_dim, 1)
         self.time_beta_linear = nn.Linear(hidden_dim, 1)
-        self.scalar_alpha = nn.Parameter(torch.tensor([1.0]), requires_grad=True)
-        self.scalar_beta = nn.Parameter(torch.tensor([1.0]), requires_grad=True)
+        self.scalar_alpha = nn.Parameter(torch.tensor(1.0), requires_grad=True)
+        self.scalar_beta = nn.Parameter(torch.tensor(1.0), requires_grad=True)
         self.sp = nn.Softplus()
         self.sig = nn.Sigmoid()
 
@@ -49,8 +49,10 @@ class GaussianMotionPrimitiveTimePolicy(nn.Module):
         log_std = torch.clamp(log_std, min=LOG_SIG_MIN, max=LOG_SIG_MAX)
         lin_out_alpha = self.time_alpha_linear(x)
         lin_out_beta = self.time_beta_linear(x)
-        gamma_alpha = self.sp(self.scalar_alpha) * self.sig(lin_out_alpha)
-        gamma_beta = self.sp(self.scalar_beta) * self.sig(lin_out_beta)
+        gamma_alpha = self.sp(self.scalar_alpha * lin_out_alpha)
+        gamma_beta = self.sp(self.scalar_beta * lin_out_beta)
+        gamma_alpha = torch.clamp(gamma_alpha, min=self.min_time, max=self.max_time / 2)
+        gamma_beta = torch.clamp(gamma_beta, min=self.min_time, max=self.max_time / 2)
 
         return mean, log_std, (gamma_alpha, gamma_beta)
 

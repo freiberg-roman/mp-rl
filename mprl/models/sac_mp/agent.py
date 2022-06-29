@@ -52,7 +52,9 @@ class SACMP:
             weight_times, _, _, _ = self.policy.sample(state)
         else:
             _, _, weight_times, _ = self.policy.sample(state)
-        return weight_times.squeeze()
+        return weight_times.squeeze(), {
+            "time": weight_times.squeeze()[-1].detach().cpu().numpy(),
+        }
 
     def sample(self, state):
         return self.policy.sample(state)

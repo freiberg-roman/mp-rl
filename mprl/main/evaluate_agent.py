@@ -88,7 +88,7 @@ class EvaluateMPAgent:
         done, time_out = False, False
         c_pos, c_vel = env_eval.decompose(state)
         while not done and not time_out:
-            weight_time = agent.select_weights_and_time(state)
+            weight_time, _ = agent.select_weights_and_time(state)
             trajectory_planner.re_init(weight_time, c_pos, c_vel, num_t=self.num_t)
 
             # Execute primitive
@@ -128,6 +128,6 @@ class EvaluateMPAgent:
             out.release()
 
         return {
-            "total_reward": total_reward,
-            "performed_steps": performed_steps,
+            "total_mp_reward": total_reward,
+            "mp_reward_performed_at": performed_steps,
         }

@@ -64,8 +64,8 @@ class SACMixed:
             _, _, weight, _ = self.policy.sample(state)
         b_q, b_v = self.decompose_fn(state)
         q, v = self.planner.one_step_ctrl(weight, b_q, b_v)
-        action = self.ctrl.get_action(q, v, b_q, b_v)
-        return action
+        action, info = self.ctrl.get_action(q, v, b_q, b_v)
+        return action, info
 
     def select_weights_and_time(self, state, evaluate=False):
         state = torch.FloatTensor(state).to(self.device).unsqueeze(0)
@@ -73,14 +73,14 @@ class SACMixed:
             weight_times, _, _, _ = self.policy.sample(state)
         else:
             _, _, weight_times, _ = self.policy.sample(state)
-        return weight_times.squeeze()
+        return weight_times.squeeze(), {}
 
-    def sample(self, state, bias=None):
+    def sample(self, state):
         weight, logp, mean, _ = self.policy.sample(state)
         b_q, b_v = self.decompose_fn(state)
         q, v = self.planner.one_step_ctrl(weight, b_q, b_v)
         action, _ = self.ctrl.get_action(q, v, b_q, b_v)
-        return to_ts(action), logp, mean
+        return to_ts(action), logp, mean, {}
 
     def parameters(self):
         return self.policy.parameters()
