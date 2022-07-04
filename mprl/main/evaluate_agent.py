@@ -28,6 +28,8 @@ class EvaluateAgent:
         state = env_eval.reset(time_out_after=self.cfg_env.time_out)
         done, time_out = False, False
         while not done and not time_out:
+            if isinstance(agent, SACMixed):
+                agent.replan()
             raw_action, _ = agent.select_action(state, evaluate=True)
             action = to_np(raw_action)
             state, reward, done, time_out = env_eval.step(action)
@@ -46,7 +48,7 @@ class EvaluateAgent:
 
         if self.record:
             out: cv2.VideoWriter = cv2.VideoWriter(
-                env_eval.name + "_" + str(performed_steps) + ".avi",
+                self.cfg_env.name + "_" + str(performed_steps) + ".avi",
                 cv2.VideoWriter_fourcc(*"DIVX"),
                 30,
                 (480, 480),
@@ -109,7 +111,7 @@ class EvaluateMPAgent:
                 break
 
         print(
-            "Total episode reward: ",
+            "Total motion primitive episode reward: ",
             total_reward,
             " after ",
             performed_steps,
@@ -118,7 +120,7 @@ class EvaluateMPAgent:
 
         if self.record:
             out: cv2.VideoWriter = cv2.VideoWriter(
-                env_eval.name + "_" + str(performed_steps) + ".avi",
+                self.cfg_env.name + "_mp_" + str(performed_steps) + ".avi",
                 cv2.VideoWriter_fourcc(*"DIVX"),
                 30,
                 (480, 480),
