@@ -1,5 +1,6 @@
 from copy import deepcopy
 
+import numpy as np
 import torch
 import wandb
 from omegaconf import DictConfig, OmegaConf
@@ -99,7 +100,7 @@ def train_mp_sac_vanilla(
     pd_ctrl = PDController(cfg_alg.ctrl)
 
     state = env.reset()
-    c_pos, c_vel = env.decompose(state)
+    c_pos, c_vel = env.decompose(np.expand_dims(state, axis=0))
     # Training loop
     while env.total_steps < cfg_alg.train.total_steps:
         for _ in tqdm(range(cfg_alg.train.steps_per_epoch)):
@@ -115,19 +116,18 @@ def train_mp_sac_vanilla(
 
             # Execute primitive
             acc_reward = 0.0
-            for _, qv in enumerate(mp_trajectory):
-                q, v = qv
+            for q, v in mp_trajectory:
                 raw_action, logging_info = pd_ctrl.get_action(q, v, c_pos, c_vel)
                 action = to_np(raw_action)
                 next_state, reward, done, _ = env.step(action)
                 acc_reward += reward
-                c_pos, c_vel = env.decompose(next_state)
+                c_pos, c_vel = env.decompose(np.expand_dims(next_state, axis=0))
 
             acc_reward /= mp_trajectory.steps_planned
             buffer.add(
                 state,
                 next_state,
-                weight_time.cpu().detach().numpy(),
+                weight_time.squeeze().cpu().detach().numpy(),
                 acc_reward,
                 done,
             )
@@ -135,7 +135,7 @@ def train_mp_sac_vanilla(
 
             if env.steps_after_reset > cfg_env.time_out:
                 state = env.reset()
-                c_pos, c_vel = env.decompose(state)
+                c_pos, c_vel = env.decompose(np.expand_dims(state, axis=0))
 
             # Perform one update step
             if (
@@ -194,6 +194,7 @@ def train_stepwise_mp_sac(
 
             if env.steps_after_reset > cfg_env.time_out:
                 state = env.reset()
+                agent.replan()
             if (
                 len(buffer) < cfg_alg.train.warm_start_steps
             ):  # we first collect few sequences

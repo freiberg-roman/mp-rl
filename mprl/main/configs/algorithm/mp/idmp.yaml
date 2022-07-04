@@ -7,9 +7,9 @@ num_dof: ${env.num_dof}
 device: ${device}
 
 mp_args:
-  alpha_phase: 25.0
+  alpha_phase: 10.0
   num_basis: ${env.idmp.num_basis}
   basis_bandwidth_factor: ${env.idmp.basis_bandwidth_factor}
   num_basis_outside: 0
   dt: ${env.dt}
-  alpha: 25
+  alpha: 10

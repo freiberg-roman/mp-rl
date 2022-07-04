@@ -1,3 +1,4 @@
+from copy import deepcopy
 from pathlib import Path
 from typing import Callable
 
@@ -10,6 +11,7 @@ from mprl.models.sac_common import QNetwork
 from mprl.utils.ds_helper import to_ts
 from mprl.utils.math_helper import hard_update
 
+from ...controllers import MPTrajectory, PDController
 from .networks import GaussianMotionPrimitivePolicy
 
 
@@ -30,19 +32,22 @@ class SACMixed:
         state_dim = cfg.env.state_dim
         action_dim = cfg.env.action_dim
         hidden_size = cfg.hidden_size
-        self.planner = planner
-        self.ctrl = ctrl
-        self.decompose_fn = decompose_state_fn
+        self.planner: MPTrajectory = planner
+        self.planner_train: MPTrajectory = deepcopy(planner)
+        self.ctrl: PDController = ctrl
+        self.decompose_fn: Callable[[np.ndarray], np.ndarray] = decompose_state_fn
+        self.num_steps: int = cfg.time_steps
+        self.force_replan: bool = False
 
         # Networks
-        self.critic = QNetwork(state_dim, action_dim, hidden_size).to(
+        self.critic: QNetwork = QNetwork(state_dim, action_dim, hidden_size).to(
             device=self.device
         )
-        self.critic_target = QNetwork(state_dim, action_dim, hidden_size).to(
+        self.critic_target: QNetwork = QNetwork(state_dim, action_dim, hidden_size).to(
             self.device
         )
         hard_update(self.critic_target, self.critic)
-        self.policy = GaussianMotionPrimitivePolicy(
+        self.policy: GaussianMotionPrimitivePolicy = GaussianMotionPrimitivePolicy(
             state_dim,
             (cfg.num_basis + 1) * cfg.num_dof,
             hidden_size,
@@ -56,14 +61,23 @@ class SACMixed:
             self.log_alpha = torch.zeros(1, requires_grad=True, device=self.device)
             self.alpha_optim = Adam([self.log_alpha], lr=cfg.lr)
 
+    @torch.no_grad()
     def select_action(self, state, evaluate=False):
         state = torch.FloatTensor(state).to(self.device).unsqueeze(0)
-        if not evaluate:
-            weight, _, _, _ = self.policy.sample(state)
-        else:
-            _, _, weight, _ = self.policy.sample(state)
         b_q, b_v = self.decompose_fn(state)
-        q, v = self.planner.one_step_ctrl(weight, b_q, b_v)
+        try:
+            if self.force_replan:
+                self.force_replan = False
+                raise StopIteration
+
+            q, v = next(self.planner)
+        except StopIteration:
+            if not evaluate:
+                weight, _, _, _ = self.policy.sample(state)
+            else:
+                _, _, weight, _ = self.policy.sample(state)
+            self.planner.re_init(weight, bc_pos=b_q, bc_vel=b_v, num_t=self.num_steps)
+            q, v = next(self.planner)
         action, info = self.ctrl.get_action(q, v, b_q, b_v)
         return action, info
 
@@ -73,14 +87,18 @@ class SACMixed:
             weight_times, _, _, _ = self.policy.sample(state)
         else:
             _, _, weight_times, _ = self.policy.sample(state)
-        return weight_times.squeeze(), {}
+        return weight_times, {}
 
     def sample(self, state):
         weight, logp, mean, _ = self.policy.sample(state)
         b_q, b_v = self.decompose_fn(state)
-        q, v = self.planner.one_step_ctrl(weight, b_q, b_v)
+        self.planner_train.re_init(weight, bc_pos=b_q, bc_vel=b_v, num_t=self.num_steps)
+        q, v = next(self.planner_train)
         action, _ = self.ctrl.get_action(q, v, b_q, b_v)
         return to_ts(action), logp, mean, {}
+
+    def replan(self):
+        self.force_replan = True
 
     def parameters(self):
         return self.policy.parameters()
