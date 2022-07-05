@@ -1,6 +1,7 @@
 from typing import Optional, Union
 
 import cv2
+import numpy as np
 import torch
 from omegaconf import DictConfig
 
@@ -27,6 +28,8 @@ class EvaluateAgent:
         state = env_eval.reset(time_out_after=self.cfg_env.time_out)
         done, time_out = False, False
         while not done and not time_out:
+            if isinstance(agent, SACMixed):
+                agent.replan()
             raw_action, _ = agent.select_action(state, evaluate=True)
             action = to_np(raw_action)
             state, reward, done, time_out = env_eval.step(action)
@@ -45,7 +48,7 @@ class EvaluateAgent:
 
         if self.record:
             out: cv2.VideoWriter = cv2.VideoWriter(
-                env_eval.name + "_" + str(performed_steps) + ".avi",
+                self.cfg_env.name + "_" + str(performed_steps) + ".avi",
                 cv2.VideoWriter_fourcc(*"DIVX"),
                 30,
                 (480, 480),
@@ -86,7 +89,7 @@ class EvaluateMPAgent:
 
         state = env_eval.reset(time_out_after=self.cfg_env.time_out)
         done, time_out = False, False
-        c_pos, c_vel = env_eval.decompose(state)
+        c_pos, c_vel = env_eval.decompose(np.expand_dims(state, axis=0))
         while not done and not time_out:
             weight_time, _ = agent.select_weights_and_time(state)
             trajectory_planner.re_init(weight_time, c_pos, c_vel, num_t=self.num_t)
@@ -97,7 +100,7 @@ class EvaluateMPAgent:
                 action = to_np(raw_action)
                 next_state, reward, done, time_out = env_eval.step(action)
                 total_reward += reward
-                c_pos, c_vel = env_eval.decompose(next_state)
+                c_pos, c_vel = env_eval.decompose(np.expand_dims(next_state, axis=0))
                 if self.record:
                     images.append(env_eval.render(mode="rgb_array"))
                 if done or time_out:
@@ -108,7 +111,7 @@ class EvaluateMPAgent:
                 break
 
         print(
-            "Total episode reward: ",
+            "Total motion primitive episode reward: ",
             total_reward,
             " after ",
             performed_steps,
@@ -117,7 +120,7 @@ class EvaluateMPAgent:
 
         if self.record:
             out: cv2.VideoWriter = cv2.VideoWriter(
-                env_eval.name + "_" + str(performed_steps) + ".avi",
+                self.cfg_env.name + "_mp_" + str(performed_steps) + ".avi",
                 cv2.VideoWriter_fourcc(*"DIVX"),
                 30,
                 (480, 480),

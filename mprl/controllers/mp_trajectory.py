@@ -2,9 +2,10 @@ from typing import Optional, Tuple
 
 import numpy as np
 import torch
-import wandb
 from mp_pytorch import IDMP, MPFactory, tensor_linspace
-from omegaconf import DictConfig, OmegaConf, open_dict
+from omegaconf import DictConfig, open_dict
+
+from mprl.utils.ds_helper import to_ts
 
 
 class MPTrajectory:
@@ -26,18 +27,17 @@ class MPTrajectory:
         num_t: Optional[int] = None,
     ) -> "MPTrajectory":
         if num_t is None:
-            t = weight_time[-1].item()
-            weight = weight_time[:-1]
+            t = weight_time[:, -1].item()
+            weights = weight_time[:, :-1]
             num_t = int((t + self.dt) / self.dt)
         else:
             t = self.dt * num_t
-            weight = weight_time
+            weights = weight_time
 
         times = tensor_linspace(0, t, num_t + 1).unsqueeze(dim=0)
-        bc_pos = torch.from_numpy(np.expand_dims(bc_pos, axis=0)).to(self.device)
-        bc_vel = torch.from_numpy(np.expand_dims(bc_vel, axis=0)).to(self.device)
-        weights = weight.unsqueeze(dim=0)
-        bc_time = torch.tensor([0.0], device=self.device)
+        bc_pos = to_ts(bc_pos, device=self.device)
+        bc_vel = to_ts(bc_vel, device=self.device)
+        bc_time = torch.tensor([0.0] * weights.shape[0], device=self.device)
         self.current_traj = self.mp.get_traj_pos(
             times=times,
             params=weights,
@@ -46,7 +46,7 @@ class MPTrajectory:
             bc_vel=bc_vel,
         ).squeeze()
         self.current_traj_v = (
-            self.current_traj[1:, ...] - self.current_traj[:-1, ...]
+            self.current_traj[..., 1:, :] - self.current_traj[..., :-1, :]
         ) / self.dt
         self.current_t = 0
         return self
@@ -56,8 +56,8 @@ class MPTrajectory:
             raise StopIteration
 
         q, v = (
-            self.current_traj[self.current_t + 1],
-            self.current_traj_v[self.current_t],
+            self.current_traj[..., self.current_t + 1, :],
+            self.current_traj_v[..., self.current_t, :],
         )
         self.current_t += 1
         return q, v
@@ -65,25 +65,30 @@ class MPTrajectory:
     def __iter__(self):
         return self
 
+    def reset_planner(self):
+        self.current_traj = None
+        self.current_traj_v = None
+        self.current_t = 0
+
     def one_step_ctrl(
         self, weights: torch.Tensor, bc_pos: torch.Tensor, bc_vel: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor]:
 
         times = tensor_linspace(0, self.dt, 2).unsqueeze(dim=0)
         bc_time = torch.tensor([0.0] * weights.shape[0], device=self.device)
-        self.current_traj = self.mp.get_traj_pos(
+        current_traj = self.mp.get_traj_pos(
             times=times,
             params=weights,
             bc_time=bc_time,
             bc_pos=bc_pos,
             bc_vel=bc_vel,
         )
-        self.current_traj_v = (
-            self.current_traj[:, 1:, ...] - self.current_traj[:, :-1, ...]
+        current_traj_v = (
+            current_traj[:, 1:, ...] - current_traj[:, :-1, ...]
         ) / self.dt
         return (
-            self.current_traj[:, 1, :].squeeze(),
-            self.current_traj_v[:, 0, :].squeeze(),
+            current_traj[:, 1, :].squeeze(),
+            current_traj_v[:, 0, :].squeeze(),
         )
 
     @property

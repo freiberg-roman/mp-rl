@@ -1,6 +1,6 @@
 defaults:
   - _self_
-  - algorithm: sac
+  - algorithm: sac_stepwise_mp
   - env: half_cheetah  # this includes values for environment specific overrides
   - logger: wandb
 

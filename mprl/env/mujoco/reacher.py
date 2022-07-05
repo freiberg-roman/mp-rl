@@ -45,8 +45,11 @@ class ReacherEnv(MujocoEnv):
         qpos = (
             np.random.uniform(low=-0.1, high=0.1, size=self.model.nq) + self.init_qpos
         )
+        # We just want targets in the upper half of the board
         while True:
-            self.goal = np.random.uniform(low=-0.2, high=0.2, size=2)
+            self.goal = np.zeros((2,))
+            self.goal[0] = np.random.uniform(low=-0.2, high=0.2, size=(1,))
+            self.goal[1] = np.random.uniform(low=0.0, high=0.2, size=(1,))
             if np.linalg.norm(self.goal) < 0.2:
                 break
         qpos[-2:] = self.goal
