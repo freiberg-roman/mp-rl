@@ -52,9 +52,9 @@ class SAC:
     def select_action(self, state: np.ndarray, evaluate: bool = False) -> np.ndarray:
         state = torch.FloatTensor(state).to(self.device).unsqueeze(0)
         if evaluate is False:
-            action, _, _ = self.policy.sample(state)
+            action, _, _, _ = self.policy.sample(state)
         else:
-            _, _, action = self.policy.sample(state)
+            _, _, action, _ = self.policy.sample(state)
         return action.detach().cpu().numpy()[0], {}
 
     def sample(self, state) -> torch.Tensor:

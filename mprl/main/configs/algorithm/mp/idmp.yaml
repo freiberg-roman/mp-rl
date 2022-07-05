@@ -1,7 +1,7 @@
 name: "idmp"
 
-alpha: 25
-tau: 1.0
+alpha: 10
+tau: 4.0
 num_basis: ${env.idmp.num_basis}
 num_dof: ${env.num_dof}
 device: ${device}
