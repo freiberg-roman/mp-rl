@@ -1,5 +1,5 @@
 import torch
-import torch.functional as F
+import torch.nn.functional as F
 
 from mprl.utils import EnvSteps
 
@@ -8,7 +8,7 @@ def sac_critic_loss(agent: any, batch: EnvSteps):
     """
     Compute the critic loss for SAC.
     """
-    states, actions, rewards, next_states, dones = batch.to_torch_batch()
+    states, next_states, actions, rewards, dones = batch.to_torch_batch()
     with torch.no_grad():
         next_state_action, next_state_log_pi, _, _ = agent.sample(next_states)
         qf1_next_target, qf2_next_target = agent.critic_target(

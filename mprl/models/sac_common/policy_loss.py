@@ -8,7 +8,7 @@ def sac_policy_loss(agent: any, batch: EnvSteps):
     """
     Compute the policy loss for SAC.
     """
-    states, actions, rewards, next_states, dones = batch.to_torch_batch()
+    states, next_states, actions, rewards, dones = batch.to_torch_batch()
     pi, log_pi, _, _ = agent.sample(states)
     qf1_pi, qf2_pi = agent.critic(states, pi)
     min_qf_pi = torch.min(qf1_pi, qf2_pi)
@@ -23,7 +23,7 @@ class MixedMeanSACPolicyLoss:
         self.model = model
 
     def __call__(self, agent: any, batch: EnvSteps):
-        states, actions, rewards, next_states, dones = batch.to_torch_batch()
+        states, next_states, actions, rewards, dones = batch.to_torch_batch()
         weights, _ = agent.select_weights_and_time(states)
         b_q, b_v = agent.decompose_fn(states)
         agent.planner_train.re_init(
@@ -52,7 +52,7 @@ class MixedWeightedSACPolicyLoss:
         self.model = model
 
     def __call__(self, agent: any, batch: EnvSteps):
-        states, actions, rewards, next_states, dones = batch.to_torch_batch()
+        states, next_states, actions, rewards, dones = batch.to_torch_batch()
         weights, _ = agent.select_weights_and_time(states)
         b_q, b_v = agent.decompose_fn(states)
         agent.planner_train.re_init(

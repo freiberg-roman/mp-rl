@@ -1,6 +1,5 @@
 import collections
 import os
-import sys
 import time
 from threading import Lock
 
@@ -223,6 +222,9 @@ class RenderContext:
         self.scn.ngeom += 1
 
     def close(self):
+        """Override close in your rendering subclass to perform any necessary cleanup
+        after env.close() is called.
+        """
         pass
 
 
@@ -307,7 +309,7 @@ class Viewer(RenderContext):
 
         super().__init__(model, data, offscreen=False)
 
-    def _key_callback(self, key, action):
+    def _key_callback(self, window, key, scancode, action, mods):
         if action != glfw.RELEASE:
             return
         # Switch cameras
@@ -371,8 +373,8 @@ class Viewer(RenderContext):
         if key == glfw.KEY_ESCAPE:
             print("Pressed ESC")
             print("Quitting.")
+            glfw.destroy_window(self.window)
             glfw.terminate()
-            sys.exit(0)
 
     def _cursor_pos_callback(self, window, xpos, ypos):
         if not (self._button_left_pressed or self._button_right_pressed):
@@ -492,8 +494,8 @@ class Viewer(RenderContext):
             if self.window is None:
                 return
             elif glfw.window_should_close(self.window):
+                glfw.destroy_window(self.window)
                 glfw.terminate()
-                sys.exit(0)
             self.viewport.width, self.viewport.height = glfw.get_framebuffer_size(
                 self.window
             )
@@ -553,4 +555,5 @@ class Viewer(RenderContext):
         self._markers[:] = []
 
     def close(self):
+        glfw.destroy_window(self.window)
         glfw.terminate()
