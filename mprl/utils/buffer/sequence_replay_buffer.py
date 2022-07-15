@@ -1,26 +1,35 @@
 import random
 import warnings
+from typing import List
 
 import numpy as np
 
+from mprl.utils.buffer.random_replay_buffer import RandomBatchIter
 from mprl.utils.buffer.replay_buffer import EnvSteps, ReplayBuffer
 
 
 class SequenceRB(ReplayBuffer):
     def __init__(self, cfg):
-        self._capacity = 0
-        self._ind = 0
         self._s = np.empty((cfg.capacity, cfg.env.state_dim), dtype=np.float32)
         self._next_s = np.empty((cfg.capacity, cfg.env.state_dim), dtype=np.float32)
         self._acts = np.empty((cfg.capacity, cfg.env.action_dim), dtype=np.float32)
         self._rews = np.empty(cfg.capacity, dtype=np.float32)
         self._dones = np.empty(cfg.capacity, dtype=bool)
 
-        self._seq = []
-        self._valid_seq = []
+        self._capacity: int = 0
+        self._ind: int = 0
+        self._free_space_till: int = cfg.capacity % cfg.capacity
+        self.next_seq_ind: int = 0
+        self._valid_seq: List = []
 
     def add(self, state, next_state, action, reward, done):
-        self._seq.append((state, next_state, action, reward, done))
+        self._s[self._ind, :] = state
+        self._next_s[self._ind, :] = next_state
+        self._acts[self._ind, :] = action
+        self._rews[self._ind] = reward
+        self._dones[self._ind] = done
+        self._capacity = min(self._capacity + 1, self._cfg.capacity)
+        self._ind = (self._ind + 1) % self._cfg.capacity
 
     def add_batch(self, states, next_states, actions, rewards, dones):
         for state, next_state, action, reward, done in zip(
@@ -59,21 +68,7 @@ class SequenceRB(ReplayBuffer):
         self.close_sequence()
 
     def get_iter(self, it, batch_size):
-        return self.get_full_sequence_iter(it)
-
-    def get_full_sequence_iter(self, it):
-        """
-        Returns sequences according to 'close_sequence' calls.
-        All sequences are equally likely to be chosen.
-        """
-        return FullSequenceIter(self, it)
-
-    def get_virtual_sequence_iter(self, it):
-        """
-        Returns sequences that can start anywhere, but are still ending
-        according to 'close_sequence' calls.
-        """
-        return VirtualSequenceIter(self, it)
+        return RandomBatchIter(self, it, batch_size)
 
     def get_true_k_sequence_iter(self, it, k):
         """
@@ -143,62 +138,6 @@ class SequenceRB(ReplayBuffer):
     @property
     def capacity(self):
         return self._capacity
-
-
-class FullSequenceIter:
-    def __init__(self, buffer: SequenceRB, it: int):
-        self._buffer = buffer
-        self._it = it
-        self._current_it = 0
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        if self._current_it < self._it:
-            start, end = random.choice(self._buffer.valid_seq)
-            self._current_it += 1
-            return EnvSteps(
-                self._buffer.states[start:end],
-                self._buffer.next_states[start:end],
-                self._buffer.actions[start:end],
-                self._buffer.rewards[start:end],
-                self._buffer.dones[start:end],
-            )
-        else:
-            raise StopIteration
-
-
-class VirtualSequenceIter:
-    def __init__(self, buffer: SequenceRB, it: int):
-        self._buffer = buffer
-        self._it = it
-        self._current_it = 0
-        self.weights = np.array(
-            [(e - s) for s, e in buffer.valid_seq], dtype=np.float64
-        )
-        self.weights /= np.sum(self.weights)
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        if self._current_it < self._it:
-            ind = np.random.choice(
-                np.arange(len(self._buffer.valid_seq)), p=self.weights
-            )
-            s, e = self._buffer.valid_seq[ind]
-            s_from = np.random.randint(s, e)
-            self._current_it += 1
-            return EnvSteps(
-                self._buffer.states[s_from:e],
-                self._buffer.next_states[s_from:e],
-                self._buffer.actions[s_from:e],
-                self._buffer.rewards[s_from:e],
-                self._buffer.dones[s_from:e],
-            )
-        else:
-            raise StopIteration
 
 
 class TrueKSequenceIter:
