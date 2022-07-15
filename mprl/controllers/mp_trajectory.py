@@ -18,6 +18,7 @@ class MPTrajectory:
         self.current_traj_v: torch.Tensor = None
         self.current_t: int = 0
         self.device: torch.device = torch.device(cfg.device)
+        self.num_t: int = 0
 
     def re_init(
         self,
@@ -49,10 +50,11 @@ class MPTrajectory:
             self.current_traj[..., 1:, :] - self.current_traj[..., :-1, :]
         ) / self.dt
         self.current_t = 0
+        self.num_t = num_t + 1
         return self
 
     def __next__(self):
-        if self.current_traj is None or self.current_t >= len(self.current_traj) - 1:
+        if self.current_traj is None or self.current_t >= self.num_t - 1:
             raise StopIteration
 
         q, v = (

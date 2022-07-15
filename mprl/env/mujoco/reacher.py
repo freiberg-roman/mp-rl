@@ -76,10 +76,19 @@ class ReacherEnv(MujocoEnv):
         return self._total_steps
 
     def decompose(self, state, full_obs=False):
+        if full_obs:
+            cos_pos = state[..., 0:2]
+            sin_pos = state[..., 2:4]
+            vel = state[..., 6:8]
+            return np.concatenate([np.arctan2(sin_pos, cos_pos), state[..., 4:6]], axis=-1), \
+                      np.concatenate([vel, np.zeros_like(vel)], axis=-1)
+
+
         cos_pos = state[..., 0:2]
         sin_pos = state[..., 2:4]
         vel = state[..., 6:8]
         return np.arctan2(sin_pos, cos_pos), vel
+
 
     @property
     def steps_after_reset(self):

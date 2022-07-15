@@ -4,6 +4,7 @@ import mujoco
 import numpy as np
 
 from .rendering.mj_rendering import RenderContextOffscreen, Viewer
+from ...utils.ds_helper import to_np
 
 DEFAULT_SIZE = 480
 
@@ -63,6 +64,8 @@ class MujocoEnv:
         """
 
     def set_state(self, qpos, qvel):
+        qpos = to_np(qpos)
+        qvel = to_np(qvel)
         assert qpos.shape == (self.model.nq,) and qvel.shape == (self.model.nv,)
         self.data.qpos[:] = np.copy(qpos)
         self.data.qvel[:] = np.copy(qvel)

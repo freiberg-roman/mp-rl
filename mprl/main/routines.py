@@ -10,8 +10,10 @@ from tqdm import tqdm
 from mprl.controllers import MPTrajectory, PDController
 from mprl.env import create_mj_env
 from mprl.main.evaluate_agent import EvaluateAgent, EvaluateMPAgent
+from mprl.models.physic.ground_truth import GroundTruth
 from mprl.models.sac import SAC
 from mprl.models.sac_common import SACUpdate
+from mprl.models.sac_common.update import SACModelUpdate
 from mprl.models.sac_mixed import SACMixed
 from mprl.models.sac_mp import SACMP
 from mprl.utils import RandomRB, RandomSequenceBasedRB
@@ -163,7 +165,8 @@ def train_stepwise_mp_sac(
     agent = SACMixed(
         cfg_alg.agent, mp_trajectory, pd_ctrl, decompose_state_fn=env.decompose
     )
-    update = SACUpdate()
+    model = GroundTruth(cfg_env)
+    update = SACModelUpdate(model)
 
     num_t = cfg_alg.agent.time_steps
     eval_mp = EvaluateMPAgent(cfg_env, record=cfg_wandb.record, num_t=num_t)
