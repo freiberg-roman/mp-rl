@@ -26,31 +26,6 @@ class RandomRB(ReplayBuffer):
         self._capacity = min(self._capacity + 1, self._cfg.capacity)
         self._ind = (self._ind + 1) % self._cfg.capacity
 
-    def add_batch(self, states, next_states, actions, rewards, dones):
-        length_batch = len(states)
-        start_ind = self._ind
-        end_ind = min(start_ind + length_batch, self._cfg.capacity)
-        stored_ind = end_ind - start_ind
-
-        self._s[start_ind:end_ind, :] = states[:stored_ind]
-        self._next_s[start_ind:end_ind, :] = next_states[:stored_ind]
-        self._acts[start_ind:end_ind, :] = actions[:stored_ind]
-        self._rews[start_ind:end_ind] = rewards[:stored_ind]
-        self._dones[start_ind:end_ind] = dones[:stored_ind]
-        if start_ind + length_batch > self._cfg.capacity:
-            self._ind = 0
-            self._capacity = self._cfg.capacity
-            self.add_batch(
-                states[stored_ind:, :],
-                next_states[stored_ind:, :],
-                actions[stored_ind:, :],
-                rewards[stored_ind:],
-                dones[stored_ind:],
-            )
-        else:
-            self._ind = self._ind + length_batch
-            self._capacity = max(self._capacity, self._ind)
-
     def get_iter(self, it, batch_size):
         return RandomBatchIter(self, it, batch_size)
 

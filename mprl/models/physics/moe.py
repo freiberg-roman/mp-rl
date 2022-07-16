@@ -8,8 +8,10 @@ from torch.distributions.independent import Independent
 from torch.distributions.mixture_same_family import MixtureSameFamily
 from torch.distributions.multivariate_normal import MultivariateNormal
 
+from mprl.models.physics.prediction import Prediction
 
-class MixtureOfExperts(nn.Module):
+
+class MixtureOfExperts(nn.Module, Prediction):
     def __init__(
         self,
         cfg,
@@ -60,21 +62,21 @@ class MixtureOfExperts(nn.Module):
 
     def loss(self, state, action, next_state):
         log_prob = self.log_prob(state, action, next_state)
-        return -log_prob.mean()  # NLL
+        return (-log_prob).mean()  # NLL
 
     @torch.no_grad()
-    def pred_next(self, state, action, sample_n=1, deterministic=False):
+    def next_state(self, states, actions, sample_n=1, deterministic=False):
         if not deterministic:
-            pred_delta = self.forward(state, action).sample((sample_n,))
+            pred_delta = self.forward(states, actions).sample((sample_n,))
         else:
-            pred_delta = self.forward(state, action).mean
+            pred_delta = self.forward(states, actions).mean
 
         # denorm pred_delta
         pred_delta = (
             pred_delta * torch.sqrt(self.bb_out.running_var + self.bb_out.eps)
             + self.bb_out.running_mean
         )
-        return state + pred_delta
+        return states + pred_delta
 
     def update_parameters(self, batch, optimizer: torch.optim.Optimizer):
         (

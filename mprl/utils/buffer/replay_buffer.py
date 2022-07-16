@@ -18,19 +18,6 @@ class ReplayBuffer(ABC):
         )
 
     @abstractmethod
-    def add_batch(self, states, next_states, actions, rewards, dones):
-        pass
-
-    def add_batch_steps(self, time_steps: EnvSteps):
-        self.add_batch(
-            time_steps.states,
-            time_steps.next_states,
-            time_steps.actions,
-            time_steps.rewards,
-            time_steps.dones,
-        )
-
-    @abstractmethod
     def get_iter(self, it, batch_size):
         pass
 
