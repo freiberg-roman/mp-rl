@@ -18,7 +18,7 @@ def sac_policy_loss(agent: any, batch: EnvSteps):
     return policy_loss
 
 
-class MixedMeanSACPolicyLoss:
+class MixedMeanSACModelPolicyLoss:
     def __init__(self, model: Prediction):
         self.model = model
 
@@ -38,7 +38,7 @@ class MixedMeanSACPolicyLoss:
             action, _ = agent.ctrl.get_action(q, v, b_q, b_v)
 
             # compute q val
-            qf1_pi, qf2_pi = agent.critic(states, action)
+            qf1_pi, qf2_pi = agent.critic(next_states, action)
             min_qf += torch.min(qf1_pi, qf2_pi)
             next_states = self.model.next_state(next_states, action)
             called = i
@@ -47,37 +47,111 @@ class MixedMeanSACPolicyLoss:
         return policy_loss
 
 
-class MixedWeightedSACPolicyLoss:
+class MixedMeanSACOffPolicyLoss:
+    def __init__(self):
+        pass
+
+    def __call__(self, agent: any, batch: EnvSteps):
+        # dimensions (batch_size, sequence_len, data_dimension)
+        states, next_states, actions, rewards, dones = batch.to_torch_batch()
+        # dimension (1, batch_size, sequence_len, weight_dimension)
+        weights, _ = agent.select_weights_and_time(states)
+        b_q, b_v = agent.decompose_fn(states)
+        agent.planner_train.re_init(
+            weights[0, :, 0, :], bc_pos=b_q, bc_vel=b_v, num_t=agent.num_steps + 1
+        )
+        next_s = states[:, 0, :]
+        min_qf = 0
+        called = 0
+        for i, qv in enumerate(agent.planner_train):
+            q, v = qv
+            b_q, b_v = agent.decompose_fn(next_s)
+            action, _ = agent.ctrl.get_action(q, v, b_q, b_v)
+
+            # compute q val
+            qf1_pi, qf2_pi = agent.critic(next_s, action)
+            min_qf += torch.min(qf1_pi, qf2_pi)
+            # we simply take the sequence as fixed
+            next_states = next_states[:, i, :]
+            called = i
+        min_qf /= called
+        policy_loss = (-min_qf).mean()
+        return policy_loss
+
+
+class MixedWeightedSACModelPolicyLoss:
     def __init__(self, model: Prediction):
         self.model = model
 
     def __call__(self, agent: any, batch: EnvSteps):
+        # dimension (batch_size, data_dimension)
         states, next_states, actions, rewards, dones = batch.to_torch_batch()
+        # dimension (1, batch_size, weight_dimension)
         weights, _ = agent.select_weights_and_time(states)
         b_q, b_v = agent.decompose_fn(states)
         agent.planner_train.re_init(
             weights[0], bc_pos=b_q, bc_vel=b_v, num_t=agent.num_steps + 1
         )
         next_states = states
-        min_qf = 0
         called = 0
-        q_prob = torch.zeros(size=(*states.shape, agent.num_steps))
+        # dimensions (batch_size, sequence_len, 1)
+        q_prob = torch.zeros(size=(len(states), agent.num_steps, 1))
+        min_qf = torch.zeros_like(q_prob)
         for i, qv in enumerate(agent.planner_train):
             q, v = qv
             b_q, b_v = agent.decompose_fn(next_states)
             action, _ = agent.ctrl.get_action(q, v, b_q, b_v)
 
             # compute q val
-            qf1_pi, qf2_pi = agent.critic(states, action)
-            min_qf[..., i] = torch.min(qf1_pi, qf2_pi)
+            qf1_pi, qf2_pi = agent.critic(next_states, action)
+            min_qf[:, i, :] = torch.min(qf1_pi, qf2_pi)
             next_states = self.model.next_state(next_states, action)
+            # dimension (1, batch_size, 1)
             _, log_prob, _, _ = agent.sample(next_states)
-            q_prob[..., i] = log_prob.exp()
+            q_prob[:, i, :] = log_prob.exp()[0]
             called = i
         min_qf /= called
-        # TODO: check if this is correct
-        torch.nn.functional.normalize(
-            q_prob, dim=-1
-        )  # normalize q_prob over trajectories
+        with torch.no_grad():
+            prob_normalizer = torch.sum(q_prob, dim=1)
+        q_prob /= prob_normalizer
+        policy_loss = (-q_prob * min_qf).mean()
+        return policy_loss
+
+
+class MixedWeightedSACOffPolicyLoss:
+    def __init__(self):
+        pass
+
+    def __call__(self, agent: any, batch: EnvSteps):
+        # dimension (batch_size, sequence_len, data_dimension)
+        states, next_states, actions, rewards, dones = batch.to_torch_batch()
+        # dimension (1, batch_size, sequence_len, weight_dimension)
+        weights, _ = agent.select_weights_and_time(states)
+        b_q, b_v = agent.decompose_fn(states)
+        agent.planner_train.re_init(
+            weights[0, :, 0, :], bc_pos=b_q, bc_vel=b_v, num_t=agent.num_steps + 1
+        )
+        next_s = states[:, 0, :]
+        called = 0
+        # dimensions (batch_size, sequence_len, 1)
+        q_prob = torch.zeros(size=(len(states), agent.num_steps, 1))
+        min_qf = torch.zeros_like(q_prob)
+        for i, qv in enumerate(agent.planner_train):
+            q, v = qv
+            b_q, b_v = agent.decompose_fn(next_s)
+            action, _ = agent.ctrl.get_action(q, v, b_q, b_v)
+
+            # compute q val
+            qf1_pi, qf2_pi = agent.critic(next_s, action)
+            min_qf[:, i, :] = torch.min(qf1_pi, qf2_pi)
+            next_s = next_states[:, i, :]
+            # dimension (1, batch_size, 1)
+            _, log_prob, _, _ = agent.sample(next_states)
+            q_prob[:, i, :] = log_prob.exp()[0]
+            called = i
+        min_qf /= called
+        with torch.no_grad():
+            prob_normalizer = torch.sum(q_prob, dim=1)
+        q_prob /= prob_normalizer
         policy_loss = (-q_prob * min_qf).mean()
         return policy_loss

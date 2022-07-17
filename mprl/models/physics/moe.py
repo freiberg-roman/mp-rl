@@ -9,6 +9,7 @@ from torch.distributions.mixture_same_family import MixtureSameFamily
 from torch.distributions.multivariate_normal import MultivariateNormal
 
 from mprl.models.physics.prediction import Prediction
+from mprl.utils.ds_helper import to_np, to_ts
 
 
 class MixtureOfExperts(nn.Module, Prediction):
@@ -66,6 +67,8 @@ class MixtureOfExperts(nn.Module, Prediction):
 
     @torch.no_grad()
     def next_state(self, states, actions, sample_n=1, deterministic=False):
+        states = to_ts(states)
+        actions = to_ts(actions)
         if not deterministic:
             pred_delta = self.forward(states, actions).sample((sample_n,))
         else:
@@ -76,7 +79,7 @@ class MixtureOfExperts(nn.Module, Prediction):
             pred_delta * torch.sqrt(self.bb_out.running_var + self.bb_out.eps)
             + self.bb_out.running_mean
         )
-        return states + pred_delta
+        return to_np(states + pred_delta)
 
     def update_parameters(self, batch, optimizer: torch.optim.Optimizer):
         (
