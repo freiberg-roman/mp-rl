@@ -38,6 +38,6 @@ class EnvSteps:
             torch.from_numpy(self.states),
             torch.from_numpy(self.next_states),
             torch.from_numpy(self.actions),
-            torch.unsqueeze(torch.from_numpy(self.rewards), 1),
-            torch.unsqueeze(torch.from_numpy(self.dones), 1),
+            torch.unsqueeze(torch.from_numpy(self.rewards), dim=-1),
+            torch.unsqueeze(torch.from_numpy(self.dones), dim=-1),
         )

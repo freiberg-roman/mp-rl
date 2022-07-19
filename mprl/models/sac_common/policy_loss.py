@@ -1,7 +1,10 @@
+from copy import deepcopy
+
 import torch
 
 from mprl.models.physics.prediction import Prediction
 from mprl.utils import EnvSteps
+from mprl.utils.ds_helper import to_ts
 
 
 def sac_policy_loss(agent: any, batch: EnvSteps):
@@ -23,26 +26,26 @@ class MixedMeanSACModelPolicyLoss:
         self.model = model
 
     def __call__(self, agent: any, batch: EnvSteps):
+        # dimension (batch_size, data_dimension)
         states, next_states, actions, rewards, dones = batch.to_torch_batch()
+        # dimension (1, batch_size, weight_dimension)
         weights, _ = agent.select_weights_and_time(states)
         b_q, b_v = agent.decompose_fn(states)
         agent.planner_train.re_init(
-            weights[0], bc_pos=b_q, bc_vel=b_v, num_t=agent.num_steps + 1
+            weights[0], bc_pos=b_q, bc_vel=b_v, num_t=agent.num_steps
         )
         next_states = states
         min_qf = 0
-        called = 0
-        for i, qv in enumerate(agent.planner_train):
+        for _, qv in enumerate(agent.planner_train):
             q, v = qv
             b_q, b_v = agent.decompose_fn(next_states)
             action, _ = agent.ctrl.get_action(q, v, b_q, b_v)
 
-            # compute q val
+            # compute q val: dimension (batch_size, 1)
             qf1_pi, qf2_pi = agent.critic(next_states, action)
             min_qf += torch.min(qf1_pi, qf2_pi)
-            next_states = self.model.next_state(next_states, action)
-            called = i
-        min_qf /= called
+            next_states = to_ts(self.model.next_state(next_states, action))
+        min_qf /= agent.num_steps
         policy_loss = (-min_qf).mean()
         return policy_loss
 
@@ -58,11 +61,13 @@ class MixedMeanSACOffPolicyLoss:
         weights, _ = agent.select_weights_and_time(states)
         b_q, b_v = agent.decompose_fn(states)
         agent.planner_train.re_init(
-            weights[0, :, 0, :], bc_pos=b_q, bc_vel=b_v, num_t=agent.num_steps + 1
+            weights[0, :, 0, :],
+            bc_pos=b_q[:, 0, :],
+            bc_vel=b_v[:, 0, :],
+            num_t=agent.num_steps,
         )
         next_s = states[:, 0, :]
         min_qf = 0
-        called = 0
         for i, qv in enumerate(agent.planner_train):
             q, v = qv
             b_q, b_v = agent.decompose_fn(next_s)
@@ -72,9 +77,8 @@ class MixedMeanSACOffPolicyLoss:
             qf1_pi, qf2_pi = agent.critic(next_s, action)
             min_qf += torch.min(qf1_pi, qf2_pi)
             # we simply take the sequence as fixed
-            next_states = next_states[:, i, :]
-            called = i
-        min_qf /= called
+            next_s = next_states[:, i, :]
+        min_qf /= agent.num_steps
         policy_loss = (-min_qf).mean()
         return policy_loss
 
@@ -89,15 +93,13 @@ class MixedWeightedSACModelPolicyLoss:
         # dimension (1, batch_size, weight_dimension)
         weights, _ = agent.select_weights_and_time(states)
         b_q, b_v = agent.decompose_fn(states)
-        agent.planner_train.re_init(
-            weights[0], bc_pos=b_q, bc_vel=b_v, num_t=agent.num_steps + 1
-        )
+        planner_local = deepcopy(agent.planner_train)
+        planner_local.re_init(weights[0], bc_pos=b_q, bc_vel=b_v, num_t=agent.num_steps)
         next_states = states
-        called = 0
         # dimensions (batch_size, sequence_len, 1)
         q_prob = torch.zeros(size=(len(states), agent.num_steps, 1))
         min_qf = torch.zeros_like(q_prob)
-        for i, qv in enumerate(agent.planner_train):
+        for i, qv in enumerate(planner_local):
             q, v = qv
             b_q, b_v = agent.decompose_fn(next_states)
             action, _ = agent.ctrl.get_action(q, v, b_q, b_v)
@@ -105,14 +107,13 @@ class MixedWeightedSACModelPolicyLoss:
             # compute q val
             qf1_pi, qf2_pi = agent.critic(next_states, action)
             min_qf[:, i, :] = torch.min(qf1_pi, qf2_pi)
-            next_states = self.model.next_state(next_states, action)
-            # dimension (1, batch_size, 1)
+            next_states = to_ts(self.model.next_state(next_states, action))
+            # dimension (batch_size, 1)
             _, log_prob, _, _ = agent.sample(next_states)
-            q_prob[:, i, :] = log_prob.exp()[0]
-            called = i
-        min_qf /= called
+            q_prob[:, i, :] = log_prob.exp()
+        min_qf /= agent.num_steps
         with torch.no_grad():
-            prob_normalizer = torch.sum(q_prob, dim=1)
+            prob_normalizer = torch.sum(q_prob, dim=1, keepdim=True)
         q_prob /= prob_normalizer
         policy_loss = (-q_prob * min_qf).mean()
         return policy_loss
