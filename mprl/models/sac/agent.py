@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Iterator
+from typing import Iterator, Tuple
 
 import numpy as np
 import torch
@@ -77,6 +77,9 @@ class SAC:
             },
             path + "model.pt",
         )
+
+    def forward(self, states: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        self.policy.forward(states)
 
     # Load model parameters
     def load(self, path: str, evaluate: bool = False) -> None:

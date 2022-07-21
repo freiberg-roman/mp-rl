@@ -5,6 +5,7 @@ from typing import Callable
 import numpy as np
 import torch
 from omegaconf import OmegaConf
+from torch.distributions import Independent, Normal
 from torch.optim import Adam
 
 from mprl.models.sac_common import QNetwork
@@ -96,6 +97,19 @@ class SACMixed:
         q, v = next(self.planner_train)
         action, _ = self.ctrl.get_action(q, v, b_q, b_v)
         return to_ts(action), logp, mean, {}
+
+    def prob(self, states, weights):
+        """
+        expected dimensions of states: [num_samples, state_dim]
+        expected dimensions of weights: [num_samples, weight_dim]
+
+        returns: [num_samples, 1]
+        """
+        mean, log_std = self.policy.forward(states)
+        std = log_std.exp()
+        normal_dist = Independent(Normal(mean, std), 1)
+        prob = normal_dist.log_prob(weights).exp().unsqueeze(1)
+        return prob
 
     def replan(self):
         self.force_replan = True

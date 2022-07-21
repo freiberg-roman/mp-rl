@@ -1,8 +1,10 @@
 from copy import deepcopy
 
 import torch
+import torch.nn.functional as F
 
 from mprl.models.physics.prediction import Prediction
+from mprl.models.sac_mixed import SACMixed
 from mprl.utils import EnvSteps
 from mprl.utils.ds_helper import to_ts
 
@@ -87,7 +89,7 @@ class MixedWeightedSACModelPolicyLoss:
     def __init__(self, model: Prediction):
         self.model = model
 
-    def __call__(self, agent: any, batch: EnvSteps):
+    def __call__(self, agent: SACMixed, batch: EnvSteps):
         # dimension (batch_size, data_dimension)
         states, next_states, actions, rewards, dones = batch.to_torch_batch()
         # dimension (1, batch_size, weight_dimension)
@@ -109,12 +111,9 @@ class MixedWeightedSACModelPolicyLoss:
             min_qf[:, i, :] = torch.min(qf1_pi, qf2_pi)
             next_states = to_ts(self.model.next_state(next_states, action))
             # dimension (batch_size, 1)
-            _, log_prob, _, _ = agent.sample(next_states)
-            q_prob[:, i, :] = log_prob.exp()
+            q_prob[:, i, :] = agent.prob(next_states, weights[0])
         min_qf /= agent.num_steps
-        with torch.no_grad():
-            prob_normalizer = torch.sum(q_prob, dim=1, keepdim=True)
-        q_prob /= prob_normalizer
+        q_prob = F.normalize(q_prob, p=1.0, dim=1)
         policy_loss = (-q_prob * min_qf).mean()
         return policy_loss
 
