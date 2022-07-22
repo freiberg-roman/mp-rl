@@ -143,7 +143,10 @@ class AntEnv(MujocoEnv):
 
     def decompose(self, state, full_obs=False):
         if full_obs:
-            return state[..., 7:15], state[..., -8:]  # qpos, qvel
+            extended_shape = state.shape[:-1] + (29,)
+            extended_state = np.zeros(extended_shape)
+            extended_state[..., 2:] = state
+            return extended_state[..., :15], extended_state[..., 15:]  # qpos, qvel
         else:
             return (
                 state[..., 5:13],

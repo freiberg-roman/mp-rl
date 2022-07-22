@@ -94,7 +94,11 @@ class HalfCheetahEnv(MujocoEnv):
     def decompose(self, state, full_obs=False):
         coord = 3
         if full_obs:
-            return state[..., 0 + coord : 9], state[..., 9 + coord :]  # qpos, qvel
+            # In this case the x position is not included in the state -> just set it to 0
+            extended_shape = state.shape[:-1] + (18,)
+            extended_state = np.zeros(extended_shape)
+            extended_state[..., 1:] = state
+            return extended_state[..., :9], extended_state[..., 9:]  # qpos, qvel
         else:
             return state[..., 2:8], state[..., 8 + coord :]
 
