@@ -19,6 +19,7 @@ from mprl.models.sac_common.policy_loss import (
     MixedMeanSACModelPolicyLoss,
     MixedMeanSACOffPolicyLoss,
     MixedWeightedSACModelPolicyLoss,
+    MixedWeightedSACOffPolicyLoss,
 )
 from mprl.models.sac_mixed import SACMixed
 from mprl.models.sac_mp import SACMP
@@ -174,7 +175,12 @@ def train_stepwise_mp_sac(
 
     # Compose update function
     model: Prediction = GroundTruth(cfg_env)
-    policy_loss = MixedWeightedSACModelPolicyLoss(model)
+    if cfg_alg.reward_weighting == "mean":
+        policy_loss = MixedMeanSACModelPolicyLoss(model)
+    elif cfg_alg.reward_weighting == "likelihood":
+        policy_loss = MixedWeightedSACModelPolicyLoss(model)
+    else:
+        raise ValueError("Unknown reward weighting")
     update = SACUpdate(policy_loss=policy_loss)
 
     num_t = cfg_alg.agent.time_steps
@@ -237,7 +243,12 @@ def train_stepwise_mp_sac_offpolicy(
     )
 
     # Compose update function
-    policy_loss = MixedMeanSACOffPolicyLoss()
+    if cfg_alg.reward_weighting == "mean":
+        policy_loss = MixedMeanSACOffPolicyLoss()
+    elif cfg_alg.reward_weighting == "likelihood":
+        policy_loss = MixedWeightedSACOffPolicyLoss()
+    else:
+        raise ValueError("Unknown reward weighting")
     critic_loss = sac_critic_loss_sequenced
     update = SACUpdate(policy_loss=policy_loss, critic_loss=critic_loss)
 

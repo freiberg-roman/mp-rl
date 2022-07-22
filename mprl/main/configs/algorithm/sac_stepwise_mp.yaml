@@ -7,3 +7,5 @@ defaults:
 
 name: "sac_mp_stepwise"
 mode: "train"
+prediction: "off_policy"  # other options are "ground_truth" and "moe"
+reward_weighting: "likelihood"  # other options is "likelihood"
