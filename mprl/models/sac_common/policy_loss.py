@@ -49,6 +49,7 @@ class MixedMeanSACModelPolicyLoss:
             next_states = to_ts(self.model.next_state(next_states, action))
         min_qf /= agent.num_steps
         policy_loss = (-min_qf).mean()
+        self.model.update_parameters(batch)
         return policy_loss
 
 

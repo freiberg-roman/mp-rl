@@ -21,12 +21,13 @@ def run(cfg: DictConfig):
         )  # inefficient version as reference
 
     if cfg.algorithm.name == "sac_mp_stepwise":
-        if cfg.algorithm.prediction == "off_policy":
+        if cfg.algorithm.prediction.name == "OffPolicy":
             train_stepwise_mp_sac_offpolicy(cfg.algorithm, cfg.env, cfg.logger)
-        elif cfg.algorithm.prediction == "ground_truth":
+        elif (
+            cfg.algorithm.prediction.name == "GroundTruth"
+            or cfg.algorithm.prediction.name == "MixtureOfExperts"
+        ):
             train_stepwise_mp_sac(cfg.algorithm, cfg.env, cfg.logger)
-        elif cfg.algorithm.prediction == "moe":
-            pass  # TODO
         else:
             raise ValueError("Unknown prediction type: cfg.algorithm.prediction")
 

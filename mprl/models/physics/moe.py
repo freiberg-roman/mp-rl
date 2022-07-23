@@ -20,7 +20,7 @@ class MixtureOfExperts(nn.Module, Prediction):
     ):
         super(MixtureOfExperts, self).__init__()
 
-        self.bn_in = nn.BatchNorm1d(cfg.env.state_dim - cfg.env.num_coordinates)
+        self.bn_in = nn.BatchNorm1d(cfg.env.state_dim)
         self.bb_out = nn.BatchNorm1d(cfg.env.state_dim)
         self._prep_input_fn = prep_input_fn
         self.linear1 = nn.Linear(
@@ -35,6 +35,7 @@ class MixtureOfExperts(nn.Module, Prediction):
             self.expert_heads.append(nn.Linear(cfg.hidden_dim, cfg.env.state_dim))
 
         self._action_dim = cfg.env.action_dim
+        self.optimizer: torch.optim.Optimizer = torch.optim.Adam(self.parameters())
 
     def forward(self, state, action):
         n_state = self.bn_in(self._prep_input_fn(state))
@@ -79,9 +80,9 @@ class MixtureOfExperts(nn.Module, Prediction):
             pred_delta * torch.sqrt(self.bb_out.running_var + self.bb_out.eps)
             + self.bb_out.running_mean
         )
-        return to_np(states + pred_delta)
+        return (states + pred_delta)[0, ...]
 
-    def update_parameters(self, batch, optimizer: torch.optim.Optimizer):
+    def update_parameters(self, batch):
         (
             states,
             next_states,
@@ -91,9 +92,9 @@ class MixtureOfExperts(nn.Module, Prediction):
         ) = batch.to_torch_batch()
         loss = self.loss(states, actions, next_states)
 
-        optimizer.zero_grad()
+        self.optimizer.zero_grad()
         loss.backward()
-        optimizer.step()
+        self.optimizer.step()
 
         return loss.item()
 

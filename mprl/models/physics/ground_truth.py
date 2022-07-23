@@ -23,3 +23,6 @@ class GroundTruth(Prediction):
             next_state, _, _, _ = self.env.step(action)
             next_states[i] = next_state
         return next_states
+
+    def update_parameters(self, batch):
+        pass

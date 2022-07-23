@@ -4,6 +4,7 @@ defaults:
   - buffer: sequence_buffer
   - mp: idmp
   - ctrl: pd
+  - model: moe
 
 name: "mp_sac"
 mode: "train"

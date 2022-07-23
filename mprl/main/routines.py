@@ -11,6 +11,7 @@ from mprl.controllers import MPTrajectory, PDController
 from mprl.env import create_mj_env
 from mprl.main.evaluate_agent import EvaluateAgent, EvaluateMPAgent
 from mprl.models.physics.ground_truth import GroundTruth
+from mprl.models.physics.moe import MixtureOfExperts
 from mprl.models.physics.prediction import Prediction
 from mprl.models.sac import SAC
 from mprl.models.sac_common import SACUpdate
@@ -174,7 +175,13 @@ def train_stepwise_mp_sac(
     )
 
     # Compose update function
-    model: Prediction = GroundTruth(cfg_env)
+    if cfg_alg.prediction.name == "GroundTruth":
+        model: Prediction = GroundTruth(cfg_env)
+    elif cfg_alg.prediction.name == "MixtureOfExperts":
+        model = MixtureOfExperts(cfg_alg.prediction)
+    else:
+        raise ValueError("Unknown model")
+
     if cfg_alg.reward_weighting == "mean":
         policy_loss = MixedMeanSACModelPolicyLoss(model)
     elif cfg_alg.reward_weighting == "likelihood":
