@@ -5,10 +5,9 @@ import pickle
 import mujoco
 import numpy as np
 from gym.spaces import Box
-from metaworld.envs import reward_utils
 from scipy.spatial.transform import Rotation
 
-from mprl.env.mujoco.meta.util import _assert_task_is_set
+from mprl.env.mujoco.meta.util import _assert_task_is_set, tolerance
 from mprl.env.mujoco.mj_env import MujocoEnv
 
 
@@ -181,7 +180,7 @@ class SawyerReachEnvV2(MujocoEnv):
         tcp_to_target = np.linalg.norm(tcp - target)
 
         in_place_margin = np.linalg.norm(self.hand_init_pos - target)
-        in_place = reward_utils.tolerance(
+        in_place = tolerance(
             tcp_to_target,
             bounds=(0, _TARGET_RADIUS),
             margin=in_place_margin,
