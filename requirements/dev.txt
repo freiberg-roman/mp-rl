@@ -9,3 +9,4 @@ imageio==2.19.2
 wandb==0.12.17
 opencv-python==4.6.0.66
 opencv-contrib-python==4.6.0.66
+scipy==1.7.3

@@ -10,9 +10,11 @@ DEFAULT_SIZE = 480
 
 
 class MujocoEnv:
-    def __init__(self, path, frame_skip):
+    def __init__(self, path, frame_skip, assets=None):
 
-        self.model: mujoco.MjModel = mujoco.MjModel.from_xml_path(path)
+        if assets is None:
+            assets = {}
+        self.model: mujoco.MjModel = mujoco.MjModel.from_xml_path(path, assets=assets)
         self.data: mujoco.MjData = mujoco.MjData(self.model)
 
         self.init_qpos: np.ndarray = self.data.qpos.ravel().copy()
