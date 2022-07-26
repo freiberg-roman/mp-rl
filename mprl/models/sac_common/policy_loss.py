@@ -112,10 +112,10 @@ class MixedWeightedSACModelPolicyLoss:
             min_qf[:, i, :] = torch.min(qf1_pi, qf2_pi)
             next_states = to_ts(self.model.next_state(next_states, action))
             # dimension (batch_size, 1)
-            q_prob[:, i, :] = agent.prob(next_states, weights[0])
+            q_prob[:, i, :] = agent.prob(next_states, weights[0]).detach()
         min_qf /= agent.num_steps
         q_prob = F.normalize(q_prob, p=1.0, dim=1)
-        policy_loss = (-q_prob * min_qf).mean()
+        policy_loss = (-q_prob.detach() * min_qf).mean()
         return policy_loss
 
 
@@ -150,8 +150,8 @@ class MixedWeightedSACOffPolicyLoss:
             min_qf[:, i, :] = torch.min(qf1_pi, qf2_pi)
             next_s = next_states[:, i, :]
             # dimension (batch_size, 1)
-            q_prob[:, i, :] = agent.prob(next_s, weights[0, :, 0, :])
+            q_prob[:, i, :] = agent.prob(next_s, weights[0, :, 0, :]).detach()
         min_qf /= agent.num_steps
         q_prob = F.normalize(q_prob, p=1.0, dim=1)
-        policy_loss = (-q_prob * min_qf).mean()
+        policy_loss = (-q_prob.detach() * min_qf).mean()
         return policy_loss

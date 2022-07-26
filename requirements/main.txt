@@ -7,3 +7,4 @@ imageio==2.19.2
 opencv-python==4.6.0.66
 opencv-contrib-python==4.6.0.66
 scipy==1.7.3
+gym==0.25.0

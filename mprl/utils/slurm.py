@@ -3,7 +3,7 @@ import os
 
 def run():
     for prediction in ["moe", "ground_truth", "off_policy"]:
-        for weighting in ["mean", "likelihood"]:
+        for weighting in ["likelihood"]:
             for env_name in ["reacher", "half_cheetah", "ant"]:
                 for i in range(5):
                     launch_command = (
@@ -14,7 +14,7 @@ def run():
                             prediction,
                             weighting,
                             env_name,
-                            prediction + "_" + weighting + "_" + str(i),
+                            prediction + "_" + weighting + "_" + str(i) + "_v2",
                         )
                     )
                     file_content = "#!/bin/bash\n" + launch_command
