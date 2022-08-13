@@ -49,7 +49,12 @@ class GaussianMotionPrimitivePolicy(nn.Module):
         weights = normal.rsample()  # for reparameterization trick (mean + std * N(0,1))
         log_prob = normal.log_prob(weights).sum(dim=-1)
 
-        return weights, log_prob.unsqueeze(dim=-1), mean, {}  # used for logging
+        return (
+            weights,
+            log_prob.unsqueeze(dim=-1),
+            mean,
+            {"std": std, "mean": mean},
+        )  # used for logging
 
     def to(self, device: torch.device) -> "GaussianMotionPrimitivePolicy":
         return super(GaussianMotionPrimitivePolicy, self).to(device)

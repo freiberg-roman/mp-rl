@@ -15,6 +15,9 @@ from mprl.utils.math_helper import hard_update
 from ...controllers import MPTrajectory, PDController
 from .networks import GaussianMotionPrimitivePolicy
 
+LOG_PROB_MIN = -27.5
+LOG_PROB_MAX = 0.0
+
 
 class SACMixed:
     def __init__(
@@ -85,10 +88,10 @@ class SACMixed:
     def select_weights_and_time(self, state, evaluate=False):
         state = torch.FloatTensor(state).to(self.device).unsqueeze(0)
         if not evaluate:
-            weight_times, _, _, _ = self.policy.sample(state)
+            weight_times, _, _, info = self.policy.sample(state)
         else:
-            _, _, weight_times, _ = self.policy.sample(state)
-        return weight_times, {}
+            _, _, weight_times, info = self.policy.sample(state)
+        return weight_times, info
 
     def sample(self, state):
         weight, logp, mean, _ = self.policy.sample(state)
@@ -108,7 +111,10 @@ class SACMixed:
         mean, log_std = self.policy.forward(states)
         std = log_std.exp()
         normal_dist = Independent(Normal(mean, std), 1)
-        prob = normal_dist.log_prob(weights).exp().unsqueeze(1)
+        log_prob = torch.clamp(
+            normal_dist.log_prob(weights), min=LOG_PROB_MIN, max=LOG_PROB_MAX
+        )
+        prob = log_prob.exp().unsqueeze(1)
         return prob
 
     def replan(self):
