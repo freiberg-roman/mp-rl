@@ -1,28 +1,19 @@
-import copy
 import os
 import pickle
+from typing import Optional
 
 import mujoco
 import numpy as np
 from gym.spaces import Box
 from scipy.spatial.transform import Rotation
 
-from mprl.env.mujoco.meta.util import _assert_task_is_set, tolerance
+from mprl.env.mujoco.meta.util import tolerance
 from mprl.env.mujoco.mj_env import MujocoEnv
 
 
 class SawyerReachEnvV2(MujocoEnv):
     """
-    Motivation for V2:
-        V1 was very difficult to solve because the observation didn't say where
-        to move (where to reach).
-    Changelog from V1 to V2:
-        - (7/7/20) Removed 3 element vector. Replaced with 3 element position
-            of the goal (for consistency with other environments)
-        - (6/15/20) Added a 3 element vector to the observation. This vector
-            points from the end effector to the goal coordinate.
-            i.e. (self._target_pos - pos_hand)
-        - (6/15/20) Separated reach-push-pick-place into 3 separate envs.
+    Adapted SawyerReachEnvV2 environment for new MuJoCo bindings
     """
 
     def __init__(self, base):
@@ -32,28 +23,24 @@ class SawyerReachEnvV2(MujocoEnv):
         hand_high = (0.5, 1, 0.5)
         obj_low = (-0.1, 0.6, 0.02)
         obj_high = (0.1, 0.7, 0.02)
-        mocap_low = (None,)
-        mocap_high = (None,)
         action_scale = (1.0 / 100,)
         action_rot_scale = (1.0,)
-        frame_skip = (5,)
+        frame_skip = 5
         model_name = "sawyer_reach_v2.xml"
+        self.base = base
         assets = self.load_assets()
 
-        MujocoEnv.__init__(self, model_name, frame_skip=frame_skip, assets=assets)
+        MujocoEnv.__init__(
+            self, base + model_name, frame_skip=frame_skip, assets=assets
+        )
         self.reset_mocap_welds()
 
-        self.random_init = True
         self.action_scale = action_scale
         self.action_rot_scale = action_rot_scale
         self.hand_low = np.array(hand_low)
         self.hand_high = np.array(hand_high)
-        if mocap_low is None:
-            mocap_low = hand_low
-        if mocap_high is None:
-            mocap_high = hand_high
-        self.mocap_low = np.hstack(mocap_low)
-        self.mocap_high = np.hstack(mocap_high)
+        self.mocap_low = np.hstack(hand_low)
+        self.mocap_high = np.hstack(hand_high)
         self.curr_path_length = 0
         self.seeded_rand_vec = False
         self._freeze_rand_vec = True
@@ -68,11 +55,6 @@ class SawyerReachEnvV2(MujocoEnv):
 
         self.init_left_pad = self.get_body_com("leftpad")
         self.init_right_pad = self.get_body_com("rightpad")
-
-        self.action_space = Box(
-            np.array([-1, -1, -1, -1]),
-            np.array([+1, +1, +1, +1]),
-        )
 
         self.isV2 = "V2" in type(self).__name__
         # Technically these observation lengths are different between v1 and v2,
@@ -114,11 +96,55 @@ class SawyerReachEnvV2(MujocoEnv):
 
         self.num_resets = 0
 
+    def load_assets(self):
+        ASSETS = {}
+
+        # files to load
+        mesh_files = [
+            "base.stl",
+            "block.stl",
+            "eGripperBase.stl",
+            "head.stl",
+            "l0.stl",
+            "l1.stl",
+            "l2.stl",
+            "l3.stl",
+            "l4.stl",
+            "l5.stl",
+            "l6.stl",
+            "pedestal.stl",
+            "tablebody.stl",
+            "tabletop.stl",
+        ]
+        texuture_files = [
+            "floor2.png",
+            "metal.png",
+            "wood2.png",
+            "wood4.png",
+        ]
+        xml_files = [
+            "basic_scene.xml",
+            "block_dependencies.xml",
+            "xyz_base_dependencies.xml",
+            "xyz_base.xml",
+        ]
+        for file in mesh_files:
+            with open(self.base + "meshes/" + file, "rb") as f:
+                ASSETS[file] = f.read()
+
+        for file in texuture_files:
+            with open(self.base + "textures/" + file, "rb") as f:
+                ASSETS[file] = f.read()
+
+        for file in xml_files:
+            with open(self.base + file, "rb") as f:
+                ASSETS[file] = f.read()
+        return ASSETS
+
     @property
     def model_name(self):
         return os.path.join("sawyer_xyz/sawyer_reach_v2.xml")
 
-    @_assert_task_is_set
     def evaluate_state(self, obs, action):
 
         reward, reach_dist, in_place = self.compute_reward(action, obs)
@@ -140,7 +166,9 @@ class SawyerReachEnvV2(MujocoEnv):
         return self.get_body_com("obj")
 
     def _get_quat_objects(self):
-        return Rotation.from_matrix(self.data.get_geom_xmat("objGeom")).as_quat()
+        id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_GEOM, "objGeom")
+        mat = self.data.geom_xmat[id].reshape((3, 3))
+        return Rotation.from_matrix(mat).as_quat()
 
     def fix_extreme_obj_pos(self, orig_init_pos):
         # This is to account for meshes for the geom and object are not
@@ -158,14 +186,13 @@ class SawyerReachEnvV2(MujocoEnv):
         self.obj_init_pos = self.fix_extreme_obj_pos(self.init_config["obj_init_pos"])
         self.obj_init_angle = self.init_config["obj_init_angle"]
 
-        if self.random_init:
+        goal_pos = self._get_state_rand_vec()
+        self._target_pos = goal_pos[3:]
+        while np.linalg.norm(goal_pos[:2] - self._target_pos[:2]) < 0.15:
             goal_pos = self._get_state_rand_vec()
             self._target_pos = goal_pos[3:]
-            while np.linalg.norm(goal_pos[:2] - self._target_pos[:2]) < 0.15:
-                goal_pos = self._get_state_rand_vec()
-                self._target_pos = goal_pos[3:]
-            self._target_pos = goal_pos[-3:]
-            self.obj_init_pos = goal_pos[:3]
+        self._target_pos = goal_pos[-3:]
+        self.obj_init_pos = goal_pos[:3]
 
         self._set_obj_xyz(self.obj_init_pos)
         self.num_resets += 1
@@ -213,14 +240,13 @@ class SawyerReachEnvV2(MujocoEnv):
         action = np.clip(action, -1, 1)
         pos_delta = action * self.action_scale
         new_mocap_pos = self.data.mocap_pos + pos_delta[None]
-
         new_mocap_pos[0, :] = np.clip(
             new_mocap_pos[0, :],
             self.mocap_low,
             self.mocap_high,
         )
-        self.data.set_mocap_pos("mocap", new_mocap_pos)
-        self.data.set_mocap_quat("mocap", np.array([1, 0, 1, 0]))
+        self.data.mocap_pos[:] = new_mocap_pos
+        self.data.mocap_quat[:] = np.array([[1, 0, 1, 0]])
 
     def _set_obj_xyz(self, pos):
         qpos = self.data.qpos.flat.copy()
@@ -230,8 +256,7 @@ class SawyerReachEnvV2(MujocoEnv):
         self.set_state(qpos, qvel)
 
     def _get_site_pos(self, siteName):
-        _id = self.model.site_names.index(siteName)
-        return self.data.site_xpos[_id].copy()
+        return self.model.site(siteName).pos.copy()
 
     def _set_pos_site(self, name, pos):
         """Sets the position of the site corresponding to `name`
@@ -242,8 +267,7 @@ class SawyerReachEnvV2(MujocoEnv):
         """
         assert isinstance(pos, np.ndarray)
         assert pos.ndim == 1
-
-        self.data.site_xpos[self.model.site_name2id(name)] = pos[:3]
+        self.data.site(name).xpos[:] = pos[:3]
 
     @property
     def _target_site_config(self):
@@ -365,10 +389,12 @@ class SawyerReachEnvV2(MujocoEnv):
             ),
         )
 
-    @_assert_task_is_set
+    def sample_random_action(self):
+        return np.random.uniform(-1, 1, (4,))
+
     def step(self, action):
         self.set_xyz_action(action[:3])
-        self.do_simulation([action[-1], -action[-1]])
+        self.do_simulation([action[-1], -action[-1]], self.frame_skip)
         self.curr_path_length += 1
 
         # Running the simulator can sometimes mess up site positions, so
@@ -376,60 +402,38 @@ class SawyerReachEnvV2(MujocoEnv):
         for site in self._target_site_config:
             self._set_pos_site(*site)
 
-        if self._did_see_sim_exception:
-            return (
-                self._last_stable_obs,  # observation just before going unstable
-                0.0,  # reward (penalize for causing instability)
-                False,  # termination flag always False
-                {  # info
-                    "success": False,
-                    "near_object": 0.0,
-                    "grasp_success": False,
-                    "grasp_reward": 0.0,
-                    "in_place_reward": 0.0,
-                    "obj_to_target": 0.0,
-                    "unscaled_reward": 0.0,
-                },
-            )
-
+        self.current_steps += 1
+        self._total_steps += 1
+        done = (
+            self.time_out_after is not None
+            and self.current_steps >= self.time_out_after
+        )
         self._last_stable_obs = self._get_obs()
         reward, info = self.evaluate_state(self._last_stable_obs, action)
-        return self._last_stable_obs, reward, False, info
+        return self._last_stable_obs, reward, False, done
 
-    def reset(self):
+    def reset(self, time_out_after: Optional[int] = None):
         self.curr_path_length = 0
-        return super().reset()
+        return super().reset(time_out_after=time_out_after)
 
     def _reset_hand(self, steps=50):
         for _ in range(steps):
-            self.data.set_mocap_pos("mocap", self.hand_init_pos)
-            self.data.set_mocap_quat("mocap", np.array([1, 0, 1, 0]))
+            self.data.mocap_pos[0, :] = self.hand_init_pos
+            self.data.mocap_quat[0, :] = np.array([[1, 0, 1, 0]])
             self.do_simulation([-1, 1], self.frame_skip)
         self.init_tcp = self.tcp_center
 
     def _get_state_rand_vec(self):
-        if self._freeze_rand_vec:
-            assert self._last_rand_vec is not None
-            return self._last_rand_vec
-        elif self.seeded_rand_vec:
-            rand_vec = self.np_random.uniform(
-                self._random_reset_space.low,
-                self._random_reset_space.high,
-                size=self._random_reset_space.low.size,
-            )
-            self._last_rand_vec = rand_vec
-            return rand_vec
-        else:
-            rand_vec = np.random.uniform(
-                self._random_reset_space.low,
-                self._random_reset_space.high,
-                size=self._random_reset_space.low.size,
-            )
-            self._last_rand_vec = rand_vec
-            return rand_vec
+        rand_vec = np.random.uniform(
+            self._random_reset_space.low,
+            self._random_reset_space.high,
+            size=self._random_reset_space.low.size,
+        )
+        self._last_rand_vec = rand_vec
+        return rand_vec
 
     def get_endeff_pos(self):
-        return self.data.get_body_xpos("hand").copy()
+        return self.data.body("hand").xpos
 
     @property
     def tcp_center(self):
@@ -445,11 +449,14 @@ class SawyerReachEnvV2(MujocoEnv):
 
     def reset_mocap_welds(self):
         """Resets the mocap welds that we use for actuation."""
-        sim = self.sim
-        if sim.model.nmocap > 0 and sim.model.eq_data is not None:
-            for i in range(sim.model.eq_data.shape[0]):
-                if sim.model.eq_type[i] == mujoco.mjtEq.mjEQ_WELD:
-                    sim.model.eq_data[i, :] = np.array(
+        if self.model.nmocap > 0 and self.model.eq_data is not None:
+            for i in range(self.model.eq_data.shape[0]):
+                if self.model.eq_type[i] == mujoco.mjtEq.mjEQ_WELD:
+                    self.model.eq_data[i, :] = np.array(
                         [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0]
                     )
-        sim.forward()
+        mujoco.mj_forward(self.model, self.data)
+
+    @property
+    def total_steps(self):
+        return self._total_steps

@@ -115,15 +115,3 @@ def tolerance(
         value = np.where(in_bounds, 1.0, _sigmoids(d, value_at_margin, sigmoid))
 
     return float(value) if np.isscalar(x) else value
-
-
-def _assert_task_is_set(func):
-    def inner(*args, **kwargs):
-        env = args[0]
-        if not env._set_task_called:
-            raise RuntimeError(
-                "You must call env.set_task before using env." + func.__name__
-            )
-        return func(*args, **kwargs)
-
-    return inner

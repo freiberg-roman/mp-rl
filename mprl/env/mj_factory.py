@@ -27,4 +27,4 @@ def create_mj_env(cfg: DictConfig) -> MujocoEnv:
     if cfg.name == "Reacher":
         return ReacherEnv(base=BASE)
     if cfg.name == "MetaReacher":
-        return SawyerReachEnvV2(base=BASE)
+        return SawyerReachEnvV2(base=BASE + "meta/")
