@@ -8,6 +8,7 @@ from mprl.env.mujoco import (
     HopperEnv,
     HumanoidEnv,
     ReacherEnv,
+    SawyerPickPlaceEnvV2,
     SawyerPushEnvV2,
     SawyerReachEnvV2,
 )
@@ -34,7 +35,7 @@ def create_mj_env(cfg: DictConfig) -> MujocoEnv:
     if cfg.name == "MetaButtonPress":
         pass
     if cfg.name == "MetaPickAndPlace":
-        pass
+        return SawyerPickPlaceEnvV2(base=BASE + "meta/")
     if cfg.name == "MetaWindowOpen":
         pass
     if cfg.name == "MetaWindowClose":

@@ -1,3 +1,5 @@
+from typing import Optional
+
 import mujoco
 import numpy as np
 from gym.spaces import Box
@@ -555,3 +557,7 @@ class SawyerPushEnvV2(MujocoEnv):
     @property
     def total_steps(self):
         return self._total_steps
+
+    def reset(self, time_out_after: Optional[int] = None):
+        self.curr_path_length = 0
+        return super().reset(time_out_after=time_out_after)

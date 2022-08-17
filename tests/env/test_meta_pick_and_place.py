@@ -1,6 +1,5 @@
 from omegaconf.omegaconf import OmegaConf
 from mprl.env.mj_factory import create_mj_env
-from mprl.models.physics.ground_truth import GroundTruth
 
 
 def test_create_meta_pick_and_place():
