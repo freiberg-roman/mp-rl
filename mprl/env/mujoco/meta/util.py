@@ -115,3 +115,27 @@ def tolerance(
         value = np.where(in_bounds, 1.0, _sigmoids(d, value_at_margin, sigmoid))
 
     return float(value) if np.isscalar(x) else value
+
+
+def hamacher_product(a, b):
+    """The hamacher (t-norm) product of a and b.
+
+    computes (a * b) / ((a + b) - (a * b))
+
+    Args:
+        a (float): 1st term of hamacher product.
+        b (float): 2nd term of hamacher product.
+    Raises:
+        ValueError: a and b must range between 0 and 1
+
+    Returns:
+        float: The hammacher product of a and b
+    """
+    if not ((0.0 <= a <= 1.0) and (0.0 <= b <= 1.0)):
+        raise ValueError("a and b must range between 0 and 1")
+
+    denominator = a + b - (a * b)
+    h_prod = ((a * b) / denominator) if denominator > 0 else 0
+
+    assert 0.0 <= h_prod <= 1.0
+    return h_prod

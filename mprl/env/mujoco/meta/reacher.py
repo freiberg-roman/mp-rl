@@ -223,19 +223,6 @@ class SawyerReachEnvV2(MujocoEnv):
 
     TARGET_RADIUS = 0.05
 
-    def set_task(self, task):
-        self._set_task_called = True
-        data = pickle.loads(task.data)
-        assert isinstance(self, data["env_cls"])
-        del data["env_cls"]
-        self._last_rand_vec = data["rand_vec"]
-        self._freeze_rand_vec = True
-        self._last_rand_vec = data["rand_vec"]
-        del data["rand_vec"]
-        self._partially_observable = data["partially_observable"]
-        del data["partially_observable"]
-        self.reset()
-
     def set_xyz_action(self, action):
         action = np.clip(action, -1, 1)
         pos_delta = action * self.action_scale
@@ -344,14 +331,6 @@ class SawyerReachEnvV2(MujocoEnv):
         obs = np.hstack((curr_obs, self._prev_obs, pos_goal))
         self._prev_obs = curr_obs
         return obs
-
-    def _get_obs_dict(self):
-        obs = self._get_obs()
-        return {
-            "state_observation": obs,
-            "state_desired_goal": self._get_pos_goal(),
-            "state_achieved_goal": obs[3:-3],
-        }
 
     @property
     def observation_space(self):
