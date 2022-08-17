@@ -551,3 +551,7 @@ class SawyerPushEnvV2(MujocoEnv):
             caging_and_gripping = (caging_and_gripping + reach) / 2
 
         return caging_and_gripping
+
+    @property
+    def total_steps(self):
+        return self._total_steps
