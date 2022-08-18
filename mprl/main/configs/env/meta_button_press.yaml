@@ -1,4 +1,4 @@
-name: "MetaReacher"
+name: "MetaButtonPress"
 
 num_dof: 2
 q_dim: 2

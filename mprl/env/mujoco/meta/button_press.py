@@ -1,5 +1,3 @@
-import os
-import pickle
 from typing import Optional
 
 import mujoco
@@ -7,26 +5,25 @@ import numpy as np
 from gym.spaces import Box
 from scipy.spatial.transform import Rotation
 
-from mprl.env.mujoco.meta.util import tolerance
+from mprl.env.mujoco.meta.util import hamacher_product, tolerance
 from mprl.env.mujoco.mj_env import MujocoEnv
 
 
-class SawyerReachEnvV2(MujocoEnv):
-    """
-    Adapted SawyerReachEnvV2 environment for new MuJoCo bindings
-    """
-
+class SawyerButtonPressEnvV2(MujocoEnv):
     def __init__(self, base):
-        goal_low = (-0.1, 0.8, 0.05)
-        goal_high = (0.1, 0.9, 0.3)
+
         hand_low = (-0.5, 0.40, 0.05)
         hand_high = (0.5, 1, 0.5)
-        obj_low = (-0.1, 0.6, 0.02)
-        obj_high = (0.1, 0.7, 0.02)
-        action_scale = (1.0 / 100,)
-        action_rot_scale = (1.0,)
+        obj_low = (-0.1, 0.85, 0.115)
+        obj_high = (0.1, 0.9, 0.115)
+
+        model_name = "sawyer_button_press.xml"
         frame_skip = 5
-        model_name = "sawyer_reach_v2.xml"
+        mocap_low = None
+        mocap_high = None
+        action_scale = 1.0 / 100
+        action_rot_scale = 1.0
+
         self.base = base
         assets = self.load_assets()
 
@@ -35,12 +32,17 @@ class SawyerReachEnvV2(MujocoEnv):
         )
         self.reset_mocap_welds()
 
+        self.random_init = True
         self.action_scale = action_scale
         self.action_rot_scale = action_rot_scale
         self.hand_low = np.array(hand_low)
         self.hand_high = np.array(hand_high)
-        self.mocap_low = np.hstack(hand_low)
-        self.mocap_high = np.hstack(hand_high)
+        if mocap_low is None:
+            mocap_low = hand_low
+        if mocap_high is None:
+            mocap_high = hand_high
+        self.mocap_low = np.hstack(mocap_low)
+        self.mocap_high = np.hstack(mocap_high)
         self.curr_path_length = 0
         self.seeded_rand_vec = False
         self._freeze_rand_vec = True
@@ -55,6 +57,11 @@ class SawyerReachEnvV2(MujocoEnv):
 
         self.init_left_pad = self.get_body_com("leftpad")
         self.init_right_pad = self.get_body_com("rightpad")
+
+        self.action_space = Box(
+            np.array([-1, -1, -1, -1]),
+            np.array([+1, +1, +1, +1]),
+        )
 
         self.isV2 = "V2" in type(self).__name__
         # Technically these observation lengths are different between v1 and v2,
@@ -77,24 +84,20 @@ class SawyerReachEnvV2(MujocoEnv):
         self._prev_obs = self._get_curr_obs_combined_no_goal()
 
         self.init_config = {
-            "obj_init_angle": 0.3,
-            "obj_init_pos": np.array([0.0, 0.6, 0.02]),
-            "hand_init_pos": np.array([0.0, 0.6, 0.2]),
+            "obj_init_pos": np.array([0.0, 0.9, 0.115], dtype=np.float32),
+            "hand_init_pos": np.array([0, 0.4, 0.2], dtype=np.float32),
         }
-
-        self.goal = np.array([-0.1, 0.8, 0.2])
-
-        self.obj_init_angle = self.init_config["obj_init_angle"]
+        self.goal = np.array([0, 0.78, 0.12])
         self.obj_init_pos = self.init_config["obj_init_pos"]
         self.hand_init_pos = self.init_config["hand_init_pos"]
+        goal_low = self.hand_low
+        goal_high = self.hand_high
 
         self._random_reset_space = Box(
-            np.hstack((obj_low, goal_low)),
-            np.hstack((obj_high, goal_high)),
+            np.array(obj_low),
+            np.array(obj_high),
         )
         self.goal_space = Box(np.array(goal_low), np.array(goal_high))
-
-        self.num_resets = 0
 
     def load_assets(self):
         ASSETS = {}
@@ -115,16 +118,25 @@ class SawyerReachEnvV2(MujocoEnv):
             "pedestal.stl",
             "tablebody.stl",
             "tabletop.stl",
+            "button/button.stl",
+            "button/buttonring.stl",
+            "button/stopbot.stl",
+            "button/stopbutton.stl",
+            "button/stopbuttonrim.stl",
+            "button/stopbuttonrod.stl",
+            "button/stoptop.stl",
         ]
         texuture_files = [
             "floor2.png",
             "metal.png",
             "wood2.png",
             "wood4.png",
+            "button/metal1.png",
         ]
         xml_files = [
             "basic_scene.xml",
-            "block_dependencies.xml",
+            "buttonbox_dependencies.xml",
+            "buttonbox.xml",
             "xyz_base_dependencies.xml",
             "xyz_base.xml",
         ]
@@ -141,138 +153,113 @@ class SawyerReachEnvV2(MujocoEnv):
                 ASSETS[file] = f.read()
         return ASSETS
 
-    @property
-    def model_name(self):
-        return os.path.join("sawyer_xyz/sawyer_reach_v2.xml")
-
     def evaluate_state(self, obs, action):
-
-        reward, reach_dist, in_place = self.compute_reward(action, obs)
-        success = float(reach_dist <= 0.05)
+        (
+            reward,
+            tcp_to_obj,
+            tcp_open,
+            obj_to_target,
+            near_button,
+            button_pressed,
+        ) = self.compute_reward(action, obs)
 
         info = {
-            "success": success,
-            "near_object": reach_dist,
-            "grasp_success": 1.0,
-            "grasp_reward": reach_dist,
-            "in_place_reward": in_place,
-            "obj_to_target": reach_dist,
+            "success": float(obj_to_target <= 0.02),
+            "near_object": float(tcp_to_obj <= 0.05),
+            "grasp_success": float(tcp_open > 0),
+            "grasp_reward": near_button,
+            "in_place_reward": button_pressed,
+            "obj_to_target": obj_to_target,
             "unscaled_reward": reward,
         }
 
         return reward, info
 
+    @property
+    def _target_site_config(self):
+        return []
+
+    def _get_id_main_object(self):
+        return self.unwrapped.model.geom_name2id("btnGeom")
+
     def _get_pos_objects(self):
-        return self.get_body_com("obj")
+        return self.get_body_com("button") + np.array([0.0, -0.193, 0.0])
 
     def _get_quat_objects(self):
-        id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_GEOM, "objGeom")
+        id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, "button")
         mat = self.data.geom_xmat[id].reshape((3, 3))
         return Rotation.from_matrix(mat).as_quat()
-
-    def fix_extreme_obj_pos(self, orig_init_pos):
-        # This is to account for meshes for the geom and object are not
-        # aligned. If this is not done, the object could be initialized in an
-        # extreme position
-        diff = self.get_body_com("obj")[:2] - self.get_body_com("obj")[:2]
-        adjusted_pos = orig_init_pos[:2] + diff
-        # The convention we follow is that body_com[2] is always 0,
-        # and geom_pos[2] is the object height
-        return [adjusted_pos[0], adjusted_pos[1], self.get_body_com("obj")[-1]]
-
-    def reset_model(self):
-        self._reset_hand()
-        self._target_pos = self.goal.copy()
-        self.obj_init_pos = self.fix_extreme_obj_pos(self.init_config["obj_init_pos"])
-        self.obj_init_angle = self.init_config["obj_init_angle"]
-
-        goal_pos = self._get_state_rand_vec()
-        self._target_pos = goal_pos[3:]
-        while np.linalg.norm(goal_pos[:2] - self._target_pos[:2]) < 0.15:
-            goal_pos = self._get_state_rand_vec()
-            self._target_pos = goal_pos[3:]
-        self._target_pos = goal_pos[-3:]
-        self.obj_init_pos = goal_pos[:3]
-
-        self._set_obj_xyz(self.obj_init_pos)
-        self.num_resets += 1
-
-        return self._get_obs()
-
-    def compute_reward(self, actions, obs):
-        _TARGET_RADIUS = 0.05
-        tcp = self.tcp_center
-        target = self._target_pos
-
-        tcp_to_target = np.linalg.norm(tcp - target)
-
-        in_place_margin = np.linalg.norm(self.hand_init_pos - target)
-        in_place = tolerance(
-            tcp_to_target,
-            bounds=(0, _TARGET_RADIUS),
-            margin=in_place_margin,
-            sigmoid="long_tail",
-        )
-
-        return [10 * in_place, tcp_to_target, in_place]
-
-    _HAND_SPACE = Box(
-        np.array([-0.525, 0.348, -0.0525]), np.array([+0.525, 1.025, 0.7])
-    )
-    max_path_length = 500
-
-    TARGET_RADIUS = 0.05
-
-    def set_xyz_action(self, action):
-        action = np.clip(action, -1, 1)
-        pos_delta = action * self.action_scale
-        new_mocap_pos = self.data.mocap_pos + pos_delta[None]
-        new_mocap_pos[0, :] = np.clip(
-            new_mocap_pos[0, :],
-            self.mocap_low,
-            self.mocap_high,
-        )
-        self.data.mocap_pos[:] = new_mocap_pos
-        self.data.mocap_quat[:] = np.array([[1, 0, 1, 0]])
 
     def _set_obj_xyz(self, pos):
         qpos = self.data.qpos.flat.copy()
         qvel = self.data.qvel.flat.copy()
-        qpos[9:12] = pos.copy()
-        qvel[9:15] = 0
+        qpos[9] = pos
+        qvel[9] = 0
         self.set_state(qpos, qvel)
 
-    def _get_site_pos(self, siteName):
-        return self.model.site(siteName).pos.copy()
+    def reset_model(self):
+        self._reset_hand()
+        self._target_pos = self.goal.copy()
+        self.obj_init_pos = self.init_config["obj_init_pos"]
 
-    def _set_pos_site(self, name, pos):
-        """Sets the position of the site corresponding to `name`
+        if self.random_init:
+            goal_pos = self._get_state_rand_vec()
+            self.obj_init_pos = goal_pos
 
-        Args:
-            name (str): The site's name
-            pos (np.ndarray): Flat, 3 element array indicating site's location
-        """
-        assert isinstance(pos, np.ndarray)
-        assert pos.ndim == 1
-        self.data.site(name).xpos[:] = pos[:3]
+        self.model.body_pos[
+            mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, "box")
+        ] = self.obj_init_pos
+        self._set_obj_xyz(np.array([0.0]))
+        self._target_pos = self._get_site_pos("hole")
+
+        self._obj_to_target_init = abs(
+            self._target_pos[1] - self._get_site_pos("buttonStart")[1]
+        )
+
+        return self._get_obs()
+
+    def compute_reward(self, action, obs):
+        del action
+        obj = obs[4:7]
+        tcp = self.tcp_center
+
+        tcp_to_obj = np.linalg.norm(obj - tcp)
+        tcp_to_obj_init = np.linalg.norm(obj - self.init_tcp)
+        obj_to_target = abs(self._target_pos[1] - obj[1])
+
+        tcp_closed = max(obs[3], 0.0)
+        near_button = tolerance(
+            tcp_to_obj,
+            bounds=(0, 0.05),
+            margin=tcp_to_obj_init,
+            sigmoid="long_tail",
+        )
+        button_pressed = tolerance(
+            obj_to_target,
+            bounds=(0, 0.005),
+            margin=self._obj_to_target_init,
+            sigmoid="long_tail",
+        )
+
+        reward = 2 * hamacher_product(tcp_closed, near_button)
+        if tcp_to_obj <= 0.05:
+            reward += 8 * button_pressed
+
+        return (reward, tcp_to_obj, obs[3], obj_to_target, near_button, button_pressed)
+
+    def reset_mocap_welds(self):
+        """Resets the mocap welds that we use for actuation."""
+        if self.model.nmocap > 0 and self.model.eq_data is not None:
+            for i in range(self.model.eq_data.shape[0]):
+                if self.model.eq_type[i] == mujoco.mjtEq.mjEQ_WELD:
+                    self.model.eq_data[i, :] = np.array(
+                        [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0]
+                    )
+        mujoco.mj_forward(self.model, self.data)
 
     @property
-    def _target_site_config(self):
-        """Retrieves site name(s) and position(s) corresponding to env targets
-
-        :rtype: list of (str, np.ndarray)
-        """
-        return [("goal", self._target_pos)]
-
-    def _get_pos_goal(self):
-        """Retrieves goal position from mujoco properties or instance vars
-
-        Returns:
-            np.ndarray: Flat array (3 elements) representing the goal position
-        """
-        assert isinstance(self._target_pos, np.ndarray)
-        assert self._target_pos.ndim == 1
-        return self._target_pos
+    def total_steps(self):
+        return self._total_steps
 
     def _get_curr_obs_combined_no_goal(self):
         """Combines the end effector's {pos, closed amount} and the object(s)'
@@ -332,65 +319,6 @@ class SawyerReachEnvV2(MujocoEnv):
         self._prev_obs = curr_obs
         return obs
 
-    @property
-    def observation_space(self):
-        obs_obj_max_len = self._obs_obj_max_len if self.isV2 else 6
-
-        obj_low = np.full(obs_obj_max_len, -np.inf)
-        obj_high = np.full(obs_obj_max_len, +np.inf)
-        goal_low = np.zeros(3) if self._partially_observable else self.goal_space.low
-        goal_high = np.zeros(3) if self._partially_observable else self.goal_space.high
-        gripper_low = -1.0
-        gripper_high = +1.0
-
-        return Box(
-            np.hstack(
-                (
-                    self._HAND_SPACE.low,
-                    gripper_low,
-                    obj_low,
-                    self._HAND_SPACE.low,
-                    gripper_low,
-                    obj_low,
-                    goal_low,
-                )
-            ),
-            np.hstack(
-                (
-                    self._HAND_SPACE.high,
-                    gripper_high,
-                    obj_high,
-                    self._HAND_SPACE.high,
-                    gripper_high,
-                    obj_high,
-                    goal_high,
-                )
-            ),
-        )
-
-    def sample_random_action(self):
-        return np.random.uniform(-1, 1, (4,))
-
-    def step(self, action):
-        self.set_xyz_action(action[:3])
-        self.do_simulation([action[-1], -action[-1]], self.frame_skip)
-        self.curr_path_length += 1
-
-        # Running the simulator can sometimes mess up site positions, so
-        # re-position them here to make sure they're accurate
-        for site in self._target_site_config:
-            self._set_pos_site(*site)
-
-        self.current_steps += 1
-        self._total_steps += 1
-        done = (
-            self.time_out_after is not None
-            and self.current_steps >= self.time_out_after
-        )
-        self._last_stable_obs = self._get_obs()
-        reward, info = self.evaluate_state(self._last_stable_obs, action)
-        return self._last_stable_obs, reward, False, done
-
     def reset(self, time_out_after: Optional[int] = None):
         self.curr_path_length = 0
         return super().reset(time_out_after=time_out_after)
@@ -426,16 +354,68 @@ class SawyerReachEnvV2(MujocoEnv):
         tcp_center = (right_finger_pos + left_finger_pos) / 2.0
         return tcp_center
 
-    def reset_mocap_welds(self):
-        """Resets the mocap welds that we use for actuation."""
-        if self.model.nmocap > 0 and self.model.eq_data is not None:
-            for i in range(self.model.eq_data.shape[0]):
-                if self.model.eq_type[i] == mujoco.mjtEq.mjEQ_WELD:
-                    self.model.eq_data[i, :] = np.array(
-                        [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0]
-                    )
-        mujoco.mj_forward(self.model, self.data)
+    def set_xyz_action(self, action):
+        action = np.clip(action, -1, 1)
+        pos_delta = action * self.action_scale
+        new_mocap_pos = self.data.mocap_pos + pos_delta[None]
+        new_mocap_pos[0, :] = np.clip(
+            new_mocap_pos[0, :],
+            self.mocap_low,
+            self.mocap_high,
+        )
+        self.data.mocap_pos[:] = new_mocap_pos
+        self.data.mocap_quat[:] = np.array([[1, 0, 1, 0]])
 
-    @property
-    def total_steps(self):
-        return self._total_steps
+    def _set_obj_xyz(self, pos):
+        qpos = self.data.qpos.flat.copy()
+        qvel = self.data.qvel.flat.copy()
+        qpos[9:12] = pos.copy()
+        qvel[9:15] = 0
+        self.set_state(qpos, qvel)
+
+    def _get_site_pos(self, siteName):
+        return self.model.site(siteName).pos.copy()
+
+    def _set_pos_site(self, name, pos):
+        """Sets the position of the site corresponding to `name`
+
+        Args:
+            name (str): The site's name
+            pos (np.ndarray): Flat, 3 element array indicating site's location
+        """
+        assert isinstance(pos, np.ndarray)
+        assert pos.ndim == 1
+        self.data.site(name).xpos[:] = pos[:3]
+
+    def _get_pos_goal(self):
+        """Retrieves goal position from mujoco properties or instance vars
+
+        Returns:
+            np.ndarray: Flat array (3 elements) representing the goal position
+        """
+        assert isinstance(self._target_pos, np.ndarray)
+        assert self._target_pos.ndim == 1
+        return self._target_pos
+
+    def step(self, action):
+        self.set_xyz_action(action[:3])
+        self.do_simulation([action[-1], -action[-1]], self.frame_skip)
+        self.curr_path_length += 1
+
+        # Running the simulator can sometimes mess up site positions, so
+        # re-position them here to make sure they're accurate
+        for site in self._target_site_config:
+            self._set_pos_site(*site)
+
+        self.current_steps += 1
+        self._total_steps += 1
+        done = (
+            self.time_out_after is not None
+            and self.current_steps >= self.time_out_after
+        )
+        self._last_stable_obs = self._get_obs()
+        reward, info = self.evaluate_state(self._last_stable_obs, action)
+        return self._last_stable_obs, reward, False, done
+
+    def sample_random_action(self):
+        return np.random.uniform(-1, 1, (4,))

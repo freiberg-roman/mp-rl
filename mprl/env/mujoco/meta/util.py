@@ -117,13 +117,25 @@ def tolerance(
     return float(value) if np.isscalar(x) else value
 
 
-def _assert_task_is_set(func):
-    def inner(*args, **kwargs):
-        env = args[0]
-        if not env._set_task_called:
-            raise RuntimeError(
-                "You must call env.set_task before using env." + func.__name__
-            )
-        return func(*args, **kwargs)
+def hamacher_product(a, b):
+    """The hamacher (t-norm) product of a and b.
 
-    return inner
+    computes (a * b) / ((a + b) - (a * b))
+
+    Args:
+        a (float): 1st term of hamacher product.
+        b (float): 2nd term of hamacher product.
+    Raises:
+        ValueError: a and b must range between 0 and 1
+
+    Returns:
+        float: The hammacher product of a and b
+    """
+    if not ((0.0 <= a <= 1.0) and (0.0 <= b <= 1.0)):
+        raise ValueError("a and b must range between 0 and 1")
+
+    denominator = a + b - (a * b)
+    h_prod = ((a * b) / denominator) if denominator > 0 else 0
+
+    assert 0.0 <= h_prod <= 1.0
+    return h_prod
