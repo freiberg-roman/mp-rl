@@ -10,3 +10,4 @@ def test_create_meta_button_press():
     for _ in range(10):
         next_state, reward, done, timeout = env.step(env.sample_random_action())
     assert timeout is True
+    assert env.total_steps == 10
