@@ -415,7 +415,7 @@ class SawyerButtonPressEnvV2(MujocoEnv):
         )
         self._last_stable_obs = self._get_obs()
         reward, info = self.evaluate_state(self._last_stable_obs, action)
-        return self._last_stable_obs, reward, False, done
+        return self._last_stable_obs, reward, False, done, self.get_sim_state()
 
     def sample_random_action(self):
         return np.random.uniform(-1, 1, (4,))

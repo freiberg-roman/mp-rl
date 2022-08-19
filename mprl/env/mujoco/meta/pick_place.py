@@ -379,7 +379,7 @@ class SawyerPickPlaceEnvV2(MujocoEnv):
         )
         obs = self._get_obs()
         reward = self.evaluate_state(obs, action)
-        return obs, reward, False, done
+        return obs, reward, False, done, self.get_sim_state()
 
     def reset(self, time_out_after: Optional[int] = None):
         self.curr_path_length = 0

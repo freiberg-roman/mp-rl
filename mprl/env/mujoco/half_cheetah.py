@@ -46,7 +46,7 @@ class HalfCheetahEnv(MujocoEnv):
             self.time_out_after is not None
             and self.current_steps >= self.time_out_after
         )
-        return observation, reward, False, done
+        return observation, reward, False, done, self.get_sim_state()
 
     def sample_random_action(self):
         return np.random.uniform(-1, 1, (6,))

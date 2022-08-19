@@ -158,3 +158,6 @@ class MujocoEnv:
     @property
     def reset_after(self):
         return self.time_out_after
+
+    def get_sim_state(self):
+        return self.data.qpos.ravel().copy(), self.data.qvel.ravel().copy()

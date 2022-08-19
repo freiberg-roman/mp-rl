@@ -11,16 +11,17 @@ class GroundTruth(Prediction):
     def __init__(self, cfg_env: DictConfig):
         self.cfg_env = cfg_env
         self.env: MujocoEnv = create_mj_env(cfg_env)
+        self.state_dim = cfg_env.state_dim
 
-    def next_state(self, states, actions):
-        next_states = np.zeros_like(states)
-        for i, sa in enumerate(zip(states, actions)):
-            state, action = sa
-            state = to_np(state)
-            action = to_np(action)
-            set_q, set_v = self.env.decompose(state, full_obs=True)
-            self.env.set_state(set_q, set_v)
-            next_state, _, _, _ = self.env.step(action)
+    def next_state(self, sim_states, actions):
+        qposes = to_np(sim_states[0])
+        qvels = to_np(sim_states[1])
+        actions = to_np(actions)
+        next_states = np.empty((len(actions), self.state_dim))
+        for i, pva in enumerate(zip(qposes, qvels, actions)):
+            p, v, a = pva
+            self.env.set_state(p, v)
+            next_state, _, _, _, _ = self.env.step(a)
             next_states[i] = next_state
         return next_states
 

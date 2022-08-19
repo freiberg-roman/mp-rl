@@ -1,11 +1,9 @@
 from abc import abstractmethod
 
-import torch
-
 
 class Prediction:
     @abstractmethod
-    def next_state(self, states, actions):
+    def next_state(self, sim_state, actions):
         raise NotImplementedError
 
     @abstractmethod
