@@ -100,7 +100,7 @@ class RandomRB(ReplayBuffer):
 
     @property
     def rewards(self):
-        return self._acts
+        return self._rews
 
     @property
     def dones(self):

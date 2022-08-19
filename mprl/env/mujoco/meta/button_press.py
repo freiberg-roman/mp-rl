@@ -419,3 +419,7 @@ class SawyerButtonPressEnvV2(MujocoEnv):
 
     def sample_random_action(self):
         return np.random.uniform(-1, 1, (4,))
+
+    @property
+    def steps_after_reset(self):
+        return self.current_steps

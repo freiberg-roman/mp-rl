@@ -13,7 +13,7 @@ def sac_policy_loss(agent: any, batch: EnvSteps):
     """
     Compute the policy loss for SAC.
     """
-    states, next_states, actions, rewards, dones = batch.to_torch_batch()
+    states, next_states, actions, rewards, dones, sim_state = batch.to_torch_batch()
     pi, log_pi, _, _ = agent.sample(states)
     qf1_pi, qf2_pi = agent.critic(states, pi)
     min_qf_pi = torch.min(qf1_pi, qf2_pi)
@@ -92,13 +92,14 @@ class MixedWeightedSACModelPolicyLoss:
 
     def __call__(self, agent: SACMixed, batch: EnvSteps):
         # dimension (batch_size, data_dimension)
-        states, next_states, actions, rewards, dones = batch.to_torch_batch()
+        states, next_states, actions, rewards, dones, sim_states = batch.to_torch_batch()
         # dimension (1, batch_size, weight_dimension)
         weights, _ = agent.select_weights_and_time(states)
         b_q, b_v = agent.decompose_fn(states)
         planner_local = deepcopy(agent.planner_train)
         planner_local.re_init(weights[0], bc_pos=b_q, bc_vel=b_v, num_t=agent.num_steps)
         next_states = states
+        next_sim_states = sim_states
         # dimensions (batch_size, sequence_len, 1)
         q_prob = torch.zeros(size=(len(states), agent.num_steps, 1))
         min_qf = torch.zeros_like(q_prob)
@@ -112,7 +113,8 @@ class MixedWeightedSACModelPolicyLoss:
             # dimension (batch_size, 1)
             q_prob[:, i, :] = agent.prob(next_states, weights[0]).detach()
             min_qf[:, i, :] = torch.min(qf1_pi, qf2_pi)
-            next_states = to_ts(self.model.next_state(next_states, action))
+            next_states, next_sim_states = self.model.next_state(sim_states, action)
+            next_states = to_ts(next_states)
         q_prob = F.normalize(q_prob, p=1.0, dim=1)
         policy_loss = (-q_prob * min_qf).mean()
         return policy_loss

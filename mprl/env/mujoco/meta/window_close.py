@@ -480,3 +480,7 @@ class SawyerWindowCloseEnvV2(MujocoEnv):
         :rtype: list of (str, np.ndarray)
         """
         return [("goal", self._target_pos)]
+
+    @property
+    def steps_after_reset(self):
+        return self.current_steps

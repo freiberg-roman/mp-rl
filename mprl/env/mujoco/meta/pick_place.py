@@ -490,3 +490,7 @@ class SawyerPickPlaceEnvV2(MujocoEnv):
     @property
     def total_steps(self):
         return self._total_steps
+
+    @property
+    def steps_after_reset(self):
+        return self.current_steps

@@ -32,7 +32,7 @@ class EvaluateAgent:
                 agent.replan()
             raw_action, _ = agent.select_action(state, evaluate=True)
             action = to_np(raw_action)
-            state, reward, done, time_out = env_eval.step(action)
+            state, reward, done, time_out, _ = env_eval.step(action)
             total_reward += reward
             if self.record:
                 images.append(env_eval.render(mode="rgb_array"))
@@ -98,7 +98,7 @@ class EvaluateMPAgent:
             for q, v in trajectory_planner:
                 raw_action, _ = controller.get_action(q, v, c_pos, c_vel)
                 action = to_np(raw_action)
-                next_state, reward, done, time_out = env_eval.step(action)
+                next_state, reward, done, time_out, _ = env_eval.step(action)
                 total_reward += reward
                 c_pos, c_vel = env_eval.decompose(np.expand_dims(next_state, axis=0))
                 if self.record:

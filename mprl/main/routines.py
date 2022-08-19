@@ -56,8 +56,8 @@ def train_sac(cfg_alg: DictConfig, cfg_env: DictConfig, cfg_wandb: DictConfig):
                 raw_action, _ = agent.select_action(state)
                 action = to_np(raw_action)
 
-            next_state, reward, done, time_out = env.step(action)
-            buffer.add(state, next_state, action, reward, done)
+            next_state, reward, done, time_out, sim_state = env.step(action)
+            buffer.add(state, next_state, action, reward, done, sim_state)
             state = next_state
             total_reward += reward
 
@@ -213,8 +213,8 @@ def train_stepwise_mp_sac(
             else:
                 raw_action, _ = agent.select_action(state)
                 action = to_np(raw_action)
-            next_state, reward, done, _ = env.step(action)
-            buffer.add(state, next_state, action, reward, done)
+            next_state, reward, done, _, sim_state = env.step(action)
+            buffer.add(state, next_state, action, reward, done, sim_state)
             state = next_state
 
             if env.steps_after_reset > cfg_env.time_out:

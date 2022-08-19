@@ -561,3 +561,7 @@ class SawyerPushEnvV2(MujocoEnv):
     def reset(self, time_out_after: Optional[int] = None):
         self.curr_path_length = 0
         return super().reset(time_out_after=time_out_after)
+
+    @property
+    def steps_after_reset(self):
+        return self.current_steps

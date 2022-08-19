@@ -19,12 +19,16 @@ class GroundTruth(Prediction):
         qvels = to_np(sim_states[1])
         actions = to_np(actions)
         next_states = np.empty((len(actions), self.state_dim))
+        next_qposes = np.empty_like(qposes)
+        next_qvels = np.empty_like(qvels)
         for i, pva in enumerate(zip(qposes, qvels, actions)):
             p, v, a = pva
             self.env.set_state(p, v)
-            next_state, _, _, _, _ = self.env.step(a)
+            next_state, _, _, _, next_sim_states = self.env.step(a)
             next_states[i] = next_state
-        return next_states
+            next_qposes[i] = next_sim_states[0]
+            next_qvels[i] = next_sim_states[1]
+        return next_states, (next_qposes, next_qvels)
 
     def update_parameters(self, batch):
         pass

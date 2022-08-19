@@ -38,7 +38,7 @@ def buffer_sim_state_test(env_conf):
             dones,
             sim_states,
         ) = batch.to_torch_batch()
-        pred_next_states = gt_pred.next_state(sim_states, actions)
+        pred_next_states, _ = gt_pred.next_state(sim_states, actions)
     assert pred_next_states.shape == next_states.shape
 
     for batch in buffer_seq.get_iter(
@@ -53,7 +53,7 @@ def buffer_sim_state_test(env_conf):
             dones,
             sim_states,
         ) = batch.to_torch_batch()
-        pred_next_states = gt_pred.next_state(sim_states, actions)
+        pred_next_states, _ = gt_pred.next_state(sim_states, actions)
     assert pred_next_states.shape == next_states.shape
 
     for batch in buffer_seq.get_true_k_sequence_iter(
@@ -69,7 +69,7 @@ def buffer_sim_state_test(env_conf):
             dones,
             sim_states,
         ) = batch.to_torch_batch()
-        pred_next_states = gt_pred.next_state(
+        pred_next_states, _ = gt_pred.next_state(
             (sim_states[0][:, 0, :], sim_states[1][:, 0, :]), actions[:, 0, :]
         )
     assert pred_next_states.shape == next_states[:, 0, :].shape
