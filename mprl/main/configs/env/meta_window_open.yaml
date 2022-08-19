@@ -7,6 +7,8 @@ time_out: 1000  # only for SAC activated
 
 action_dim: 4
 state_dim: 39
+sim_qpos_dim: 10
+sim_qvel_dim: 10
 coordinate_dim: 0
 dt: 0.02
 

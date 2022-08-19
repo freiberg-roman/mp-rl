@@ -12,6 +12,7 @@ class GroundTruth(Prediction):
         self.cfg_env = cfg_env
         self.env: MujocoEnv = create_mj_env(cfg_env)
         self.state_dim = cfg_env.state_dim
+        self.env.reset()
 
     def next_state(self, sim_states, actions):
         qposes = to_np(sim_states[0])
