@@ -92,7 +92,14 @@ class MixedWeightedSACModelPolicyLoss:
 
     def __call__(self, agent: SACMixed, batch: EnvSteps):
         # dimension (batch_size, data_dimension)
-        states, next_states, actions, rewards, dones, sim_states = batch.to_torch_batch()
+        (
+            states,
+            next_states,
+            actions,
+            rewards,
+            dones,
+            sim_states,
+        ) = batch.to_torch_batch()
         # dimension (1, batch_size, weight_dimension)
         weights, _ = agent.select_weights_and_time(states)
         b_q, b_v = agent.decompose_fn(states)

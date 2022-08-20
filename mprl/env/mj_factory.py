@@ -12,7 +12,6 @@ from mprl.env.mujoco import (
     SawyerPickPlaceEnvV2,
     SawyerPushEnvV2,
     SawyerReachEnvV2,
-    SawyerWindowCloseEnvV2,
     SawyerWindowOpenEnvV2,
 )
 from mprl.env.mujoco.mj_env import MujocoEnv
@@ -41,5 +40,3 @@ def create_mj_env(cfg: DictConfig) -> MujocoEnv:
         return SawyerPickPlaceEnvV2(base=BASE + "meta/")
     if cfg.name == "MetaWindowOpen":
         return SawyerWindowOpenEnvV2(base=BASE + "meta/")
-    if cfg.name == "MetaWindowClose":
-        return SawyerWindowCloseEnvV2(base=BASE + "meta/")

@@ -74,6 +74,7 @@ def buffer_sim_state_test(env_conf):
         )
     assert pred_next_states.shape == next_states[:, 0, :].shape
 
+
 def test_pred_reacher():
     env_conf = OmegaConf.create(
         {
@@ -85,6 +86,7 @@ def test_pred_reacher():
         }
     )
     buffer_sim_state_test(env_conf)
+
 
 def test_pred_ant():
     env_conf = OmegaConf.create(
@@ -163,6 +165,7 @@ def test_pred_meta_push():
     )
     buffer_sim_state_test(env_conf)
 
+
 def test_pred_meta_pick_and_place():
     env_conf = OmegaConf.create(
         {
@@ -174,6 +177,7 @@ def test_pred_meta_pick_and_place():
         }
     )
     buffer_sim_state_test(env_conf)
+
 
 def test_pred_meta_reacher():
     env_conf = OmegaConf.create(
@@ -187,6 +191,7 @@ def test_pred_meta_reacher():
     )
     buffer_sim_state_test(env_conf)
 
+
 def test_pred_meta_window_close():
     env_conf = OmegaConf.create(
         {
@@ -198,6 +203,7 @@ def test_pred_meta_window_close():
         }
     )
     buffer_sim_state_test(env_conf)
+
 
 def test_pred_meta_window_open():
     env_conf = OmegaConf.create(

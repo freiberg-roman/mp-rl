@@ -15,7 +15,10 @@ from mprl.models.physics.moe import MixtureOfExperts
 from mprl.models.physics.prediction import Prediction
 from mprl.models.sac import SAC
 from mprl.models.sac_common import SACUpdate
-from mprl.models.sac_common.critic_loss import sac_critic_loss_sequenced
+from mprl.models.sac_common.critic_loss import (
+    sac_critic_loss_sequenced,
+    sac_mp_critic_loss,
+)
 from mprl.models.sac_common.policy_loss import (
     MixedMeanSACModelPolicyLoss,
     MixedMeanSACOffPolicyLoss,
@@ -188,7 +191,7 @@ def train_stepwise_mp_sac(
         policy_loss = MixedWeightedSACModelPolicyLoss(model)
     else:
         raise ValueError("Unknown reward weighting")
-    update = SACUpdate(policy_loss=policy_loss)
+    update = SACUpdate(policy_loss=policy_loss, critic_loss=sac_mp_critic_loss)
 
     num_t = cfg_alg.agent.time_steps
     eval_mp = EvaluateMPAgent(cfg_env, record=cfg_wandb.record, num_t=num_t)

@@ -82,11 +82,11 @@
     </body>
   </worldbody>
   <actuator>
-    <motor gear="120" joint="bthigh" name="bthigh"/>
-    <motor gear="90" joint="bshin" name="bshin"/>
-    <motor gear="60" joint="bfoot" name="bfoot"/>
-    <motor gear="120" joint="fthigh" name="fthigh"/>
-    <motor gear="60" joint="fshin" name="fshin"/>
-    <motor gear="30" joint="ffoot" name="ffoot"/>
+    <motor gear="120" joint="bthigh" name="bthigh_act"/>
+    <motor gear="90" joint="bshin" name="bshin_act"/>
+    <motor gear="60" joint="bfoot" name="bfoot_act"/>
+    <motor gear="120" joint="fthigh" name="fthigh_act"/>
+    <motor gear="60" joint="fshin" name="fshin_act"/>
+    <motor gear="30" joint="ffoot" name="ffoot_act"/>
   </actuator>
 </mujoco>

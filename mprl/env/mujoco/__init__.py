@@ -7,7 +7,6 @@ from .meta import (
     SawyerPickPlaceEnvV2,
     SawyerPushEnvV2,
     SawyerReachEnvV2,
-    SawyerWindowCloseEnvV2,
     SawyerWindowOpenEnvV2,
 )
 from .reacher import ReacherEnv
