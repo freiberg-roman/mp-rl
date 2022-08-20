@@ -38,6 +38,7 @@ class MujocoEnv:
         self.qpos_idx = self.get_qpos_idx(self.jnt_names)
         self.qvel_idx = self.get_qvel_idx(self.jnt_names)
         self.ctrl_idx = self.get_ctrl_idx(self.jnt_names)
+        pass
 
     def _set_action_space(self) -> Tuple[float, float]:
         bounds = self.model.actuator_ctrlrange.copy().astype(np.float32)

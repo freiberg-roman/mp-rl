@@ -5,11 +5,12 @@ import numpy as np
 from gym.spaces import Box
 from scipy.spatial.transform import Rotation
 
+from mprl.env.mujoco.meta.base_sawyer import BaseSawyer
 from mprl.env.mujoco.meta.util import hamacher_product, tolerance
 from mprl.env.mujoco.mj_env import MujocoEnv
 
 
-class SawyerPushEnvV2(MujocoEnv):
+class SawyerPushEnvV2(BaseSawyer):
     """
     Motivation for V2:
         V1 was very difficult to solve because the observation didn't say where
@@ -184,26 +185,6 @@ class SawyerPushEnvV2(MujocoEnv):
         self._prev_obs = curr_obs
         return obs
 
-    def step(self, action):
-        self.set_xyz_action(action[:3])
-        self.do_simulation([action[-1], -action[-1]], self.frame_skip)
-        self.curr_path_length += 1
-
-        # Running the simulator can sometimes mess up site positions, so
-        # re-position them here to make sure they're accurate
-        for site in self._target_site_config:
-            self._set_pos_site(*site)
-
-        self.current_steps += 1
-        self._total_steps += 1
-        done = (
-            self.time_out_after is not None
-            and self.current_steps >= self.time_out_after
-        )
-        self._last_stable_obs = self._get_obs()
-        reward = self.evaluate_state(self._last_stable_obs, action)
-        return self._last_stable_obs, reward, False, done, self.get_sim_state()
-
     def evaluate_state(self, obs, action):
         (
             reward,
@@ -215,11 +196,6 @@ class SawyerPushEnvV2(MujocoEnv):
         ) = self.compute_reward(action, obs)
 
         return reward
-
-    def _get_quat_objects(self):
-        id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_GEOM, "objGeom")
-        mat = self.data.geom_xmat[id].reshape((3, 3))
-        return Rotation.from_matrix(mat).as_quat()
 
     def _get_pos_objects(self):
         return self.get_body_com("obj")
@@ -359,13 +335,6 @@ class SawyerPushEnvV2(MujocoEnv):
     def _get_site_pos(self, siteName):
         return self.model.site(siteName).pos.copy()
 
-    def _reset_hand(self, steps=50):
-        for _ in range(steps):
-            self.data.mocap_pos[0, :] = self.hand_init_pos
-            self.data.mocap_quat[0, :] = np.array([[1, 0, 1, 0]])
-            self.do_simulation([-1, 1], self.frame_skip)
-        self.init_tcp = self.tcp_center
-
     def _get_state_rand_vec(self):
         rand_vec = np.random.uniform(
             self._random_reset_space.low,
@@ -403,9 +372,6 @@ class SawyerPushEnvV2(MujocoEnv):
         )
         self.data.mocap_pos[:] = new_mocap_pos
         self.data.mocap_quat[:] = np.array([[1, 0, 1, 0]])
-
-    def sample_random_action(self):
-        return np.random.uniform(-1, 1, (4,))
 
     @property
     def _target_site_config(self):

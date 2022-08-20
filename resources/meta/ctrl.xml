@@ -1,0 +1,11 @@
+<mujocoinclude>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="right_j0" name="right_j0_act" gear="400"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="right_j1" name="right_j1_act" gear="400"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="right_j2" name="right_j2_act" gear="400"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="right_j3" name="right_j3_act" gear="400"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="right_j4" name="right_j4_act" gear="400"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="right_j5" name="right_j5_act" gear="400"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="right_j6" name="right_j6_act" gear="400"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="r_close" name="r_close_act" gear="100"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="l_close" name="l_close_act" gear="100"/>
+</mujocoinclude>
