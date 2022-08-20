@@ -1,6 +1,6 @@
 name: "Humanoid"
 
-num_dof: 8
+num_dof: 17
 time_out: 1000  # only for SAC activated
 
 action_dim: 17

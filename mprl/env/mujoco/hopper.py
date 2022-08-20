@@ -137,6 +137,8 @@ class HopperEnv(MujocoEnv):
         return self._total_steps
 
     def decompose(self, state, full_obs=False):
+        if isinstance(state, tuple):
+            return super(HopperEnv, self).decompose(state)
         if full_obs:
             return state[..., 3:6], state[..., -3:]  # qpos, qvel
         else:
@@ -148,3 +150,7 @@ class HopperEnv(MujocoEnv):
     @property
     def steps_after_reset(self):
         return self.current_steps
+
+    @property
+    def get_jnt_names(self):
+        return ["thigh_joint", "leg_joint", "foot_joint"]

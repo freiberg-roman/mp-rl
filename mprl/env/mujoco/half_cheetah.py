@@ -92,6 +92,8 @@ class HalfCheetahEnv(MujocoEnv):
         return self._total_steps
 
     def decompose(self, state, full_obs=False):
+        if isinstance(state, tuple):
+            return super(HalfCheetahEnv, self).decompose(state)
         coord = 3
         if full_obs:
             # In this case the x position is not included in the state -> just set it to 0
@@ -105,3 +107,7 @@ class HalfCheetahEnv(MujocoEnv):
     @property
     def steps_after_reset(self):
         return self.current_steps
+
+    @property
+    def get_jnt_names(self):
+        return ["bthigh", "bshin", "bfoot", "fthigh", "fshin", "ffoot"]

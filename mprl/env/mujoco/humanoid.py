@@ -141,10 +141,31 @@ class HumanoidEnv(MujocoEnv):
         return self._total_steps
 
     def decompose(self, state, full_obs=False):
-        """
-        TODO
-        """
+        if isinstance(state, tuple):
+            return super(HumanoidEnv, self).decompose(state)
 
     @property
     def steps_after_reset(self):
         return self.current_steps
+
+    @property
+    def get_jnt_names(self):
+        return [
+            "abdomen_y",
+            "abdomen_z",
+            "abdomen_x",
+            "right_hip_x",
+            "right_hip_z",
+            "right_hip_y",
+            "right_knee",
+            "left_hip_x",
+            "left_hip_z",
+            "left_hip_y",
+            "left_knee",
+            "right_shoulder1",
+            "right_shoulder2",
+            "right_elbow",
+            "left_shoulder1",
+            "left_shoulder2",
+            "left_elbow",
+        ]

@@ -33,9 +33,9 @@
     </body>
   </worldbody>
   <actuator>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" gear="200.0" joint="thigh_joint" name="thigh_joint_name"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" gear="200.0" joint="leg_joint" name="leg_joint_name"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" gear="200.0" joint="foot_joint" name="foot_joint_name"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" gear="200.0" joint="thigh_joint" name="thigh_joint_act"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" gear="200.0" joint="leg_joint" name="leg_joint_act"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" gear="200.0" joint="foot_joint" name="foot_joint_act"/>
   </actuator>
     <asset>
         <texture type="skybox" builtin="gradient" rgb1=".4 .5 .6" rgb2="0 0 0"

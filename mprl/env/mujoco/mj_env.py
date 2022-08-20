@@ -34,6 +34,10 @@ class MujocoEnv:
         }
 
         self.low, self.high = self._set_action_space()
+        self.jnt_names = self.get_jnt_names
+        self.qpos_idx = self.get_qpos_idx(self.jnt_names)
+        self.qvel_idx = self.get_qvel_idx(self.jnt_names)
+        self.ctrl_idx = self.get_ctrl_idx(self.jnt_names)
 
     def _set_action_space(self) -> Tuple[float, float]:
         bounds = self.model.actuator_ctrlrange.copy().astype(np.float32)
@@ -80,7 +84,7 @@ class MujocoEnv:
         return self.model.opt.timestep * self.frame_skip
 
     def do_simulation(self, ctrl, n_frames):
-        self.data.ctrl[:] = ctrl
+        self.data.ctrl[self.ctrl_idx] = ctrl
         mujoco.mj_step(self.model, self.data, nstep=n_frames)
 
     def render(
@@ -152,8 +156,10 @@ class MujocoEnv:
     def get_forces(self):
         return self.data.qfrc_bias.flat
 
-    def decompose(self):
-        pass
+    def decompose(self, state):
+        if isinstance(state, tuple):
+            q, v = state
+            return q[..., self.qpos_idx], v[..., self.qvel_idx]
 
     @property
     def reset_after(self):
@@ -161,3 +167,31 @@ class MujocoEnv:
 
     def get_sim_state(self):
         return self.data.qpos.ravel().copy(), self.data.qvel.ravel().copy()
+
+    def get_qpos_idx(self, names):
+        return [
+            self.model.jnt_qposadr[
+                mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_JOINT, name)
+            ]
+            for name in names
+        ]
+
+    def get_qvel_idx(self, names):
+        return [
+            self.model.jnt_dofadr[
+                mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_JOINT, name)
+            ]
+            for name in names
+        ]
+
+    def get_ctrl_idx(self, names):
+        return [
+            mujoco.mj_name2id(
+                self.model, type=mujoco.mjtObj.mjOBJ_ACTUATOR, name=name + "_act"
+            )
+            for name in names
+        ]
+
+    @property
+    def get_jnt_names(self):
+        raise NotImplementedError

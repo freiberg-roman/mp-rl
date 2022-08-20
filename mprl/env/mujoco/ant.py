@@ -142,6 +142,8 @@ class AntEnv(MujocoEnv):
         return self._total_steps
 
     def decompose(self, state, full_obs=False):
+        if isinstance(state, tuple):
+            return super(AntEnv, self).decompose(state)
         if full_obs:
             extended_shape = state.shape[:-1] + (29,)
             extended_state = np.zeros(extended_shape)
@@ -156,3 +158,16 @@ class AntEnv(MujocoEnv):
     @property
     def steps_after_reset(self):
         return self.current_steps
+
+    @property
+    def get_jnt_names(self):
+        return [
+            "hip_1",
+            "ankle_1",
+            "hip_2",
+            "ankle_2",
+            "hip_3",
+            "ankle_3",
+            "hip_4",
+            "ankle_4",
+        ]
