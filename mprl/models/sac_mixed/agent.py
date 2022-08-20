@@ -66,9 +66,9 @@ class SACMixed:
             self.alpha_optim = Adam([self.log_alpha], lr=cfg.lr)
 
     @torch.no_grad()
-    def select_action(self, state, evaluate=False):
+    def select_action(self, state, sim_state=None, evaluate=False):
         state = torch.FloatTensor(state).to(self.device).unsqueeze(0)
-        b_q, b_v = self.decompose_fn(state)
+        b_q, b_v = self.decompose_fn(sim_state)
         try:
             if self.force_replan:
                 self.force_replan = False

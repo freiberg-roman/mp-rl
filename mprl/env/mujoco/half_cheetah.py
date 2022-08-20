@@ -91,19 +91,6 @@ class HalfCheetahEnv(MujocoEnv):
     def total_steps(self):
         return self._total_steps
 
-    def decompose(self, state, full_obs=False):
-        if isinstance(state, tuple):
-            return super(HalfCheetahEnv, self).decompose(state)
-        coord = 3
-        if full_obs:
-            # In this case the x position is not included in the state -> just set it to 0
-            extended_shape = state.shape[:-1] + (18,)
-            extended_state = np.zeros(extended_shape)
-            extended_state[..., 1:] = state
-            return extended_state[..., :9], extended_state[..., 9:]  # qpos, qvel
-        else:
-            return state[..., 2:8], state[..., 8 + coord :]
-
     @property
     def steps_after_reset(self):
         return self.current_steps

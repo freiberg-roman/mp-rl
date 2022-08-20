@@ -136,17 +136,6 @@ class HopperEnv(MujocoEnv):
     def total_steps(self):
         return self._total_steps
 
-    def decompose(self, state, full_obs=False):
-        if isinstance(state, tuple):
-            return super(HopperEnv, self).decompose(state)
-        if full_obs:
-            return state[..., 3:6], state[..., -3:]  # qpos, qvel
-        else:
-            return (
-                state[..., 2:5],
-                state[..., -3:],
-            )  # same but excluding coordinates in q
-
     @property
     def steps_after_reset(self):
         return self.current_steps

@@ -49,7 +49,9 @@ class SAC:
             )
             self.alpha_optim: Adam = Adam([self.log_alpha], lr=cfg.lr)
 
-    def select_action(self, state: np.ndarray, evaluate: bool = False) -> np.ndarray:
+    def select_action(
+        self, state: np.ndarray, sim_state=None, evaluate: bool = False
+    ) -> np.ndarray:
         state = torch.FloatTensor(state).to(self.device).unsqueeze(0)
         if evaluate is False:
             action, _, _, _ = self.policy.sample(state)

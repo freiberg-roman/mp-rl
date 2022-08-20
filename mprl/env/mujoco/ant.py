@@ -141,20 +141,6 @@ class AntEnv(MujocoEnv):
     def total_steps(self):
         return self._total_steps
 
-    def decompose(self, state, full_obs=False):
-        if isinstance(state, tuple):
-            return super(AntEnv, self).decompose(state)
-        if full_obs:
-            extended_shape = state.shape[:-1] + (29,)
-            extended_state = np.zeros(extended_shape)
-            extended_state[..., 2:] = state
-            return extended_state[..., :15], extended_state[..., 15:]  # qpos, qvel
-        else:
-            return (
-                state[..., 5:13],
-                state[..., -8:],
-            )  # same but excluding coordinates in q
-
     @property
     def steps_after_reset(self):
         return self.current_steps

@@ -140,10 +140,6 @@ class HumanoidEnv(MujocoEnv):
     def total_steps(self):
         return self._total_steps
 
-    def decompose(self, state, full_obs=False):
-        if isinstance(state, tuple):
-            return super(HumanoidEnv, self).decompose(state)
-
     @property
     def steps_after_reset(self):
         return self.current_steps

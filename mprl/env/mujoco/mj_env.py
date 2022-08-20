@@ -62,7 +62,7 @@ class MujocoEnv:
         self.current_steps = 0
         mujoco.mj_resetData(self.model, self.data)
         ob = self.reset_model()
-        return ob
+        return ob, self.get_sim_state()
 
     def sample_random_action(self):
         """

@@ -25,14 +25,16 @@ class EvaluateAgent:
         images = []
         total_reward = 0
 
-        state = env_eval.reset(time_out_after=self.cfg_env.time_out)
+        state, sim_state = env_eval.reset(time_out_after=self.cfg_env.time_out)
         done, time_out = False, False
         while not done and not time_out:
             if isinstance(agent, SACMixed):
                 agent.replan()
-            raw_action, _ = agent.select_action(state, evaluate=True)
+            raw_action, _ = agent.select_action(
+                state, (sim_state[0][None], sim_state[1][None]), evaluate=True
+            )
             action = to_np(raw_action)
-            state, reward, done, time_out, _ = env_eval.step(action)
+            state, reward, done, time_out, sim_state = env_eval.step(action)
             total_reward += reward
             if self.record:
                 images.append(env_eval.render(mode="rgb_array"))
@@ -87,9 +89,11 @@ class EvaluateMPAgent:
         images = []
         total_reward = 0
 
-        state = env_eval.reset(time_out_after=self.cfg_env.time_out)
+        state, sim_state = env_eval.reset(time_out_after=self.cfg_env.time_out)
         done, time_out = False, False
-        c_pos, c_vel = env_eval.decompose(np.expand_dims(state, axis=0))
+        c_pos, c_vel = env_eval.decompose(
+            (np.expand_dims(sim_state[0], axis=0), np.expand_dims(sim_state[1], axis=0))
+        )
         while not done and not time_out:
             weight_time, _ = agent.select_weights_and_time(state)
             trajectory_planner.re_init(weight_time, c_pos, c_vel, num_t=self.num_t)
@@ -98,9 +102,14 @@ class EvaluateMPAgent:
             for q, v in trajectory_planner:
                 raw_action, _ = controller.get_action(q, v, c_pos, c_vel)
                 action = to_np(raw_action)
-                next_state, reward, done, time_out, _ = env_eval.step(action)
+                next_state, reward, done, time_out, sim_state = env_eval.step(action)
                 total_reward += reward
-                c_pos, c_vel = env_eval.decompose(np.expand_dims(next_state, axis=0))
+                c_pos, c_vel = env_eval.decompose(
+                    (
+                        np.expand_dims(sim_state[0], axis=0),
+                        np.expand_dims(sim_state[1], axis=0),
+                    )
+                )
                 if self.record:
                     images.append(env_eval.render(mode="rgb_array"))
                 if done or time_out:
