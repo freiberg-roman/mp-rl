@@ -1,6 +1,6 @@
 defaults:
   - _self_
-  - algorithm: sac  # others are: sac, sac_mp
+  - algorithm: sac_stepwise_mp  # others are: sac, sac_mp
   - env: meta_window_open  # this includes values for environment specific overrides
   - logger: wandb
 

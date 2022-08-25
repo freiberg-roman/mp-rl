@@ -7,11 +7,12 @@ import numpy as np
 from gym.spaces import Box
 from scipy.spatial.transform import Rotation
 
+from mprl.env.mujoco.meta.base_sawyer import BaseSawyer
 from mprl.env.mujoco.meta.util import tolerance
 from mprl.env.mujoco.mj_env import MujocoEnv
 
 
-class SawyerReachEnvV2(MujocoEnv):
+class SawyerReachEnvV2(BaseSawyer):
     """
     Adapted SawyerReachEnvV2 environment for new MuJoCo bindings
     """
@@ -127,6 +128,7 @@ class SawyerReachEnvV2(MujocoEnv):
             "block_dependencies.xml",
             "xyz_base_dependencies.xml",
             "xyz_base.xml",
+            "ctrl.xml",
         ]
         for file in mesh_files:
             with open(self.base + "meshes/" + file, "rb") as f:
@@ -144,23 +146,6 @@ class SawyerReachEnvV2(MujocoEnv):
     @property
     def model_name(self):
         return os.path.join("sawyer_xyz/sawyer_reach_v2.xml")
-
-    def evaluate_state(self, obs, action):
-
-        reward, reach_dist, in_place = self.compute_reward(action, obs)
-        success = float(reach_dist <= 0.05)
-
-        info = {
-            "success": success,
-            "near_object": reach_dist,
-            "grasp_success": 1.0,
-            "grasp_reward": reach_dist,
-            "in_place_reward": in_place,
-            "obj_to_target": reach_dist,
-            "unscaled_reward": reward,
-        }
-
-        return reward, info
 
     def _get_pos_objects(self):
         return self.get_body_com("obj")
@@ -199,7 +184,7 @@ class SawyerReachEnvV2(MujocoEnv):
 
         return self._get_obs()
 
-    def compute_reward(self, actions, obs):
+    def compute_reward(self, obs, action):
         _TARGET_RADIUS = 0.05
         tcp = self.tcp_center
         target = self._target_pos
@@ -368,39 +353,9 @@ class SawyerReachEnvV2(MujocoEnv):
             ),
         )
 
-    def sample_random_action(self):
-        return np.random.uniform(-1, 1, (4,))
-
-    def step(self, action):
-        self.set_xyz_action(action[:3])
-        self.do_simulation([action[-1], -action[-1]], self.frame_skip)
-        self.curr_path_length += 1
-
-        # Running the simulator can sometimes mess up site positions, so
-        # re-position them here to make sure they're accurate
-        for site in self._target_site_config:
-            self._set_pos_site(*site)
-
-        self.current_steps += 1
-        self._total_steps += 1
-        done = (
-            self.time_out_after is not None
-            and self.current_steps >= self.time_out_after
-        )
-        self._last_stable_obs = self._get_obs()
-        reward, info = self.evaluate_state(self._last_stable_obs, action)
-        return self._last_stable_obs, reward, False, done
-
     def reset(self, time_out_after: Optional[int] = None):
         self.curr_path_length = 0
         return super().reset(time_out_after=time_out_after)
-
-    def _reset_hand(self, steps=50):
-        for _ in range(steps):
-            self.data.mocap_pos[0, :] = self.hand_init_pos
-            self.data.mocap_quat[0, :] = np.array([[1, 0, 1, 0]])
-            self.do_simulation([-1, 1], self.frame_skip)
-        self.init_tcp = self.tcp_center
 
     def _get_state_rand_vec(self):
         rand_vec = np.random.uniform(
@@ -435,7 +390,3 @@ class SawyerReachEnvV2(MujocoEnv):
                         [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0]
                     )
         mujoco.mj_forward(self.model, self.data)
-
-    @property
-    def total_steps(self):
-        return self._total_steps

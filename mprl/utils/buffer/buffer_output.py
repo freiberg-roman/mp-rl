@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Tuple
 
 import numpy as np
 import torch
@@ -11,6 +12,7 @@ class EnvStep:
     action: np.ndarray
     reward: float
     done: bool
+    sim_state: Tuple[np.ndarray, np.ndarray]
 
     def to_torch_batch(self):
         return (
@@ -19,6 +21,7 @@ class EnvStep:
             torch.unsqueeze(torch.from_numpy(self.action).to(torch.float32), 0),
             torch.unsqueeze(torch.tensor(self.reward).to(torch.float32), 0),
             torch.unsqueeze(torch.tensor(self.done), 0),
+            self.sim_state,  # they won't be used in torch
         )
 
 
@@ -29,6 +32,7 @@ class EnvSteps:
     actions: np.ndarray
     rewards: np.ndarray
     dones: np.ndarray
+    sim_states: Tuple[np.ndarray, np.ndarray]
 
     def __len__(self):
         return len(self.states)
@@ -40,4 +44,5 @@ class EnvSteps:
             torch.from_numpy(self.actions),
             torch.unsqueeze(torch.from_numpy(self.rewards), dim=-1),
             torch.unsqueeze(torch.from_numpy(self.dones), dim=-1),
+            self.sim_states,  # they won't be used in torch
         )

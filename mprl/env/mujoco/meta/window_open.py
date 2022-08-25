@@ -4,11 +4,12 @@ import mujoco
 import numpy as np
 from gym.spaces import Box
 
+from mprl.env.mujoco.meta.base_sawyer import BaseSawyer
 from mprl.env.mujoco.meta.util import hamacher_product, tolerance
 from mprl.env.mujoco.mj_env import MujocoEnv
 
 
-class SawyerWindowOpenEnvV2(MujocoEnv):
+class SawyerWindowOpenEnvV2(BaseSawyer):
     """
     Motivation for V2:
         When V1 scripted policy failed, it was often due to limited path length.
@@ -185,17 +186,7 @@ class SawyerWindowOpenEnvV2(MujocoEnv):
             in_place,
         ) = self.compute_reward(action, obs)
 
-        info = {
-            "success": float(target_to_obj <= self.TARGET_RADIUS),
-            "near_object": float(tcp_to_obj <= 0.05),
-            "grasp_success": 1.0,
-            "grasp_reward": object_grasped,
-            "in_place_reward": in_place,
-            "obj_to_target": target_to_obj,
-            "unscaled_reward": reward,
-        }
-
-        return reward, info
+        return reward
 
     def _get_pos_objects(self):
         return self._get_site_pos("handleOpenStart")
@@ -220,7 +211,7 @@ class SawyerWindowOpenEnvV2(MujocoEnv):
 
         return self._get_obs()
 
-    def compute_reward(self, actions, obs):
+    def compute_reward(self, obs, actions):
         del actions
         obj = self._get_pos_objects()
         tcp = self.tcp_center
@@ -262,10 +253,6 @@ class SawyerWindowOpenEnvV2(MujocoEnv):
                         [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0]
                     )
         mujoco.mj_forward(self.model, self.data)
-
-    @property
-    def total_steps(self):
-        return self._total_steps
 
     def _get_curr_obs_combined_no_goal(self):
         """Combines the end effector's {pos, closed amount} and the object(s)'
@@ -328,13 +315,6 @@ class SawyerWindowOpenEnvV2(MujocoEnv):
     def reset(self, time_out_after: Optional[int] = None):
         self.curr_path_length = 0
         return super().reset(time_out_after=time_out_after)
-
-    def _reset_hand(self, steps=50):
-        for _ in range(steps):
-            self.data.mocap_pos[0, :] = self.hand_init_pos
-            self.data.mocap_quat[0, :] = np.array([[1, 0, 1, 0]])
-            self.do_simulation([-1, 1], self.frame_skip)
-        self.init_tcp = self.tcp_center
 
     def _get_state_rand_vec(self):
         rand_vec = np.random.uniform(
@@ -402,29 +382,6 @@ class SawyerWindowOpenEnvV2(MujocoEnv):
         assert isinstance(self._target_pos, np.ndarray)
         assert self._target_pos.ndim == 1
         return self._target_pos
-
-    def step(self, action):
-        self.set_xyz_action(action[:3])
-        self.do_simulation([action[-1], -action[-1]], self.frame_skip)
-        self.curr_path_length += 1
-
-        # Running the simulator can sometimes mess up site positions, so
-        # re-position them here to make sure they're accurate
-        for site in self._target_site_config:
-            self._set_pos_site(*site)
-
-        self.current_steps += 1
-        self._total_steps += 1
-        done = (
-            self.time_out_after is not None
-            and self.current_steps >= self.time_out_after
-        )
-        self._last_stable_obs = self._get_obs()
-        reward, info = self.evaluate_state(self._last_stable_obs, action)
-        return self._last_stable_obs, reward, False, done
-
-    def sample_random_action(self):
-        return np.random.uniform(-1, 1, (4,))
 
     def set_joint_qpos(self, name, value):
 

@@ -46,7 +46,7 @@ class HalfCheetahEnv(MujocoEnv):
             self.time_out_after is not None
             and self.current_steps >= self.time_out_after
         )
-        return observation, reward, False, done
+        return observation, reward, False, done, self.get_sim_state()
 
     def sample_random_action(self):
         return np.random.uniform(-1, 1, (6,))
@@ -91,17 +91,10 @@ class HalfCheetahEnv(MujocoEnv):
     def total_steps(self):
         return self._total_steps
 
-    def decompose(self, state, full_obs=False):
-        coord = 3
-        if full_obs:
-            # In this case the x position is not included in the state -> just set it to 0
-            extended_shape = state.shape[:-1] + (18,)
-            extended_state = np.zeros(extended_shape)
-            extended_state[..., 1:] = state
-            return extended_state[..., :9], extended_state[..., 9:]  # qpos, qvel
-        else:
-            return state[..., 2:8], state[..., 8 + coord :]
-
     @property
     def steps_after_reset(self):
         return self.current_steps
+
+    @property
+    def get_jnt_names(self):
+        return ["bthigh", "bshin", "bfoot", "fthigh", "fshin", "ffoot"]

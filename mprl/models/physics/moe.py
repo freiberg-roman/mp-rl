@@ -98,9 +98,6 @@ class MixtureOfExperts(nn.Module, Prediction):
 
         return loss.item()
 
-    def to(self):
-        pass  # TODO
-
     def save(self, base_path, folder):
         path = base_path + folder + "/moe/"
         Path(path).mkdir(parents=True, exist_ok=True)

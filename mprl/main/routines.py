@@ -15,7 +15,10 @@ from mprl.models.physics.moe import MixtureOfExperts
 from mprl.models.physics.prediction import Prediction
 from mprl.models.sac import SAC
 from mprl.models.sac_common import SACUpdate
-from mprl.models.sac_common.critic_loss import sac_critic_loss_sequenced
+from mprl.models.sac_common.critic_loss import (
+    sac_critic_loss_sequenced,
+    sac_mp_critic_loss,
+)
 from mprl.models.sac_common.policy_loss import (
     MixedMeanSACModelPolicyLoss,
     MixedMeanSACOffPolicyLoss,
@@ -46,7 +49,7 @@ def train_sac(cfg_alg: DictConfig, cfg_env: DictConfig, cfg_wandb: DictConfig):
     )
 
     # Training loop
-    state = env.reset(time_out_after=cfg_env.time_out)
+    state, sim_state = env.reset(time_out_after=cfg_env.time_out)
     total_reward = 0
     while env.total_steps < cfg_alg.train.total_steps:
         for _ in tqdm(range(cfg_alg.train.steps_per_epoch)):
@@ -56,14 +59,14 @@ def train_sac(cfg_alg: DictConfig, cfg_env: DictConfig, cfg_wandb: DictConfig):
                 raw_action, _ = agent.select_action(state)
                 action = to_np(raw_action)
 
-            next_state, reward, done, time_out = env.step(action)
-            buffer.add(state, next_state, action, reward, done)
+            next_state, reward, done, time_out, sim_state = env.step(action)
+            buffer.add(state, next_state, action, reward, done, sim_state)
             state = next_state
             total_reward += reward
 
             if time_out or done:
                 total_reward = 0
-                state = env.reset(time_out_after=cfg_env.time_out)
+                state, sim_state = env.reset(time_out_after=cfg_env.time_out)
 
             if (
                 len(buffer) < cfg_alg.train.warm_start_steps
@@ -144,7 +147,7 @@ def train_mp_sac_vanilla(
             state = next_state
 
             if env.steps_after_reset > cfg_env.time_out:
-                state = env.reset()
+                state, sim_state = env.reset()
                 c_pos, c_vel = env.decompose(np.expand_dims(state, axis=0))
 
             # Perform one update step
@@ -188,7 +191,7 @@ def train_stepwise_mp_sac(
         policy_loss = MixedWeightedSACModelPolicyLoss(model)
     else:
         raise ValueError("Unknown reward weighting")
-    update = SACUpdate(policy_loss=policy_loss)
+    update = SACUpdate(policy_loss=policy_loss, critic_loss=sac_mp_critic_loss)
 
     num_t = cfg_alg.agent.time_steps
     eval_mp = EvaluateMPAgent(cfg_env, record=cfg_wandb.record, num_t=num_t)
@@ -205,20 +208,22 @@ def train_stepwise_mp_sac(
         mode=cfg_wandb.mode,
     )
 
-    state = env.reset()
+    state, sim_state = env.reset()
     while env.total_steps < cfg_alg.train.total_steps:
         for _ in tqdm(range(cfg_alg.train.steps_per_epoch)):
             if env.total_steps < cfg_alg.train.warm_start_steps:
                 action = env.sample_random_action()
             else:
-                raw_action, _ = agent.select_action(state)
-                action = to_np(raw_action)
-            next_state, reward, done, _ = env.step(action)
-            buffer.add(state, next_state, action, reward, done)
+                raw_action, _ = agent.select_action(
+                    state, (sim_state[0][None], sim_state[1][None])
+                )
+                action = np.ravel(to_np(raw_action))
+            next_state, reward, done, _, sim_state = env.step(action)
+            buffer.add(state, next_state, action, reward, done, sim_state)
             state = next_state
 
             if env.steps_after_reset > cfg_env.time_out:
-                state = env.reset()
+                state, sim_state = env.reset()
                 agent.replan()
             if (
                 len(buffer) < cfg_alg.train.warm_start_steps

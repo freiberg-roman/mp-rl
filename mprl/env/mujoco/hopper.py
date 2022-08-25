@@ -103,7 +103,7 @@ class HopperEnv(MujocoEnv):
             self.time_out_after is not None
             and self.current_steps >= self.time_out_after
         )
-        return observation, reward, done, timeout
+        return observation, reward, done, timeout, self.get_sim_state()
 
     def sample_random_action(self):
         return np.random.uniform(-1, 1, (3,))
@@ -136,15 +136,10 @@ class HopperEnv(MujocoEnv):
     def total_steps(self):
         return self._total_steps
 
-    def decompose(self, state, full_obs=False):
-        if full_obs:
-            return state[..., 3:6], state[..., -3:]  # qpos, qvel
-        else:
-            return (
-                state[..., 2:5],
-                state[..., -3:],
-            )  # same but excluding coordinates in q
-
     @property
     def steps_after_reset(self):
         return self.current_steps
+
+    @property
+    def get_jnt_names(self):
+        return ["thigh_joint", "leg_joint", "foot_joint"]

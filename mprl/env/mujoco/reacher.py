@@ -1,3 +1,4 @@
+import mujoco
 import numpy as np
 
 from mprl.env.mujoco.mj_env import MujocoEnv
@@ -24,7 +25,7 @@ class ReacherEnv(MujocoEnv):
             self.time_out_after is not None
             and self.current_steps >= self.time_out_after
         )
-        return observation, reward, False, done
+        return observation, reward, False, done, self.get_sim_state()
 
     def sample_random_action(self):
         return np.random.uniform(-1, 1, (2,))
@@ -68,27 +69,14 @@ class ReacherEnv(MujocoEnv):
     def viewer_setup(self):
         self.viewer.cam.trackbodyid = 0
 
-    def get_forces(self):
-        return super(ReacherEnv, self).get_forces()[-6:]  # gravity
-
     @property
     def total_steps(self):
         return self._total_steps
 
-    def decompose(self, state, full_obs=False):
-        if full_obs:
-            cos_pos = state[..., 0:2]
-            sin_pos = state[..., 2:4]
-            vel = state[..., 6:8]
-            return np.concatenate(
-                [np.arctan2(sin_pos, cos_pos), state[..., 4:6]], axis=-1
-            ), np.concatenate([vel, np.zeros_like(vel)], axis=-1)
-
-        cos_pos = state[..., 0:2]
-        sin_pos = state[..., 2:4]
-        vel = state[..., 6:8]
-        return np.arctan2(sin_pos, cos_pos), vel
-
     @property
     def steps_after_reset(self):
         return self.current_steps
+
+    @property
+    def get_jnt_names(self):
+        return ["joint0", "joint1"]

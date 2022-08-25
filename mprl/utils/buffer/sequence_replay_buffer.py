@@ -15,6 +15,8 @@ class SequenceRB(ReplayBuffer):
         self._acts = np.empty((cfg.capacity, cfg.env.action_dim), dtype=np.float32)
         self._rews = np.empty(cfg.capacity, dtype=np.float32)
         self._dones = np.empty(cfg.capacity, dtype=bool)
+        self._qposes = np.empty((cfg.capacity, cfg.env.sim_qpos_dim), dtype=np.float32)
+        self._qvels = np.empty((cfg.capacity, cfg.env.sim_qvel_dim), dtype=np.float32)
 
         self._capacity: int = 0
         self._max_capacity: int = cfg.capacity
@@ -23,12 +25,14 @@ class SequenceRB(ReplayBuffer):
         self._current_seq = 0
         self._valid_seq: List = [(0, 0)]
 
-    def add(self, state, next_state, action, reward, done):
+    def add(self, state, next_state, action, reward, done, sim_state):
         self._s[self._ind, :] = state
         self._next_s[self._ind, :] = next_state
         self._acts[self._ind, :] = action
         self._rews[self._ind] = reward
         self._dones[self._ind] = done
+        self._qposes[self._ind, :] = sim_state[0]
+        self._qvels[self._ind, :] = sim_state[1]
         self._capacity = min(self._capacity + 1, self._max_capacity)
         self._ind = (self._ind + 1) % self._max_capacity
         s, _ = self._valid_seq[self._current_seq]
@@ -74,6 +78,7 @@ class SequenceRB(ReplayBuffer):
             self._acts[item, :],
             self._rews[item],
             self._dones[item],
+            (self._qposes[item, :], self._qvels[item, :]),
         )
 
     def __len__(self):
@@ -102,6 +107,14 @@ class SequenceRB(ReplayBuffer):
     @property
     def dones(self):
         return self._dones
+
+    @property
+    def qposes(self):
+        return self._qposes
+
+    @property
+    def qvels(self):
+        return self._qvels
 
     @property
     def capacity(self):
@@ -141,6 +154,10 @@ class TrueKSequenceIter:
                 self._buffer.actions[full_trajectory_indices, :],
                 self._buffer.rewards[full_trajectory_indices],
                 self._buffer.dones[full_trajectory_indices],
+                (
+                    self._buffer.qposes[full_trajectory_indices, :],
+                    self._buffer.qvels[full_trajectory_indices, :],
+                ),
             )
         else:
             raise StopIteration

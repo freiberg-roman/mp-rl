@@ -107,7 +107,7 @@ class HumanoidEnv(MujocoEnv):
             self.time_out_after is not None
             and self.current_steps >= self.time_out_after
         )
-        return observation, reward, done, timeout
+        return observation, reward, done, timeout, self.get_sim_state()
 
     def sample_random_action(self):
         return np.random.uniform(-0.4, 0.4, (17,))
@@ -140,11 +140,28 @@ class HumanoidEnv(MujocoEnv):
     def total_steps(self):
         return self._total_steps
 
-    def decompose(self, state, full_obs=False):
-        """
-        TODO
-        """
-
     @property
     def steps_after_reset(self):
         return self.current_steps
+
+    @property
+    def get_jnt_names(self):
+        return [
+            "abdomen_y",
+            "abdomen_z",
+            "abdomen_x",
+            "right_hip_x",
+            "right_hip_z",
+            "right_hip_y",
+            "right_knee",
+            "left_hip_x",
+            "left_hip_z",
+            "left_hip_y",
+            "left_knee",
+            "right_shoulder1",
+            "right_shoulder2",
+            "right_elbow",
+            "left_shoulder1",
+            "left_shoulder2",
+            "left_elbow",
+        ]

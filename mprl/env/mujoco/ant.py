@@ -96,7 +96,7 @@ class AntEnv(MujocoEnv):
             self.time_out_after is not None
             and self.current_steps >= self.time_out_after
         )
-        return observation, reward, done, timeout
+        return observation, reward, done, timeout, self.get_sim_state()
 
     def sample_random_action(self):
         return np.random.uniform(-1, 1, (8,))
@@ -141,18 +141,19 @@ class AntEnv(MujocoEnv):
     def total_steps(self):
         return self._total_steps
 
-    def decompose(self, state, full_obs=False):
-        if full_obs:
-            extended_shape = state.shape[:-1] + (29,)
-            extended_state = np.zeros(extended_shape)
-            extended_state[..., 2:] = state
-            return extended_state[..., :15], extended_state[..., 15:]  # qpos, qvel
-        else:
-            return (
-                state[..., 5:13],
-                state[..., -8:],
-            )  # same but excluding coordinates in q
-
     @property
     def steps_after_reset(self):
         return self.current_steps
+
+    @property
+    def get_jnt_names(self):
+        return [
+            "hip_1",
+            "ankle_1",
+            "hip_2",
+            "ankle_2",
+            "hip_3",
+            "ankle_3",
+            "hip_4",
+            "ankle_4",
+        ]
