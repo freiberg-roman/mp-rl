@@ -5,11 +5,12 @@ import numpy as np
 from gym.spaces import Box
 from scipy.spatial.transform import Rotation
 
+from mprl.env.mujoco.meta.base_sawyer import BaseSawyer
 from mprl.env.mujoco.meta.util import hamacher_product, tolerance
 from mprl.env.mujoco.mj_env import MujocoEnv
 
 
-class SawyerButtonPressEnvV2(MujocoEnv):
+class SawyerButtonPressEnvV2(BaseSawyer):
     def __init__(self, base):
 
         hand_low = (-0.5, 0.40, 0.05)
@@ -161,19 +162,9 @@ class SawyerButtonPressEnvV2(MujocoEnv):
             obj_to_target,
             near_button,
             button_pressed,
-        ) = self.compute_reward(action, obs)
+        ) = self.compute_reward(obs, action)
 
-        info = {
-            "success": float(obj_to_target <= 0.02),
-            "near_object": float(tcp_to_obj <= 0.05),
-            "grasp_success": float(tcp_open > 0),
-            "grasp_reward": near_button,
-            "in_place_reward": button_pressed,
-            "obj_to_target": obj_to_target,
-            "unscaled_reward": reward,
-        }
-
-        return reward, info
+        return reward
 
     @property
     def _target_site_config(self):
@@ -218,7 +209,7 @@ class SawyerButtonPressEnvV2(MujocoEnv):
 
         return self._get_obs()
 
-    def compute_reward(self, action, obs):
+    def compute_reward(self, obs, action):
         del action
         obj = obs[4:7]
         tcp = self.tcp_center
@@ -256,10 +247,6 @@ class SawyerButtonPressEnvV2(MujocoEnv):
                         [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0]
                     )
         mujoco.mj_forward(self.model, self.data)
-
-    @property
-    def total_steps(self):
-        return self._total_steps
 
     def _get_curr_obs_combined_no_goal(self):
         """Combines the end effector's {pos, closed amount} and the object(s)'
@@ -322,13 +309,6 @@ class SawyerButtonPressEnvV2(MujocoEnv):
     def reset(self, time_out_after: Optional[int] = None):
         self.curr_path_length = 0
         return super().reset(time_out_after=time_out_after)
-
-    def _reset_hand(self, steps=50):
-        for _ in range(steps):
-            self.data.mocap_pos[0, :] = self.hand_init_pos
-            self.data.mocap_quat[0, :] = np.array([[1, 0, 1, 0]])
-            self.do_simulation([-1, 1], self.frame_skip)
-        self.init_tcp = self.tcp_center
 
     def _get_state_rand_vec(self):
         rand_vec = np.random.uniform(
@@ -396,30 +376,3 @@ class SawyerButtonPressEnvV2(MujocoEnv):
         assert isinstance(self._target_pos, np.ndarray)
         assert self._target_pos.ndim == 1
         return self._target_pos
-
-    def step(self, action):
-        self.set_xyz_action(action[:3])
-        self.do_simulation([action[-1], -action[-1]], self.frame_skip)
-        self.curr_path_length += 1
-
-        # Running the simulator can sometimes mess up site positions, so
-        # re-position them here to make sure they're accurate
-        for site in self._target_site_config:
-            self._set_pos_site(*site)
-
-        self.current_steps += 1
-        self._total_steps += 1
-        done = (
-            self.time_out_after is not None
-            and self.current_steps >= self.time_out_after
-        )
-        self._last_stable_obs = self._get_obs()
-        reward, info = self.evaluate_state(self._last_stable_obs, action)
-        return self._last_stable_obs, reward, False, done, self.get_sim_state()
-
-    def sample_random_action(self):
-        return np.random.uniform(-1, 1, (4,))
-
-    @property
-    def steps_after_reset(self):
-        return self.current_steps

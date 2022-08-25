@@ -34,6 +34,7 @@ class EvaluateAgent:
                 state, (sim_state[0][None], sim_state[1][None]), evaluate=True
             )
             action = to_np(raw_action)
+            action = np.ravel(action)
             state, reward, done, time_out, sim_state = env_eval.step(action)
             total_reward += reward
             if self.record:
@@ -102,6 +103,7 @@ class EvaluateMPAgent:
             for q, v in trajectory_planner:
                 raw_action, _ = controller.get_action(q, v, c_pos, c_vel)
                 action = to_np(raw_action)
+                action = np.ravel(action)
                 next_state, reward, done, time_out, sim_state = env_eval.step(action)
                 total_reward += reward
                 c_pos, c_vel = env_eval.decompose(

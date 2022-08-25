@@ -128,7 +128,7 @@ class SawyerReachEnvV2(BaseSawyer):
             "block_dependencies.xml",
             "xyz_base_dependencies.xml",
             "xyz_base.xml",
-            "ctrl.xml"
+            "ctrl.xml",
         ]
         for file in mesh_files:
             with open(self.base + "meshes/" + file, "rb") as f:
@@ -146,7 +146,6 @@ class SawyerReachEnvV2(BaseSawyer):
     @property
     def model_name(self):
         return os.path.join("sawyer_xyz/sawyer_reach_v2.xml")
-
 
     def _get_pos_objects(self):
         return self.get_body_com("obj")
@@ -185,7 +184,7 @@ class SawyerReachEnvV2(BaseSawyer):
 
         return self._get_obs()
 
-    def compute_reward(self, obs):
+    def compute_reward(self, obs, action):
         _TARGET_RADIUS = 0.05
         tcp = self.tcp_center
         target = self._target_pos
@@ -354,12 +353,9 @@ class SawyerReachEnvV2(BaseSawyer):
             ),
         )
 
-
-
     def reset(self, time_out_after: Optional[int] = None):
         self.curr_path_length = 0
         return super().reset(time_out_after=time_out_after)
-
 
     def _get_state_rand_vec(self):
         rand_vec = np.random.uniform(
@@ -394,4 +390,3 @@ class SawyerReachEnvV2(BaseSawyer):
                         [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0]
                     )
         mujoco.mj_forward(self.model, self.data)
-

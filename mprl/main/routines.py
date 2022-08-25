@@ -217,7 +217,7 @@ def train_stepwise_mp_sac(
                 raw_action, _ = agent.select_action(
                     state, (sim_state[0][None], sim_state[1][None])
                 )
-                action = to_np(raw_action)
+                action = np.ravel(to_np(raw_action))
             next_state, reward, done, _, sim_state = env.step(action)
             buffer.add(state, next_state, action, reward, done, sim_state)
             state = next_state

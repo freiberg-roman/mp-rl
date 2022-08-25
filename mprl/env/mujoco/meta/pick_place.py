@@ -5,11 +5,12 @@ import numpy as np
 from gym.spaces import Box
 from scipy.spatial.transform import Rotation
 
+from mprl.env.mujoco.meta.base_sawyer import BaseSawyer
 from mprl.env.mujoco.meta.util import hamacher_product, tolerance
 from mprl.env.mujoco.mj_env import MujocoEnv
 
 
-class SawyerPickPlaceEnvV2(MujocoEnv):
+class SawyerPickPlaceEnvV2(BaseSawyer):
     """
     Motivation for V2:
         V1 was very difficult to solve because the observation didn't say where
@@ -135,11 +136,6 @@ class SawyerPickPlaceEnvV2(MujocoEnv):
     def _get_pos_objects(self):
         return self.get_body_com("obj")
 
-    def _get_quat_objects(self):
-        id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_GEOM, "objGeom")
-        mat = self.data.geom_xmat[id].reshape((3, 3))
-        return Rotation.from_matrix(mat).as_quat()
-
     def fix_extreme_obj_pos(self, orig_init_pos):
         # This is to account for meshes for the geom and object are not
         # aligned. If this is not done, the object could be initialized in an
@@ -233,7 +229,7 @@ class SawyerPickPlaceEnvV2(MujocoEnv):
         caging_and_gripping = (caging_and_gripping + caging) / 2
         return caging_and_gripping
 
-    def compute_reward(self, action, obs):
+    def compute_reward(self, obs, action):
         _TARGET_RADIUS = 0.05
         tcp = self.tcp_center
         obj = obs[4:7]
@@ -361,26 +357,6 @@ class SawyerPickPlaceEnvV2(MujocoEnv):
         assert len(obs_obj_padded) in self._obs_obj_possible_lens
         return np.hstack((pos_hand, gripper_distance_apart, obs_obj_padded))
 
-    def step(self, action):
-        self.set_xyz_action(action[:3])
-        self.do_simulation([action[-1], -action[-1]], self.frame_skip)
-        self.curr_path_length += 1
-
-        # Running the simulator can sometimes mess up site positions, so
-        # re-position them here to make sure they're accurate
-        for site in self._target_site_config:
-            self._set_pos_site(*site)
-
-        self.current_steps += 1
-        self._total_steps += 1
-        done = (
-            self.time_out_after is not None
-            and self.current_steps >= self.time_out_after
-        )
-        obs = self._get_obs()
-        reward = self.evaluate_state(obs, action)
-        return obs, reward, False, done, self.get_sim_state()
-
     def reset(self, time_out_after: Optional[int] = None):
         self.curr_path_length = 0
         return super().reset(time_out_after=time_out_after)
@@ -390,11 +366,6 @@ class SawyerPickPlaceEnvV2(MujocoEnv):
 
     @property
     def tcp_center(self):
-        """The COM of the gripper's 2 fingers
-
-        Returns:
-            (np.ndarray): 3-element position
-        """
         right_finger_pos = self._get_site_pos("rightEndEffector")
         left_finger_pos = self._get_site_pos("leftEndEffector")
         tcp_center = (right_finger_pos + left_finger_pos) / 2.0
@@ -449,13 +420,6 @@ class SawyerPickPlaceEnvV2(MujocoEnv):
         self._prev_obs = curr_obs
         return obs
 
-    def _reset_hand(self, steps=50):
-        for _ in range(steps):
-            self.data.mocap_pos[0, :] = self.hand_init_pos
-            self.data.mocap_quat[0, :] = np.array([[1, 0, 1, 0]])
-            self.do_simulation([-1, 1], self.frame_skip)
-        self.init_tcp = self.tcp_center
-
     def _get_state_rand_vec(self):
         rand_vec = np.random.uniform(
             self._random_reset_space.low,
@@ -483,14 +447,3 @@ class SawyerPickPlaceEnvV2(MujocoEnv):
         )
         self.data.mocap_pos[:] = new_mocap_pos
         self.data.mocap_quat[:] = np.array([[1, 0, 1, 0]])
-
-    def sample_random_action(self):
-        return np.random.uniform(-1, 1, (4,))
-
-    @property
-    def total_steps(self):
-        return self._total_steps
-
-    @property
-    def steps_after_reset(self):
-        return self.current_steps

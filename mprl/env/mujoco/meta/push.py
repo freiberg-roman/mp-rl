@@ -193,7 +193,7 @@ class SawyerPushEnvV2(BaseSawyer):
             target_to_obj,
             object_grasped,
             in_place,
-        ) = self.compute_reward(action, obs)
+        ) = self.compute_reward(obs, action)
 
         return reward
 
@@ -234,7 +234,7 @@ class SawyerPushEnvV2(BaseSawyer):
 
         return self._get_obs()
 
-    def compute_reward(self, action, obs):
+    def compute_reward(self, obs, action):
         obj = obs[4:7]
         tcp_opened = obs[3]
         tcp_to_obj = np.linalg.norm(obj - self.tcp_center)

@@ -6,7 +6,6 @@ from mprl.env.mujoco.mj_env import MujocoEnv
 
 
 class BaseSawyer(MujocoEnv):
-
     def step(self, action):
         self.do_simulation(action, self.frame_skip)
         self.curr_path_length += 1
@@ -19,8 +18,8 @@ class BaseSawyer(MujocoEnv):
         self.current_steps += 1
         self._total_steps += 1
         done = (
-                self.time_out_after is not None
-                and self.current_steps >= self.time_out_after
+            self.time_out_after is not None
+            and self.current_steps >= self.time_out_after
         )
         obs = self._get_obs()
         reward = self.evaluate_state(obs, action)
@@ -36,9 +35,8 @@ class BaseSawyer(MujocoEnv):
     def sample_random_action(self):
         return np.random.uniform(-1, 1, (9,))
 
-    def evaluate_state(self, obs, action=None):
-        reward, reach_dist, in_place = self.compute_reward(obs)
-        success = float(reach_dist <= 0.05)
+    def evaluate_state(self, obs, action):
+        reward, reach_dist, in_place = self.compute_reward(obs, action)
         return reward
 
     @property
@@ -67,4 +65,3 @@ class BaseSawyer(MujocoEnv):
         id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_GEOM, "objGeom")
         mat = self.data.geom_xmat[id].reshape((3, 3))
         return Rotation.from_matrix(mat).as_quat()
-
