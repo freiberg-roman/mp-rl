@@ -19,7 +19,6 @@ class SAC:
         self.gamma: float = cfg.gamma
         self.tau: float = cfg.tau
         self.alpha: float = cfg.alpha
-        self.automatic_entropy_tuning: bool = cfg.automatic_entropy_tuning
         self.device: torch.device = torch.device(
             "cuda" if cfg.device == "cuda" else "cpu"
         )
@@ -38,16 +37,6 @@ class SAC:
         self.policy: GaussianPolicy = GaussianPolicy(
             state_dim, action_dim, hidden_size
         ).to(self.device)
-
-        # Entropy
-        if self.automatic_entropy_tuning is True:
-            self.target_entropy = -torch.prod(
-                torch.Tensor(cfg.env.action_dim).to(self.device)
-            ).item()
-            self.log_alpha: torch.Tensor = torch.zeros(
-                1, requires_grad=True, device=self.device
-            )
-            self.alpha_optim: Adam = Adam([self.log_alpha], lr=cfg.lr)
 
     def select_action(
         self, state: np.ndarray, sim_state=None, evaluate: bool = False
