@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Tuple
 
 import numpy as np
 
@@ -21,11 +22,23 @@ class Evaluable(ABC):
 
 class Trainable(ABC):
     @abstractmethod
+    def add_step(
+        self,
+        state: np.ndarray,
+        next_state: np.array,
+        action: np.ndarray,
+        reward: float,
+        done: bool,
+        sim_state: Tuple[np.ndarray, np.ndarray],
+    ):
+        raise NotImplementedError
+
+    @abstractmethod
     def update(self):
         raise NotImplementedError
 
 
-class Prediction(ABC):
+class Predictable(ABC):
     @abstractmethod
     def next_state(self, sim_state, actions):
         raise NotImplementedError
@@ -38,4 +51,12 @@ class Serializable(ABC):
 
     @abstractmethod
     def load(self, path):
+        raise NotImplementedError
+
+    @abstractmethod
+    def set_eval(self):
+        raise NotImplementedError
+
+    @abstractmethod
+    def set_train(self):
         raise NotImplementedError

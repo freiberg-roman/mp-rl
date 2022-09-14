@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions import Normal
 
-from mprl.models.sac_common import weights_init_
+from ..common import weights_init_
 
 LOG_SIG_MAX = 2
 LOG_SIG_MIN = -20
@@ -13,7 +13,7 @@ epsilon = 1e-6
 
 
 class GaussianPolicy(nn.Module):
-    def __init__(self, num_inputs: int, num_actions: int, hidden_dim: int):
+    def __init__(self, input_dim: Tuple[int, int], network_width: int, network_depth: int):
         super(GaussianPolicy, self).__init__()
 
         self.linear1: nn.Linear = nn.Linear(num_inputs, hidden_dim)
@@ -50,7 +50,7 @@ class GaussianPolicy(nn.Module):
         log_prob -= torch.log(self.action_scale * (1 - y_t.pow(2)) + epsilon)
         log_prob = log_prob.sum(1, keepdim=True)
         mean = torch.tanh(mean) * self.action_scale + self.action_bias
-        return action, log_prob, mean, {}  # used for logging
+        return action, log_prob, mean
 
     def to(self, device: torch.device) -> "GaussianPolicy":
         self.action_scale = self.action_scale.to(device)

@@ -7,30 +7,37 @@ from omegaconf import OmegaConf
 from torch.nn import Parameter
 from torch.optim import Adam
 
-from mprl.models.sac_common.networks import QNetwork
 from mprl.utils.math_helper import hard_update
 
+from ..common import Actable, Evaluable, Serializable, Trainable, QNetwork
 from .networks import GaussianPolicy
 
 
-class SAC:
-    def __init__(self, cfg: OmegaConf):
+class SAC(Actable, Evaluable, Serializable, Trainable):
+    def __init__(
+        self,
+        gamma: float,
+        tau: float,
+        alpha: float,
+        device: torch.device,
+        state_dim: int,
+        action_dim: int,
+        network_width: int,
+        network_depth: int,
+    ):
+
         # Parameters
-        self.gamma: float = cfg.gamma
-        self.tau: float = cfg.tau
-        self.alpha: float = cfg.alpha
-        self.device: torch.device = torch.device(
-            "cuda" if cfg.device == "cuda" else "cpu"
-        )
-        state_dim: int = cfg.env.state_dim
-        action_dim: int = cfg.env.action_dim
-        hidden_size: int = cfg.hidden_size
+        self.gamma: float = gamma
+        self.tau: float = tau
+        self.alpha: float = alpha
+        self.device: torch.device = device
+
 
         # Networks
-        self.critic: QNetwork = QNetwork(state_dim, action_dim, hidden_size).to(
+        self.critic: QNetwork = QNetwork((state_dim, action_dim), network_width, network_depth).to(
             device=self.device
         )
-        self.critic_target: QNetwork = QNetwork(state_dim, action_dim, hidden_size).to(
+        self.critic_target: QNetwork = QNetwork((state_dim, action_dim), network_width, network_depth).to(
             self.device
         )
         hard_update(self.critic_target, self.critic)
