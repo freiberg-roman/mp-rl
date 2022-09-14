@@ -13,14 +13,19 @@ epsilon = 1e-6
 
 
 class GaussianPolicy(nn.Module):
-    def __init__(self, input_dim: Tuple[int, int], network_width: int, network_depth: int):
+    def __init__(
+        self, input_dim: Tuple[int, int], network_width: int, network_depth: int
+    ):
         super(GaussianPolicy, self).__init__()
 
-        self.linear1: nn.Linear = nn.Linear(num_inputs, hidden_dim)
-        self.linear2: nn.Linear = nn.Linear(hidden_dim, hidden_dim)
+        state_dim, action_dim = input_dim
+        self.linear_input: nn.Linear = nn.Linear(state_dim, network_width)
+        self.pipeline = []
+        for i in range(network_depth - 1):
+            self.pipeline.append(nn.Linear(network_width, network_width))
 
-        self.mean_linear: nn.Linear = nn.Linear(hidden_dim, num_actions)
-        self.log_std_linear: nn.Linear = nn.Linear(hidden_dim, num_actions)
+        self.mean_linear: nn.Linear = nn.Linear(network_width, action_dim)
+        self.log_std_linear: nn.Linear = nn.Linear(network_width, action_dim)
 
         self.apply(weights_init_)
 
@@ -29,8 +34,10 @@ class GaussianPolicy(nn.Module):
         self.action_bias: torch.Tensor = torch.tensor(0.0)
 
     def forward(self, state: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        x = F.silu(self.linear1(state))
-        x = F.silu(self.linear2(x))
+        x = F.silu(self.linear_input(state))
+        for l in self.pipeline:
+            x = F.silu(l(x))
+
         mean = self.mean_linear(x)
         log_std = self.log_std_linear(x)
         log_std = torch.clamp(log_std, min=LOG_SIG_MIN, max=LOG_SIG_MAX)

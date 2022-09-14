@@ -9,7 +9,8 @@ from torch.optim import Adam
 
 from mprl.utils.math_helper import hard_update
 
-from ..common import Actable, Evaluable, Serializable, Trainable, QNetwork
+from ...utils import RandomRB
+from ..common import Actable, Evaluable, QNetwork, Serializable, Trainable
 from .networks import GaussianPolicy
 
 
@@ -24,6 +25,7 @@ class SAC(Actable, Evaluable, Serializable, Trainable):
         action_dim: int,
         network_width: int,
         network_depth: int,
+        buffer: RandomRB,
     ):
 
         # Parameters
@@ -31,18 +33,18 @@ class SAC(Actable, Evaluable, Serializable, Trainable):
         self.tau: float = tau
         self.alpha: float = alpha
         self.device: torch.device = device
-
+        self.buffer = buffer
 
         # Networks
-        self.critic: QNetwork = QNetwork((state_dim, action_dim), network_width, network_depth).to(
-            device=self.device
-        )
-        self.critic_target: QNetwork = QNetwork((state_dim, action_dim), network_width, network_depth).to(
-            self.device
-        )
+        self.critic: QNetwork = QNetwork(
+            (state_dim, action_dim), network_width, network_depth
+        ).to(device=self.device)
+        self.critic_target: QNetwork = QNetwork(
+            (state_dim, action_dim), network_width, network_depth
+        ).to(self.device)
         hard_update(self.critic_target, self.critic)
         self.policy: GaussianPolicy = GaussianPolicy(
-            state_dim, action_dim, hidden_size
+            (state_dim, action_dim), network_width, network_depth
         ).to(self.device)
 
     def select_action(
