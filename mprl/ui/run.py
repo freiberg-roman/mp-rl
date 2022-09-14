@@ -1,7 +1,7 @@
 import hydra
 from omegaconf import DictConfig
 
-from mprl.main.routines import (
+from mprl.ui.routine.routines import (
     train_mp_sac_vanilla,
     train_sac,
     train_stepwise_mp_sac,
@@ -9,7 +9,7 @@ from mprl.main.routines import (
 )
 
 
-@hydra.main(config_path="configs", config_name="main.yaml")
+@hydra.main(config_path="../config/configs", config_name="main.yaml")
 def run(cfg: DictConfig):
 
     if cfg.algorithm.name == "sac":

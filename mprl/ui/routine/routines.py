@@ -9,7 +9,6 @@ from tqdm import tqdm
 
 from mprl.controllers import MPTrajectory, PDController
 from mprl.env import create_mj_env
-from mprl.main.evaluate_agent import EvaluateAgent, EvaluateMPAgent
 from mprl.models.physics.ground_truth import GroundTruth
 from mprl.models.physics.moe import MixtureOfExperts
 from mprl.models.physics.prediction import Prediction
@@ -27,6 +26,7 @@ from mprl.models.sac_common.policy_loss import (
 )
 from mprl.models.sac_mixed import SACMixed
 from mprl.models.sac_mp import SACMP
+from mprl.ui.routine.evaluate_agent import EvaluateAgent, EvaluateMPAgent
 from mprl.utils import RandomRB, RandomSequenceBasedRB, SequenceRB
 from mprl.utils.ds_helper import to_np
 

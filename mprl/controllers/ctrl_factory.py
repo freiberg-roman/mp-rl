@@ -1,7 +1,7 @@
+from omegaconf.omegaconf import DictConfig
+
 from .meta_controller import MetaController
 from .pd_controller import PDController
-
-from omegaconf.omegaconf import DictConfig
 
 
 def get_ctrl(env_cfg: DictConfig, ctrl_cfg: DictConfig):

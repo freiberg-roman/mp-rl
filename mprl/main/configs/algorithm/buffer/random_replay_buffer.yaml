@@ -1,7 +1,0 @@
-capacity: 2000000
-
-env:
-  state_dim: ${env.state_dim}
-  action_dim: ${env.action_dim}
-  sim_qpos_dim: ${env.sim_qpos_dim}
-  sim_qvel_dim: ${env.sim_qvel_dim}
