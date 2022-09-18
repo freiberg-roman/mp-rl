@@ -1,15 +1,21 @@
-from mprl.config import ConfigRepository
+from dependency_injector import containers
+from dependency_injector.wiring import Provider, inject
+
 from mprl.utils import RandomRB
 
+from ..common.config_gateway import ModelConfigGateway
 from .agent import SAC
 
 
 class SACFactory:
-    def __init__(self, config_repository: ConfigRepository):
-        self.config_repository = config_repository
+    @inject
+    def __init__(
+        self, gateway: ModelConfigGateway = Provider[containers.model_config_gateway]
+    ):
+        self.gateway = gateway
 
     def create(self):
-        env_cfg = self.config_repository.get("env")
+        env_cfg = self.gateway.get_env_parameter_config()
         buffer = RandomRB(
             capacity=self.config_repository.get_buffer_config.capacity,
             state_dim=env_cfg.state_dim,

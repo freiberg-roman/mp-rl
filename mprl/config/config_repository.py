@@ -1,7 +1,10 @@
 from omegaconf.omegaconf import DictConfig
 
+from mprl.env import EnvConfigGateway
+from mprl.models.common.config_gateway import ModelConfigGateway
 
-class ConfigRepository:
+
+class ConfigRepository(ModelConfigGateway, EnvConfigGateway):
     """
     Manages the configuration of the project.
     This allows hydras configuration to be structured from user perspective, but still be accessible
@@ -34,6 +37,14 @@ class ConfigRepository:
         """
         return self._config[key]
 
+    def get_hyperparameter_config(self) -> DictConfig:
+        """
+        Returns the hyperparameters configuration.
+
+        :return: The hyperparameters configuration.
+        """
+        return self._config.hyperparameters
+
     def get_buffer_config(self) -> DictConfig:
         """
         Returns the buffer configuration.
@@ -41,6 +52,22 @@ class ConfigRepository:
         :return: The buffer configuration.
         """
         return self._config.buffer
+
+    def get_network_config(self) -> DictConfig:
+        """
+        Returns the network configuration.
+
+        :return: The network configuration.
+        """
+        return self._config.network
+
+    def get_device(self) -> str:
+        """
+        Returns the device to use.
+
+        :return: The device to use.
+        """
+        return self._config.device
 
     def get_algorithm_config(self) -> DictConfig:
         """
@@ -50,7 +77,7 @@ class ConfigRepository:
         """
         return self._config.alg
 
-    def get_environment_config(self) -> DictConfig:
+    def get_env_parameter_config(self) -> DictConfig:
         """
         Returns the environment configuration.
 
@@ -73,3 +100,19 @@ class ConfigRepository:
         :return: The logging configuration.
         """
         return self._config.logging
+
+    def get_algorithm_name(self) -> str:
+        """
+        Returns the name of the algorithm.
+
+        :return: The name of the algorithm.
+        """
+        ...
+
+    def get_env_name(self) -> str:
+        """
+        Returns the name of the environment.
+
+        :return: The name of the environment.
+        """
+        return self._config.env.name

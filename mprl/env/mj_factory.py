@@ -1,6 +1,7 @@
 import pathlib
 
-from omegaconf import DictConfig
+from dependency_injector import containers
+from dependency_injector.wiring import Provider
 
 from mprl.env.mujoco import (
     AntEnv,
@@ -16,27 +17,37 @@ from mprl.env.mujoco import (
 )
 from mprl.env.mujoco.mj_env import MujocoEnv
 
+from .config_gateway import EnvConfigGateway
+
 BASE = str(pathlib.Path(__file__).parent.resolve()) + "/../../resources/"
 
 
-def create_mj_env(cfg: DictConfig) -> MujocoEnv:
-    if cfg.name == "HalfCheetah":
-        return HalfCheetahEnv(base=BASE)
-    if cfg.name == "Ant":
-        return AntEnv(base=BASE)
-    if cfg.name == "Hopper":
-        return HopperEnv(base=BASE)
-    if cfg.name == "Humanoid":
-        return HumanoidEnv(base=BASE)
-    if cfg.name == "Reacher":
-        return ReacherEnv(base=BASE)
-    if cfg.name == "MetaReacher":
-        return SawyerReachEnvV2(base=BASE + "meta/")
-    if cfg.name == "MetaPush":
-        return SawyerPushEnvV2(base=BASE + "meta/")
-    if cfg.name == "MetaButtonPress":
-        return SawyerButtonPressEnvV2(base=BASE + "meta/")
-    if cfg.name == "MetaPickAndPlace":
-        return SawyerPickPlaceEnvV2(base=BASE + "meta/")
-    if cfg.name == "MetaWindowOpen":
-        return SawyerWindowOpenEnvV2(base=BASE + "meta/")
+class MjFactory:
+    def __init__(
+        self, env_config: EnvConfigGateway = Provider[containers.env_config_gateway]
+    ):
+        self.cfg = env_config
+
+    def create(self) -> MujocoEnv:
+        cfg = self.cfg
+
+        if cfg.get_env_name() == "HalfCheetah":
+            return HalfCheetahEnv(base=BASE)
+        if cfg.get_env_name() == "Ant":
+            return AntEnv(base=BASE)
+        if cfg.get_env_name() == "Hopper":
+            return HopperEnv(base=BASE)
+        if cfg.get_env_name() == "Humanoid":
+            return HumanoidEnv(base=BASE)
+        if cfg.get_env_name() == "Reacher":
+            return ReacherEnv(base=BASE)
+        if cfg.get_env_name() == "MetaReacher":
+            return SawyerReachEnvV2(base=BASE + "meta/")
+        if cfg.get_env_name() == "MetaPush":
+            return SawyerPushEnvV2(base=BASE + "meta/")
+        if cfg.get_env_name() == "MetaButtonPress":
+            return SawyerButtonPressEnvV2(base=BASE + "meta/")
+        if cfg.get_env_name() == "MetaPickAndPlace":
+            return SawyerPickPlaceEnvV2(base=BASE + "meta/")
+        if cfg.get_env_name() == "MetaWindowOpen":
+            return SawyerWindowOpenEnvV2(base=BASE + "meta/")

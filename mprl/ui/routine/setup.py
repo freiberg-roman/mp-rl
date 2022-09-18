@@ -3,39 +3,14 @@ from copy import deepcopy
 import numpy as np
 import torch
 import wandb
-from omegaconf import DictConfig, OmegaConf
-from torch.optim import Adam
 from tqdm import tqdm
 
-from mprl.controllers import MPTrajectory, PDController
-from mprl.env import create_mj_env
-from mprl.models.physics.ground_truth import GroundTruth
-from mprl.models.physics.moe import MixtureOfExperts
-from mprl.models.physics.prediction import Prediction
-from mprl.models.sac import SAC
-from mprl.models.sac_common import SACUpdate
-from mprl.models.sac_common.critic_loss import (
-    sac_critic_loss_sequenced,
-    sac_mp_critic_loss,
-)
-from mprl.models.sac_common.policy_loss import (
-    MixedMeanSACModelPolicyLoss,
-    MixedMeanSACOffPolicyLoss,
-    MixedWeightedSACModelPolicyLoss,
-    MixedWeightedSACOffPolicyLoss,
-)
-from mprl.models.sac_mixed import SACMixed
-from mprl.models.sac_mp import SACMP
-from mprl.ui.routine.evaluate_agent import EvaluateAgent, EvaluateMPAgent
-from mprl.utils import RandomRB, RandomSequenceBasedRB, SequenceRB
-from mprl.utils.ds_helper import to_np
+from mprl.models.sac import SAC, SACFactory
 
 
-def train_sac(cfg_alg: DictConfig, cfg_env: DictConfig, cfg_wandb: DictConfig):
-    env = create_mj_env(cfg_env)
-    buffer = RandomRB(cfg_alg.buffer)
-    agent = SAC(cfg_alg.agent)
-    update = SACUpdate()
+def train_sac():
+    env = MjFactory.create()
+    agent: SAC = SACFactory.create()
     eval = EvaluateAgent(cfg_env, record=cfg_wandb.record)
     optimizer_policy = Adam(agent.policy.parameters(), lr=cfg_alg.agent.lr)
     optimizer_critic = Adam(agent.critic.parameters(), lr=cfg_alg.agent.lr)

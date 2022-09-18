@@ -1,1 +1,2 @@
-from .mj_factory import create_mj_env
+from .config_gateway import EnvConfigGateway
+from .mj_factory import MjFactory

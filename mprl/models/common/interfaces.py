@@ -6,7 +6,11 @@ import numpy as np
 
 class Actable(ABC):
     @abstractmethod
-    def action(self, state: np.ndarray) -> np.ndarray:
+    def sequence_reset(self):
+        raise NotImplementedError
+
+    @abstractmethod
+    def action(self, state: np.ndarray, info: any) -> np.ndarray:
         raise NotImplementedError
 
 
@@ -16,7 +20,7 @@ class Evaluable(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def action_eval(self, state: np.ndarray) -> np.ndarray:
+    def action_eval(self, state: np.ndarray, info: any) -> np.ndarray:
         raise NotImplementedError
 
 
