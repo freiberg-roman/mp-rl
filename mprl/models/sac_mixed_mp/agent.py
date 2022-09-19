@@ -1,17 +1,18 @@
 from pathlib import Path
-from typing import Callable, Tuple
+from typing import Callable, Optional, Tuple
 
 import numpy as np
 import torch
+import torch.nn.functional as F
 from torch.distributions import Independent, Normal
 from torch.optim import Adam
 
 from mprl.utils import SequenceRB
 from mprl.utils.ds_helper import to_np, to_ts
-from mprl.utils.math_helper import hard_update
+from mprl.utils.math_helper import hard_update, soft_update
 
 from ...controllers import MPTrajectory, PDController
-from .. import Actable, Evaluable, Serializable, Trainable
+from .. import Actable, Evaluable, Predictable, Serializable, Trainable
 from ..common import QNetwork
 from .networks import GaussianMotionPrimitivePolicy
 
@@ -40,6 +41,7 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         ctrl: PDController,
         buffer: SequenceRB,
         decompose_fn: Callable,
+        model: Optional[Predictable] = None,
     ):
         # Parameters
         self.gamma: float = gamma
@@ -52,6 +54,7 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         self.planner_update: MPTrajectory = planner_update
         self.ctrl: PDController = ctrl
         self.decompose_fn = decompose_fn
+        self.model = model
 
         # Networks
         self.critic: QNetwork = QNetwork(
@@ -68,6 +71,7 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         self.optimizer_critic = Adam(self.critic.parameters(), lr=lr)
 
     def sequence_reset(self):
+        self.buffer.close_trajectory()
         self.planner_act.reset_planner()
 
     @torch.no_grad()
@@ -79,9 +83,7 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
             q, v = next(self.planner_act)
         except StopIteration:
             weights, _, _ = self.policy.sample(state)
-            self.planner_act.re_init(
-                weights, bc_pos=b_q, bc_vel=b_v, num_t=self.num_steps
-            )
+            self.planner_act.init(weights, bc_pos=b_q, bc_vel=b_v, num_t=self.num_steps)
         action = self.ctrl.get_action(q, v, b_q, b_v)
         return to_np(action)
 
@@ -96,9 +98,7 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
             q, v = next(self.planner_act)
         except StopIteration:
             _, _, weights = self.policy.sample(state)
-            self.planner_act.re_init(
-                weights, bc_pos=b_q, bc_vel=b_v, num_t=self.num_steps
-            )
+            self.planner_act.init(weights, bc_pos=b_q, bc_vel=b_v, num_t=self.num_steps)
         action = self.ctrl.get_action(q, v, b_q, b_v)
         return to_np(action)
 
@@ -117,9 +117,7 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         self.planner_update.reset_planner()
         weight, logp, mean = self.policy.sample(state)
         b_q, b_v = self.decompose_fn(state, sim_state)
-        self.planner_update.re_init(
-            weight, bc_pos=b_q, bc_vel=b_v, num_t=self.num_steps
-        )
+        self.planner_update.init(weight, bc_pos=b_q, bc_vel=b_v, num_t=self.num_steps)
         q, v = next(self.planner_update)
         action, _ = self.ctrl.get_action(q, v, b_q, b_v)
         return to_ts(action), logp, mean
@@ -179,4 +177,54 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         self.critic_target.train()
 
     def update(self) -> dict:
-        pass
+        batch = next(self.buffer.get_iter(1, self.batch_size)).to_torch_batch()
+        states, next_states, actions, rewards, dones, _ = batch
+
+        # Compute critic loss
+        with torch.no_grad():
+            next_state_action, next_state_log_pi, _ = self.policy.sample(next_states)
+            qf1_next_target, qf2_next_target = self.critic_target(
+                next_states, next_state_action
+            )
+            min_qf_next_target = (
+                torch.min(qf1_next_target, qf2_next_target)
+                - self.alpha * next_state_log_pi
+            )
+            next_q_value = rewards + (1 - dones.to(torch.float32)) * self.gamma * (
+                min_qf_next_target
+            )
+
+        qf1, qf2 = self.critic(
+            states, actions
+        )  # Two Q-functions to mitigate positive bias in the policy improvement step
+        qf1_loss = F.mse_loss(
+            qf1, next_q_value
+        )  # JQ = 𝔼(st,at)~D[0.5(Q1(st,at) - r(st,at) - γ(𝔼st+1~p[V(st+1)]))^2]
+        qf2_loss = F.mse_loss(
+            qf2, next_q_value
+        )  # JQ = 𝔼(st,at)~D[0.5(Q1(st,at) - r(st,at) - γ(𝔼st+1~p[V(st+1)]))^2]
+        qf_loss = qf1_loss + qf2_loss
+
+        # Update critic
+        self.optimizer_critic.zero_grad()
+        qf_loss.backward()
+        self.optimizer_critic.step()
+
+        if self.model is None:
+            loss = self._off_policy_loss()
+        else:
+            loss = self._model_policy_loss()
+
+        # Update policy
+        self.optimizer_policy.zero_grad()
+        loss.backward()
+        self.optimizer_policy.step()
+
+        soft_update(self.critic_target, self.critic, self.tau)
+        return {"critic_loss": qf_loss.item(), "policy_loss": loss.item()}
+
+    def _off_policy_loss(self):
+        return 0.0
+
+    def _model_policy_loss(self):
+        return 0.0
