@@ -1,10 +1,11 @@
 from omegaconf.omegaconf import DictConfig
 
 from mprl.env import EnvConfigGateway
-from mprl.models.common.config_gateway import ModelConfigGateway
+from mprl.models import ModelConfigGateway
+from mprl.pipeline.config_gateway import TrainConfigGateway
 
 
-class ConfigRepository(ModelConfigGateway, EnvConfigGateway):
+class ConfigRepository(ModelConfigGateway, EnvConfigGateway, TrainConfigGateway):
     """
     Manages the configuration of the project.
     This allows hydras configuration to be structured from user perspective, but still be accessible

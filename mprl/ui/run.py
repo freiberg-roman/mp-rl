@@ -1,23 +1,20 @@
 import hydra
 from omegaconf import DictConfig
 
-from mprl.di import Container
+from mprl.config import ConfigRepository
+from mprl.env import MujocoFactory
 from mprl.models import SACFactory
 from mprl.pipeline import Evaluator, Trainer
-
-from .routine import train_sac
 
 
 @hydra.main(config_path="../config", config_name="main.yaml")
 def run(cfg: DictConfig):
 
     # Dependency Injection
-    container = Container()
-    container.config.hydra_configuration = cfg
-    container.wire(modules=[__name__])
+    config_repository = ConfigRepository(cfg)
 
     if cfg.alg.name == "sac":
-        agent = SACFactory().create()
+        agent = SACFactory(config_gateway=config_repository).create()
     elif cfg.alg.name == "sac_mp_stepwise":
         ...  # TODO
     elif cfg.alg.name == "sac_mp":
@@ -45,11 +42,13 @@ def run(cfg: DictConfig):
     #         raise ValueError("Unknown prediction type: cfg.algorithm.prediction")
 
     # Main loop
-    training_environment = None
-    evaluation_environment = None
+    training_environment = MujocoFactory(env_config_gateway=config_repository).create()
+    evaluation_environment = MujocoFactory(
+        env_config_gateway=config_repository
+    ).create()
 
-    trainer = Trainer(training_environment)
-    evaluator = Evaluator(evaluation_environment)
+    trainer = Trainer(training_environment, train_config_gateway=config_repository)
+    evaluator = Evaluator(evaluation_environment, eval_config_gateway=config_repository)
 
     while trainer.training_steps_left:
         agent = trainer.train(agent)

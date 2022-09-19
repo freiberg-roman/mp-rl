@@ -100,3 +100,6 @@ class SAC(Actable, Evaluable, Serializable, Trainable):
                 self.policy.train()
                 self.critic.train()
                 self.critic_target.train()
+
+    def update(self):
+        pass

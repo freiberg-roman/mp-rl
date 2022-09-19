@@ -4,12 +4,10 @@ num_dof: 6
 q_dim: 8
 vel_dim: 8
 time_out: 1000  # only for SAC activated
-
 action_dim: 6
 state_dim: 17
 sim_qpos_dim: 9
 sim_qvel_dim: 9
-coordinate_dim: 1
 dt: 0.05
 
 pd:
@@ -22,4 +20,5 @@ idmp:
 
 sac:
   alpha: 0.1
-  hidden_size: 512
+  network_width: 256
+  network_depth: 2

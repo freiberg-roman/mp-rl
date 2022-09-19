@@ -1,8 +1,5 @@
 import pathlib
 
-from dependency_injector import containers
-from dependency_injector.wiring import Provider
-
 from mprl.env.mujoco import (
     AntEnv,
     HalfCheetahEnv,
@@ -22,11 +19,9 @@ from .config_gateway import EnvConfigGateway
 BASE = str(pathlib.Path(__file__).parent.resolve()) + "/../../resources/"
 
 
-class MjFactory:
-    def __init__(
-        self, env_config: EnvConfigGateway = Provider[containers.env_config_gateway]
-    ):
-        self.cfg = env_config
+class MujocoFactory:
+    def __init__(self, env_config_gateway: EnvConfigGateway):
+        self.cfg = env_config_gateway
 
     def create(self) -> MujocoEnv:
         cfg = self.cfg

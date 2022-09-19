@@ -1,21 +1,19 @@
+from typing import Union
+
 import wandb
-from dependency_injector import containers
-from dependency_injector.wiring import Provider, inject
 from tqdm import tqdm
 
+from mprl.env import MujocoEnv
 from mprl.models.common import Actable, Trainable
 
 from .config_gateway import TrainConfigGateway
 
 
 class Trainer:
-    @inject
     def __init__(
         self,
-        env: MjEnv,
-        train_config_gateway: TrainConfigGateway = Provider[
-            containers.train_config_gateway
-        ],
+        env: MujocoEnv,
+        train_config_gateway: TrainConfigGateway,
     ):
         self.env = env
 
@@ -30,7 +28,9 @@ class Trainer:
             and self.total_steps > self.steps_per_epoch
         )
 
-    def train_one_epoch(self, agent: Trainable & Actable) -> Trainable & Actable:
+    def train_one_epoch(
+        self, agent: Union[Trainable, Actable]
+    ) -> Union[Trainable, Actable]:
         """Train the agent for one epoch.
 
         :param agent: The agent to train.

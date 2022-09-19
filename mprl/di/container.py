@@ -11,10 +11,3 @@ class Container(containers.DeclarativeContainer):
         ConfigRepository,
         project_configuration=config.hydra_configuration,
     )
-    env_config_gateway = providers.Factory(
-        ConfigRepository,
-        project_configuration=config.hydra_configuration,
-    )
-    train_scheme_gateway = providers.Factory(
-        ConfigRepository, project_configuration=config.hydra_configuration
-    )

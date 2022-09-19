@@ -1,11 +1,8 @@
 from typing import Callable, Optional, Union
 
 import torch
-import torch.nn.functional as F
 from torch.optim import Adam
 
-from mprl.models.sac_common.critic_loss import sac_critic_loss
-from mprl.models.sac_common.policy_loss import sac_policy_loss
 from mprl.utils import EnvSteps
 from mprl.utils.math_helper import soft_update
 

@@ -1,20 +1,13 @@
 import cv2
-from dependency_injector import containers
-from dependency_injector.wiring import Provider
 
+from mprl.env import MujocoEnv
 from mprl.models.common import Evaluable
 
 from .config_gateway import TrainConfigGateway
 
 
 class Evaluator:
-    def __init__(
-        self,
-        env: MjEnv,
-        eval_config_gateway: TrainConfigGateway = Provider[
-            containers.train_config_gateway
-        ],
-    ):
+    def __init__(self, env: MujocoEnv, eval_config_gateway: TrainConfigGateway):
         cfg = eval_config_gateway.get_eval_scheme()
         self.num_eval_episodes: int = cfg.num_eval_episodes
         self.env = env
