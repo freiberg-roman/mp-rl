@@ -64,3 +64,7 @@ class Trainer:
     @property
     def training_steps_left(self) -> bool:
         return self.env.total_steps < self.total_steps
+
+    @property
+    def performed_training_steps(self) -> int:
+        return self.env.total_steps

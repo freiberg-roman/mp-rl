@@ -2,6 +2,8 @@ import hydra
 from omegaconf import DictConfig
 
 from mprl.di import Container
+from mprl.models import SACFactory
+from mprl.pipeline import Evaluator, Trainer
 
 from .routine import train_sac
 
@@ -15,7 +17,13 @@ def run(cfg: DictConfig):
     container.wire(modules=[__name__])
 
     if cfg.alg.name == "sac":
-        train_sac()
+        agent = SACFactory().create()
+    elif cfg.alg.name == "sac_mp_stepwise":
+        ...  # TODO
+    elif cfg.alg.name == "sac_mp":
+        ...  # TODO
+    else:
+        raise ValueError(f"Unknown algorithm {cfg.alg.name}")
 
     # if cfg.algorithm.name == "sac":
     #     train_sac(cfg.algorithm, cfg.env, cfg.logger)
@@ -35,6 +43,17 @@ def run(cfg: DictConfig):
     #         train_stepwise_mp_sac(cfg.algorithm, cfg.env, cfg.logger)
     #     else:
     #         raise ValueError("Unknown prediction type: cfg.algorithm.prediction")
+
+    # Main loop
+    training_environment = None
+    evaluation_environment = None
+
+    trainer = Trainer(training_environment)
+    evaluator = Evaluator(evaluation_environment)
+
+    while trainer.training_steps_left:
+        agent = trainer.train(agent)
+        evaluator.evaluate(agent)
 
 
 if __name__ == "__main__":
