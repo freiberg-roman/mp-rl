@@ -50,6 +50,10 @@ class Predictable(ABC):
 
 class Serializable(ABC):
     @abstractmethod
+    def parameters(self):
+        raise NotImplementedError
+
+    @abstractmethod
     def save(self, path):
         raise NotImplementedError
 

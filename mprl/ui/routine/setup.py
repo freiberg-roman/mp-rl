@@ -5,61 +5,6 @@ import torch
 import wandb
 from tqdm import tqdm
 
-from mprl.models.sac import SAC, SACFactory
-
-
-def train_sac():
-    env = MjFactory.create()
-    agent: SAC = SACFactory.create()
-    eval = EvaluateAgent(cfg_env, record=cfg_wandb.record)
-    optimizer_policy = Adam(agent.policy.parameters(), lr=cfg_alg.agent.lr)
-    optimizer_critic = Adam(agent.critic.parameters(), lr=cfg_alg.agent.lr)
-    wandb.init(
-        project=cfg_wandb.project,
-        name=cfg_wandb.name + "_" + str(cfg_wandb.run_id),
-        config=OmegaConf.to_container(deepcopy(cfg_alg)).update(
-            OmegaConf.to_container(cfg_env)
-        ),
-        mode=cfg_wandb.mode,
-    )
-
-    # Training loop
-    state, sim_state = env.reset(time_out_after=cfg_env.time_out)
-    total_reward = 0
-    while env.total_steps < cfg_alg.train.total_steps:
-        for _ in tqdm(range(cfg_alg.train.steps_per_epoch)):
-            if env.total_steps < cfg_alg.train.warm_start_steps:
-                action = env.sample_random_action()
-            else:
-                raw_action, _ = agent.select_action(state)
-                action = to_np(raw_action)
-
-            next_state, reward, done, time_out, sim_state = env.step(action)
-            buffer.add(state, next_state, action, reward, done, sim_state)
-            state = next_state
-            total_reward += reward
-
-            if time_out or done:
-                total_reward = 0
-                state, sim_state = env.reset(time_out_after=cfg_env.time_out)
-
-            if (
-                len(buffer) < cfg_alg.train.warm_start_steps
-            ):  # we first collect few sequences
-                continue
-
-            for batch in buffer.get_iter(
-                it=1,
-                batch_size=cfg_alg.train.batch_size,
-            ):
-
-                losses = update(agent, optimizer_policy, optimizer_critic, batch)
-                wandb.log(losses)
-
-        # Epoch end evaluation
-        eval_results = eval(agent, performed_steps=env.total_steps)
-        wandb.log(eval_results)
-
 
 def train_mp_sac_vanilla(
     cfg_alg: DictConfig, cfg_env: DictConfig, cfg_wandb: DictConfig

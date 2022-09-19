@@ -1,3 +1,4 @@
+from omegaconf import OmegaConf
 from omegaconf.omegaconf import DictConfig
 
 from mprl.env import EnvConfigGateway
@@ -38,13 +39,21 @@ class ConfigRepository(ModelConfigGateway, EnvConfigGateway, TrainConfigGateway)
         """
         return self._config[key]
 
-    def get_hyperparameter_config(self) -> DictConfig:
+    def get_hyper_parameter_config(self) -> DictConfig:
         """
         Returns the hyperparameters configuration.
 
         :return: The hyperparameters configuration.
         """
-        return self._config.hyperparameters
+        train_cfg = self._config.train
+        cfg = OmegaConf.create(
+            {
+                **OmegaConf.to_container(self._config.alg.agent.hyper_parameter),
+                **OmegaConf.to_container(train_cfg),
+            }
+        )
+        cfg.alpha = self._config.alg.agent.hyper_parameter.alpha
+        return cfg
 
     def get_buffer_config(self) -> DictConfig:
         """
@@ -60,7 +69,15 @@ class ConfigRepository(ModelConfigGateway, EnvConfigGateway, TrainConfigGateway)
 
         :return: The network configuration.
         """
-        return self._config.network
+        return self._config.alg.agent.network
+
+    def get_environment_config(self) -> DictConfig:
+        """
+        Returns the environment configuration.
+
+        :return: The environment configuration.
+        """
+        return self._config.env
 
     def get_device(self) -> str:
         """
@@ -70,46 +87,6 @@ class ConfigRepository(ModelConfigGateway, EnvConfigGateway, TrainConfigGateway)
         """
         return self._config.device
 
-    def get_algorithm_config(self) -> DictConfig:
-        """
-        Returns the agent configuration.
-
-        :return: The agent configuration.
-        """
-        return self._config.alg
-
-    def get_env_parameter_config(self) -> DictConfig:
-        """
-        Returns the environment configuration.
-
-        :return: The environment configuration.
-        """
-        return self._config.env
-
-    def get_model_config(self) -> DictConfig:
-        """
-        Returns the model configuration.
-
-        :return: The model configuration.
-        """
-        return self._config.model
-
-    def get_logging_config(self) -> DictConfig:
-        """
-        Returns the logging configuration.
-
-        :return: The logging configuration.
-        """
-        return self._config.logging
-
-    def get_algorithm_name(self) -> str:
-        """
-        Returns the name of the algorithm.
-
-        :return: The name of the algorithm.
-        """
-        ...
-
     def get_env_name(self) -> str:
         """
         Returns the name of the environment.
@@ -117,3 +94,19 @@ class ConfigRepository(ModelConfigGateway, EnvConfigGateway, TrainConfigGateway)
         :return: The name of the environment.
         """
         return self._config.env.name
+
+    def get_training_config(self) -> DictConfig:
+        """
+        Returns the training configuration.
+
+        :return: The training configuration.
+        """
+        return self._config.train
+
+    def get_evaluation_config(self) -> DictConfig:
+        """
+        Returns the evaluation configuration.
+
+        :return: The evaluation configuration.
+        """
+        return self._config.eval

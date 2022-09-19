@@ -28,9 +28,4 @@ class PDController:
         qd_d = desired_pos - current_pos
         vd_d = desired_vel - current_vel
         target_j_acc = self.pgains * qd_d + self.dgains * vd_d
-        return torch.clamp(target_j_acc, -1, 1), {
-            "acc_pd": wandb.Histogram(
-                np_histogram=np.histogram(target_j_acc.squeeze().detach().cpu().numpy())
-            ),
-            "pd_times_called": self.times_called,
-        }
+        return torch.clamp(target_j_acc, -1, 1)

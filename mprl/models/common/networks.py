@@ -31,6 +31,8 @@ class QNetwork(nn.Module):
             self.pipeline_one.append(nn.Linear(network_width, network_width))
             self.pipeline_two.append(nn.Linear(network_width, network_width))
 
+        self.pipeline_one = nn.ModuleList(self.pipeline_one)
+        self.pipeline_two = nn.ModuleList(self.pipeline_two)
         self.first_output_layer = nn.Linear(network_width, 1)
         self.second_output_layer = nn.Linear(network_width, 1)
 

@@ -196,3 +196,6 @@ class MujocoEnv:
     @property
     def get_jnt_names(self):
         raise NotImplementedError
+
+    def full_reset(self):
+        self.current_steps = 0

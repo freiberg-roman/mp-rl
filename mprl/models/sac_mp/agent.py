@@ -4,10 +4,10 @@ import torch
 from omegaconf import DictConfig
 from torch.optim import Adam
 
-from mprl.models.sac_common import QNetwork
+from mprl.models.common import QNetwork
 from mprl.utils.math_helper import hard_update
 
-from .networks import GaussianMotionPrimitiveTimePolicy
+from ..sac_mixed_mp.networks import GaussianMotionPrimitivePolicy
 
 
 class SACMP:

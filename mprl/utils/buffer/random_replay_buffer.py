@@ -13,6 +13,7 @@ class RandomRB(ReplayBuffer):
         self, capacity: int, state_dim, action_dim, sim_qpos_dim, sim_qvel_dim
     ):
         self._capacity = 0
+        self._max_capacity = capacity
         self._ind = 0
         self._s = np.empty((capacity, state_dim), dtype=np.float32)
         self._next_s = np.empty((capacity, state_dim), dtype=np.float32)
@@ -38,8 +39,8 @@ class RandomRB(ReplayBuffer):
         self._dones[self._ind] = done
         self._qposes[self._ind, :] = sim_state[0]
         self._qvels[self._ind, :] = sim_state[1]
-        self._capacity = min(self._capacity + 1, self._cfg.capacity)
-        self._ind = (self._ind + 1) % self._capacity
+        self._capacity = min(self._capacity + 1, self._max_capacity)
+        self._ind = (self._ind + 1) % self._max_capacity
 
     def get_iter(self, it, batch_size):
         return RandomBatchIter(self, it, batch_size)

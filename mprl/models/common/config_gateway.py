@@ -1,12 +1,25 @@
-class ModelConfigGateway:
-    def get_hyperparameter_config(self):
+from abc import ABC, abstractmethod
+
+from omegaconf.omegaconf import DictConfig
+
+
+class ModelConfigGateway(ABC):
+    @abstractmethod
+    def get_hyper_parameter_config(self) -> DictConfig:
         pass
 
-    def get_network_config(self):
+    @abstractmethod
+    def get_network_config(self) -> DictConfig:
         pass
 
-    def get_buffer_config(self):
+    @abstractmethod
+    def get_buffer_config(self) -> DictConfig:
         pass
 
-    def get_env_parameter_config(self):
+    @abstractmethod
+    def get_environment_config(self) -> DictConfig:
+        pass
+
+    @abstractmethod
+    def get_device(self) -> str:
         pass

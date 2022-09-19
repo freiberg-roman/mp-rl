@@ -23,7 +23,7 @@ class GaussianPolicy(nn.Module):
         self.pipeline = []
         for i in range(network_depth - 1):
             self.pipeline.append(nn.Linear(network_width, network_width))
-
+        self.pipeline = nn.ModuleList(self.pipeline)
         self.mean_linear: nn.Linear = nn.Linear(network_width, action_dim)
         self.log_std_linear: nn.Linear = nn.Linear(network_width, action_dim)
 

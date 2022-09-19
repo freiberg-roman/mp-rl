@@ -17,14 +17,14 @@ class Trainer:
     ):
         self.env = env
 
-        cfg = train_config_gateway.get_train_scheme()
+        cfg = train_config_gateway.get_training_config()
         self.steps_per_epoch = cfg.steps_per_epoch
         self.total_steps = cfg.total_steps
-        self.warm_steps = cfg.warm_steps
+        self.warm_steps = cfg.warm_start_steps
         self.update_each = cfg.update_each
         self.update_for = cfg.update_for
         assert (
-            self.total_steps % self.iter_per_epoch == 0
+            self.total_steps % self.steps_per_epoch == 0
             and self.total_steps > self.steps_per_epoch
         )
 
@@ -40,15 +40,15 @@ class Trainer:
         agent.sequence_reset()  # reset agent's internal state (e.g. motion primitives)
         for _ in tqdm(range(self.steps_per_epoch)):
             if self.env.total_steps < self.warm_steps:
-                action, info = self.env.sample_random_action()
+                action = self.env.sample_random_action()
             else:
                 action = agent.action(state, sim_state)
 
-            next_state, reward, done, time_out = self.env.step(action)
+            next_state, reward, done, time_out, info = self.env.step(action)
             agent.add_step(state, next_state, action, reward, done, sim_state)
 
             state = next_state
-            sim_state = self.env.get_state()
+            sim_state = self.env.get_sim_state()
 
             if time_out or done:
                 state, sim_state = self.env.reset()
@@ -62,7 +62,7 @@ class Trainer:
         return agent
 
     @property
-    def training_steps_left(self) -> bool:
+    def has_training_steps_left(self) -> bool:
         return self.env.total_steps < self.total_steps
 
     @property

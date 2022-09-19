@@ -1,10 +1,10 @@
-hyper_parameters:
+hyper_parameter:
   gamma: 0.99
   tau: 0.005
   alpha: ${env.sac.alpha}
   lr: 0.0003
 
-networks:
-  network_width: ${env.network_width}
-  network_depth: ${env.network_depth}
+network:
+  network_width: ${env.sac.network_width}
+  network_depth: ${env.sac.network_depth}
 

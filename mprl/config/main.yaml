@@ -3,6 +3,7 @@ defaults:
   - alg: sac
   - buffer: settings
   - env: half_cheetah
+  - eval: scheme
   - logging: wandb
   - prediction: off_policy
   - train: scheme

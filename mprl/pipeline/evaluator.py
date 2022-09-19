@@ -8,7 +8,7 @@ from .config_gateway import TrainConfigGateway
 
 class Evaluator:
     def __init__(self, env: MujocoEnv, eval_config_gateway: TrainConfigGateway):
-        cfg = eval_config_gateway.get_eval_scheme()
+        cfg = eval_config_gateway.get_evaluation_config()
         self.num_eval_episodes: int = cfg.num_eval_episodes
         self.env = env
         self.should_record: bool = cfg.record_video

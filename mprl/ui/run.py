@@ -1,5 +1,6 @@
 import hydra
-from omegaconf import DictConfig
+import wandb
+from omegaconf import DictConfig, OmegaConf
 
 from mprl.config import ConfigRepository
 from mprl.env import MujocoFactory
@@ -50,9 +51,20 @@ def run(cfg: DictConfig):
     trainer = Trainer(training_environment, train_config_gateway=config_repository)
     evaluator = Evaluator(evaluation_environment, eval_config_gateway=config_repository)
 
-    while trainer.training_steps_left:
-        agent = trainer.train(agent)
-        evaluator.evaluate(agent)
+    cfg_wandb = cfg.logging
+    wandb.init(
+        project=cfg_wandb.project,
+        name=cfg_wandb.name + "_" + str(cfg_wandb.run_id),
+        config=OmegaConf.to_container(config_repository.get_config()),
+        mode=cfg_wandb.mode,
+    )
+
+    while trainer.has_training_steps_left:
+        result = evaluator.evaluate(
+            agent, after_performed_steps=trainer.performed_training_steps
+        )
+        print(result)
+        agent = trainer.train_one_epoch(agent)
 
 
 if __name__ == "__main__":

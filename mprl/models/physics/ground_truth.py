@@ -1,10 +1,8 @@
 import numpy as np
 from omegaconf import DictConfig
 
-from ...env.mj_factory import create_mj_env
 from ...env.mujoco.mj_env import MujocoEnv
 from ...utils.ds_helper import to_np
-from .prediction import Prediction
 
 
 class GroundTruth(Prediction):
