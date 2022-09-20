@@ -26,6 +26,7 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         gamma: float,
         tau: float,
         alpha: float,
+        num_steps: int,
         lr: float,
         batch_size: int,
         device: torch.device,
@@ -42,11 +43,13 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         buffer: SequenceRB,
         decompose_fn: Callable,
         model: Optional[Predictable] = None,
+        update_mode: str = "mean",  # other is "weighted"
     ):
         # Parameters
         self.gamma: float = gamma
         self.tau: float = tau
         self.alpha: float = alpha
+        self.num_steps: int = num_steps
         self.device: torch.device = device
         self.buffer = buffer
         self.planner_act: MPTrajectory = planner_act
@@ -54,6 +57,8 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         self.planner_update: MPTrajectory = planner_update
         self.ctrl: PDController = ctrl
         self.decompose_fn = decompose_fn
+        self.batch_size: int = batch_size
+        self.mode: str = update_mode
         self.model = model
 
         # Networks
@@ -115,12 +120,8 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
 
     def sample(self, state, sim_state):
         self.planner_update.reset_planner()
-        weight, logp, mean = self.policy.sample(state)
-        b_q, b_v = self.decompose_fn(state, sim_state)
-        self.planner_update.init(weight, bc_pos=b_q, bc_vel=b_v, num_t=self.num_steps)
-        q, v = next(self.planner_update)
-        action, _ = self.ctrl.get_action(q, v, b_q, b_v)
-        return to_ts(action), logp, mean
+        weights, logp, mean = self.policy.sample(state)
+        return weights, logp, mean
 
     def prob(self, states, weights):
         """
@@ -211,9 +212,19 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         self.optimizer_critic.step()
 
         if self.model is None:
-            loss = self._off_policy_loss()
+            if self.mode == "mean":
+                loss = self._off_policy_mean_loss()
+            elif self.mode == "weighted":
+                loss = self._off_policy_weighted_loss()
+            else:
+                raise ValueError("Invalid mode")
         else:
-            loss = self._model_policy_loss()
+            if self.mode == "mean":
+                loss = self._model_policy_mean_loss()
+            elif self.mode == "weighted":
+                loss = self._model_policy_weighted_loss()
+            else:
+                raise ValueError("Invalid mode")
 
         # Update policy
         self.optimizer_policy.zero_grad()
@@ -223,8 +234,166 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         soft_update(self.critic_target, self.critic, self.tau)
         return {"critic_loss": qf_loss.item(), "policy_loss": loss.item()}
 
-    def _off_policy_loss(self):
-        return 0.0
+    def _off_policy_mean_loss(self):
+        batch = next(self.buffer.get_iter(1, self.batch_size))
+        # dimensions (batch_size, sequence_len, data_dimension)
+        (
+            states,
+            next_states,
+            actions,
+            rewards,
+            dones,
+            sim_states,
+        ) = batch.to_torch_batch()
+        # dimension (1, batch_size, sequence_len, weight_dimension)
+        weights, log_pi, _ = self.sample(states)
+        b_q, b_v = self.decompose_fn(states)
+        self.planner_update.init(
+            weights[0, :, 0, :],
+            bc_pos=b_q[:, 0, :],
+            bc_vel=b_v[:, 0, :],
+            num_t=self.num_steps,
+        )
+        next_s = states[:, 0, :]
+        next_sim_states = sim_states[0][:, 0, :], sim_states[1][0, 0, :]
+        min_qf = 0
+        for i, qv in enumerate(self.planner_update):
+            q, v = qv
+            b_q, b_v = self.decompose_fn(next_s)
+            action, _ = self.ctrl.get_action(q, v, b_q, b_v)
 
-    def _model_policy_loss(self):
-        return 0.0
+            # compute q val
+            qf1_pi, qf2_pi = self.critic(next_s, action)
+            min_qf += torch.min(qf1_pi, qf2_pi)
+            # we simply take the sequence as fixed
+            if i == self.num_steps - 1:
+                break
+            next_s, next_sim_states = next_states[:, i, :], (
+                next_sim_states[0][:, i + 1, :],
+                next_sim_states[1][:, i + 1, :],
+            )
+        min_qf /= self.num_steps
+        policy_loss = (-min_qf).mean() + self.alpha * log_pi.mean()
+        return policy_loss
+
+    def _off_policy_weighted_loss(self):
+        batch = next(self.buffer.get_iter(1, self.batch_size))
+        # dimension (batch_size, sequence_len, data_dimension)
+        (
+            states,
+            next_states,
+            actions,
+            rewards,
+            dones,
+            sim_states,
+        ) = batch.to_torch_batch()
+        # dimension (1, batch_size, sequence_len, weight_dimension)
+        weights, log_pi, _ = self.sample(states)
+        b_q, b_v = self.decompose_fn(states)
+        self.planner_update.init(
+            weights[0, :, 0, :],
+            bc_pos=b_q[:, 0, :],
+            bc_vel=b_v[:, 0, :],
+            num_t=self.num_steps,
+        )
+        next_s = states[:, 0, :]
+        next_sim_states = sim_states[0][:, 0, :], sim_states[1][0, 0, :]
+        # dimensions (batch_size, sequence_len, 1)
+        q_prob = torch.zeros(size=(len(states), self.num_steps, 1))
+        min_qf = torch.zeros_like(q_prob)
+        for i, qv in enumerate(self.planner_update):
+            q, v = qv
+            b_q, b_v = self.decompose_fn(next_s, next_sim_states)
+            action, _ = self.ctrl.get_action(q, v, b_q, b_v)
+
+            # compute q val
+            qf1_pi, qf2_pi = self.critic(next_s, action)
+            # dimension (batch_size, 1)
+            q_prob[:, i, :] = self.prob(next_s, weights[0, :, 0, :])
+            min_qf[:, i, :] = torch.min(qf1_pi, qf2_pi)
+            if i == self.num_steps - 1:
+                break
+            next_s = next_states[:, i, :]
+            next_sim_states = (
+                next_sim_states[0][:, i + 1, :],
+                next_sim_states[1][:, i + 1, :],
+            )
+        q_prob = F.normalize(q_prob, p=1.0, dim=1)
+        policy_loss = (-q_prob.detach() * min_qf).mean()
+        return policy_loss
+
+    def _model_policy_mean_loss(self):
+        batch = next(self.buffer.get_iter(1, self.batch_size))
+        # dimension (batch_size, data_dimension)
+        (
+            states,
+            next_states,
+            actions,
+            rewards,
+            dones,
+            sim_states,
+        ) = batch.to_torch_batch()
+        # dimension (1, batch_size, weight_dimension)
+        weights, log_pi, _ = self.sample(states)
+        b_q, b_v = self.decompose_fn(states, sim_states)
+        self.planner_update.init(
+            weights[0], bc_pos=b_q, bc_vel=b_v, num_t=self.num_steps
+        )
+        next_states = states
+        next_sim_states = sim_states
+        min_qf = 0
+        for q, v in self.planner_update:
+            b_q, b_v = self.decompose_fn(next_states, next_sim_states)
+            action, _ = self.ctrl.get_action(q, v, b_q, b_v)
+
+            # compute q val: dimension (batch_size, 1)
+            qf1_pi, qf2_pi = self.critic(next_states, action)
+            min_qf += torch.min(qf1_pi, qf2_pi)
+            next_states, next_sim_states = self.model.next_state(
+                next_states, next_sim_states, action
+            )
+        min_qf /= self.num_steps
+        policy_loss = (-min_qf).mean() + self.alpha * log_pi.mean()
+        self.model.update(batch)
+        return policy_loss
+
+    def _model_policy_weighted_loss(self):
+        batch = next(self.buffer.get_iter(1, self.batch_size))
+        # dimension (batch_size, data_dimension)
+        (
+            states,
+            next_states,
+            actions,
+            rewards,
+            dones,
+            sim_states,
+        ) = batch.to_torch_batch()
+        # dimension (1, batch_size, weight_dimension)
+        weights, log_pi, _ = self.sample(states)
+        b_q, b_v = self.decompose_fn(sim_states)
+        self.planner_update.init(
+            weights[0], bc_pos=b_q, bc_vel=b_v, num_t=self.num_steps
+        )
+        next_states = states
+        next_sim_states = sim_states
+        # dimensions (batch_size, sequence_len, 1)
+        q_prob = torch.zeros(size=(len(states), self.num_steps, 1))
+        min_qf = torch.zeros_like(q_prob)
+        for i, qv in enumerate(self.planner_update):
+            q, v = qv
+            b_q, b_v = self.decompose_fn(next_sim_states)
+            action, _ = self.ctrl.get_action(q, v, b_q, b_v)
+
+            # compute q val
+            qf1_pi, qf2_pi = self.critic(next_states, action)
+            # dimension (batch_size, 1)
+            q_prob[:, i, :] = self.prob(next_states, weights[0]).detach()
+            min_qf[:, i, :] = torch.min(qf1_pi, qf2_pi)
+            next_states, next_sim_states = self.model.next_state(
+                next_states, next_sim_states, action
+            )
+            next_states = to_ts(next_states)
+        q_prob = F.normalize(q_prob, p=1.0, dim=1)
+        policy_loss = (-q_prob * min_qf).mean() + self.alpha * log_pi.mean()
+        self.model.update(batch)
+        return policy_loss

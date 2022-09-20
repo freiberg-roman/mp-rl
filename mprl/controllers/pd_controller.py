@@ -2,7 +2,6 @@ from typing import Union
 
 import numpy as np
 import torch
-import wandb
 from omegaconf import DictConfig
 
 from mprl.utils.ds_helper import to_ts
@@ -12,7 +11,6 @@ class PDController:
     def __init__(self, cfg: DictConfig):
         self.pgains: torch.Tensor = torch.tensor(cfg.pgains)
         self.dgains: torch.Tensor = torch.tensor(cfg.dgains)
-        self.times_called = 0
 
     def get_action(
         self,

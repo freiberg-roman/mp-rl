@@ -5,7 +5,7 @@ from torch import nn
 from torch.distributions import Normal
 from torch.nn import functional as F
 
-from mprl.models.sac_common.networks import weights_init_
+from ..common.networks import weights_init_
 
 LOG_SIG_MAX = 2
 LOG_SIG_MIN = -20
