@@ -23,3 +23,7 @@ class ModelConfigGateway(ABC):
     @abstractmethod
     def get_device(self) -> str:
         pass
+
+    @abstractmethod
+    def get_model_config(self) -> DictConfig:
+        pass

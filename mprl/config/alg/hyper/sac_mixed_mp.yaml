@@ -1,0 +1,6 @@
+gamma: 0.99
+tau: 0.005
+alpha: 0.1
+time_steps: 5
+num_basis: ${env.idmp.num_basis}
+num_dof: ${env.num_dof}

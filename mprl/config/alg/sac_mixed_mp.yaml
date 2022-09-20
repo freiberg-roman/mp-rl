@@ -1,11 +1,8 @@
 defaults:
-  - agent: mp_sac
-  - train: off_policy
-  - buffer: random_replay_buffer
-  - mp: idmp
   - ctrl: pd
-  - prediction: ground_truth
+  - hyper: sac_mixed_mp
+  - network: ff
+  - mp: idmp
 
-name: "sac_mp_stepwise"
-mode: "train"
-reward_weighting: "likelihood"  # other options is "likelihood"
+name: "sac_mixed_mp"
+policy_loss: "mean"  # other options is "weighted"

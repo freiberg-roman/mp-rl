@@ -7,7 +7,7 @@ from torch.optim import Adam
 from mprl.models.common import QNetwork
 from mprl.utils.math_helper import hard_update
 
-from ..sac_mixed_mp.networks import GaussianMotionPrimitivePolicy
+from ..sac_mixed_mp.networks import GaussianPolicyWeights
 
 
 class SACMP:

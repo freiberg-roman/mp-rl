@@ -4,12 +4,13 @@ import mujoco
 import numpy as np
 
 from ...utils.ds_helper import to_np
+from ..mp_rl_environment import MPRLEnvironment
 from .rendering.mj_rendering import RenderContextOffscreen, Viewer
 
 DEFAULT_SIZE = 480
 
 
-class MujocoEnv:
+class MujocoEnv(MPRLEnvironment):
     def __init__(self, path, frame_skip, assets=None):
 
         if assets is None:
@@ -58,19 +59,20 @@ class MujocoEnv:
         Optionally implement this method, if you need to tinker with camera position and so forth.
         """
 
-    def reset(self, time_out_after: Optional[int] = None) -> np.ndarray:
+    def reset(self, time_out_after) -> np.ndarray:
         self.time_out_after = time_out_after
         self.current_steps = 0
         mujoco.mj_resetData(self.model, self.data)
         ob = self.reset_model()
         return ob, self.get_sim_state()
 
-    def sample_random_action(self):
+    def random_action(self):
         """
         Uniform sampling in environment space.
         """
 
-    def set_state(self, qpos, qvel):
+    def set_sim_state(self, sim_state: Tuple[np.ndarray, np.ndarray]):
+        qpos, qvel = sim_state
         qpos = to_np(qpos)
         qvel = to_np(qvel)
         assert qpos.shape == (self.model.nq,) and qvel.shape == (self.model.nv,)
@@ -129,7 +131,7 @@ class MujocoEnv:
         elif mode == "human":
             self._get_viewer(mode).render()
 
-    def close(self):
+    def close_viewer(self):
         if self.viewer is not None:
             self.viewer.close()
             self._viewers = {}

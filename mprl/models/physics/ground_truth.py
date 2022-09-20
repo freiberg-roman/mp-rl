@@ -3,9 +3,10 @@ from omegaconf import DictConfig
 
 from ...env.mujoco.mj_env import MujocoEnv
 from ...utils.ds_helper import to_np
+from ..common.interfaces import Predictable
 
 
-class GroundTruth(Prediction):
+class GroundTruthPrediction(Predictable):
     def __init__(self, cfg_env: DictConfig):
         self.cfg_env = cfg_env
         self.env: MujocoEnv = create_mj_env(cfg_env)

@@ -12,9 +12,9 @@ from mprl.env.mujoco import (
     SawyerReachEnvV2,
     SawyerWindowOpenEnvV2,
 )
-from mprl.env.mujoco.mj_env import MujocoEnv
 
 from .config_gateway import EnvConfigGateway
+from .mp_rl_environment import MPRLEnvironment
 
 BASE = str(pathlib.Path(__file__).parent.resolve()) + "/../../resources/"
 
@@ -23,7 +23,7 @@ class MujocoFactory:
     def __init__(self, env_config_gateway: EnvConfigGateway):
         self.cfg = env_config_gateway
 
-    def create(self) -> MujocoEnv:
+    def create(self) -> MPRLEnvironment:
         cfg = self.cfg
 
         if cfg.get_env_name() == "HalfCheetah":

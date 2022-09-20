@@ -1,6 +1,7 @@
 defaults:
-  - agent: sac_vanilla
   - ctrl: none
+  - hyper: sac_vanilla
+  - network: ff
   - mp: none
 
 name: "sac"

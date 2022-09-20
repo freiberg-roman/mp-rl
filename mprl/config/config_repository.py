@@ -110,3 +110,11 @@ class ConfigRepository(ModelConfigGateway, EnvConfigGateway, TrainConfigGateway)
         :return: The evaluation configuration.
         """
         return self._config.eval
+
+    def get_model_config(self) -> DictConfig:
+        """
+        Returns the model configuration.
+
+        :return: The model configuration.
+        """
+        return self._config.model

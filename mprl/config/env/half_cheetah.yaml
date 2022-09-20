@@ -20,5 +20,10 @@ idmp:
 
 sac:
   alpha: 0.1
+
+sac_mixed_mp:
+  alpha: 0.05
+
+network:
   network_width: 256
   network_depth: 2
