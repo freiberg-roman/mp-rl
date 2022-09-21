@@ -5,4 +5,3 @@ defaults:
   - mp: idmp
 
 name: "sac_mixed_mp"
-policy_loss: "mean"  # other options is "weighted"

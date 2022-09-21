@@ -68,6 +68,7 @@ class SACMixedMPFactory:
             num_basis=cfg_hyper.num_basis,
             num_dof=cfg_hyper.num_dof,
             model=model,
+            policy_loss_type=cfg_hyper.policy_loss,
             decompose_fn=env.decompose_fn,
             planner_act=deepcopy(planner),
             planner_update=deepcopy(planner),
