@@ -70,42 +70,50 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         ).to(self.device)
         hard_update(self.critic_target, self.critic)
         self.policy: GaussianPolicyWeights = GaussianPolicyWeights(
-            (state_dim, num_basis * num_dof), network_width, network_depth
+            (state_dim, (num_basis + 1) * num_dof), network_width, network_depth
         ).to(self.device)
         self.optimizer_policy = Adam(self.policy.parameters(), lr=lr)
         self.optimizer_critic = Adam(self.critic.parameters(), lr=lr)
 
     def sequence_reset(self):
-        self.buffer.close_trajectory()
+        if len(self.buffer) > 0:
+            self.buffer.close_trajectory()
         self.planner_act.reset_planner()
 
     @torch.no_grad()
     def action(self, state: np.ndarray, info: any) -> np.ndarray:
         sim_state = info
         b_q, b_v = self.decompose_fn(state, sim_state)
+        b_q = torch.FloatTensor(b_q).to(self.device).unsqueeze(0)
+        b_v = torch.FloatTensor(b_v).to(self.device).unsqueeze(0)
         state = torch.FloatTensor(state).to(self.device).unsqueeze(0)
         try:
             q, v = next(self.planner_act)
         except StopIteration:
             weights, _, _ = self.policy.sample(state)
             self.planner_act.init(weights, bc_pos=b_q, bc_vel=b_v, num_t=self.num_steps)
+            q, v = next(self.planner_act)
         action = self.ctrl.get_action(q, v, b_q, b_v)
-        return to_np(action)
+        return to_np(action.squeeze())
 
     def eval_reset(self) -> np.ndarray:
         self.planner_eval.reset_planner()
 
+    @torch.no_grad()
     def action_eval(self, state: np.ndarray, info: any) -> np.ndarray:
         sim_state = info
         b_q, b_v = self.decompose_fn(state, sim_state)
+        b_q = torch.FloatTensor(b_q).to(self.device).unsqueeze(0)
+        b_v = torch.FloatTensor(b_v).to(self.device).unsqueeze(0)
         state = torch.FloatTensor(state).to(self.device).unsqueeze(0)
         try:
             q, v = next(self.planner_act)
         except StopIteration:
             _, _, weights = self.policy.sample(state)
             self.planner_act.init(weights, bc_pos=b_q, bc_vel=b_v, num_t=self.num_steps)
+            q, v = next(self.planner_act)
         action = self.ctrl.get_action(q, v, b_q, b_v)
-        return to_np(action)
+        return to_np(action.squeeze())
 
     def add_step(
         self,
@@ -118,10 +126,14 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
     ):
         self.buffer.add(state, next_state, action, reward, done, sim_state)
 
-    def sample(self, state, sim_state):
+    def sample(self, states, sim_states):
         self.planner_update.reset_planner()
-        weights, logp, mean = self.policy.sample(state)
-        return weights, logp, mean
+        weights, logp, mean = self.policy.sample(states)
+        b_q, b_v = self.decompose_fn(states, sim_states)
+        self.planner_update.init(weights, bc_pos=b_q, bc_vel=b_v, num_t=self.num_steps)
+        q, v = next(self.planner_update)
+        action = self.ctrl.get_action(q, v, b_q, b_v)
+        return action, logp, mean
 
     def prob(self, states, weights):
         """
@@ -182,11 +194,13 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
 
     def update(self) -> dict:
         batch = next(self.buffer.get_iter(1, self.batch_size)).to_torch_batch()
-        states, next_states, actions, rewards, dones, _ = batch
+        states, next_states, actions, rewards, dones, sim_states = batch
 
         # Compute critic loss
         with torch.no_grad():
-            next_state_action, next_state_log_pi, _ = self.policy.sample(next_states)
+            next_state_action, next_state_log_pi, _ = self.sample(
+                next_states, sim_states
+            )
             qf1_next_target, qf2_next_target = self.critic_target(
                 next_states, next_state_action
             )
@@ -238,7 +252,9 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         return {"critic_loss": qf_loss.item(), "policy_loss": loss.item()}
 
     def _off_policy_mean_loss(self):
-        batch = next(self.buffer.get_iter(1, self.batch_size))
+        batch = next(
+            self.buffer.get_true_k_sequence_iter(1, self.num_steps, self.batch_size)
+        )
         # dimensions (batch_size, sequence_len, data_dimension)
         (
             states,
@@ -248,11 +264,11 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
             dones,
             sim_states,
         ) = batch.to_torch_batch()
-        # dimension (1, batch_size, sequence_len, weight_dimension)
-        weights, log_pi, _ = self.sample(states)
-        b_q, b_v = self.decompose_fn(states)
+        # dimension (batch_size, sequence_len, weight_dimension)
+        weights, log_pi, _ = self.policy.sample(states)
+        b_q, b_v = self.decompose_fn(states, sim_states)
         self.planner_update.init(
-            weights[0, :, 0, :],
+            weights[:, 0, :],
             bc_pos=b_q[:, 0, :],
             bc_vel=b_v[:, 0, :],
             num_t=self.num_steps,
@@ -262,8 +278,8 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         min_qf = 0
         for i, qv in enumerate(self.planner_update):
             q, v = qv
-            b_q, b_v = self.decompose_fn(next_s)
-            action, _ = self.ctrl.get_action(q, v, b_q, b_v)
+            b_q, b_v = self.decompose_fn(next_s, next_sim_states)
+            action = self.ctrl.get_action(q, v, b_q, b_v)
 
             # compute q val
             qf1_pi, qf2_pi = self.critic(next_s, action)
@@ -272,8 +288,8 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
             if i == self.num_steps - 1:
                 break
             next_s, next_sim_states = next_states[:, i, :], (
-                next_sim_states[0][:, i + 1, :],
-                next_sim_states[1][:, i + 1, :],
+                sim_states[0][:, i + 1, :],
+                sim_states[1][:, i + 1, :],
             )
         min_qf /= self.num_steps
         policy_loss = (-min_qf).mean() + self.alpha * log_pi.mean()
@@ -337,17 +353,15 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
             sim_states,
         ) = batch.to_torch_batch()
         # dimension (1, batch_size, weight_dimension)
-        weights, log_pi, _ = self.sample(states)
+        weights, log_pi, _ = self.policy.sample(states)
         b_q, b_v = self.decompose_fn(states, sim_states)
-        self.planner_update.init(
-            weights[0], bc_pos=b_q, bc_vel=b_v, num_t=self.num_steps
-        )
+        self.planner_update.init(weights, bc_pos=b_q, bc_vel=b_v, num_t=self.num_steps)
         next_states = states
         next_sim_states = sim_states
         min_qf = 0
         for q, v in self.planner_update:
             b_q, b_v = self.decompose_fn(next_states, next_sim_states)
-            action, _ = self.ctrl.get_action(q, v, b_q, b_v)
+            action = self.ctrl.get_action(q, v, b_q, b_v)
 
             # compute q val: dimension (batch_size, 1)
             qf1_pi, qf2_pi = self.critic(next_states, action)
@@ -355,9 +369,11 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
             next_states, next_sim_states = self.model.next_state(
                 next_states, next_sim_states, action
             )
+            next_states = to_ts(next_states).to(self.device)
         min_qf /= self.num_steps
         policy_loss = (-min_qf).mean() + self.alpha * log_pi.mean()
-        self.model.update(batch)
+        if isinstance(self.model, Trainable):
+            self.model.update(batch=batch)
         return policy_loss
 
     def _model_policy_weighted_loss(self):
