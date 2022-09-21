@@ -3,7 +3,7 @@ from typing import Union
 import wandb
 from tqdm import tqdm
 
-from mprl.env import MujocoEnv
+from mprl.env import EnvConfigGateway, MPRLEnvironment
 from mprl.models.common import Actable, Trainable
 
 from .config_gateway import TrainConfigGateway
@@ -12,7 +12,7 @@ from .config_gateway import TrainConfigGateway
 class Trainer:
     def __init__(
         self,
-        env: MujocoEnv,
+        env: MPRLEnvironment,
         train_config_gateway: TrainConfigGateway,
     ):
         self.env = env
@@ -23,6 +23,7 @@ class Trainer:
         self.warm_steps = cfg.warm_start_steps
         self.update_each = cfg.update_each
         self.update_for = cfg.update_for
+        self.time_out_after = cfg.time_out_after
         assert (
             self.total_steps % self.steps_per_epoch == 0
             and self.total_steps > self.steps_per_epoch
@@ -36,11 +37,11 @@ class Trainer:
         :param agent: The agent to train.
         :return: The trained agent.
         """
-        state, sim_state = self.env.reset()
+        state, sim_state = self.env.reset(self.time_out_after)
         agent.sequence_reset()  # reset agent's internal state (e.g. motion primitives)
         for _ in tqdm(range(self.steps_per_epoch)):
             if self.env.total_steps < self.warm_steps:
-                action = self.env.sample_random_action()
+                action = self.env.random_action()
             else:
                 action = agent.action(state, sim_state)
 
@@ -51,7 +52,7 @@ class Trainer:
             sim_state = self.env.get_sim_state()
 
             if time_out or done:
-                state, sim_state = self.env.reset()
+                state, sim_state = self.env.reset(self.time_out_after)
                 agent.sequence_reset()
 
             if self.env.total_steps % self.update_each == 0:

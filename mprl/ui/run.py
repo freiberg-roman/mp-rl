@@ -4,7 +4,7 @@ from omegaconf import DictConfig, OmegaConf
 
 from mprl.config import ConfigRepository
 from mprl.env import MujocoFactory
-from mprl.models import SACFactory
+from mprl.models import SACFactory, SACMixedMPFactory
 from mprl.pipeline import Evaluator, Trainer
 
 
@@ -16,8 +16,10 @@ def run(cfg: DictConfig):
 
     if cfg.alg.name == "sac":
         agent = SACFactory(config_gateway=config_repository).create()
-    elif cfg.alg.name == "sac_mp_stepwise":
-        ...  # TODO
+    elif cfg.alg.name == "sac_mixed_mp":
+        agent = SACMixedMPFactory(
+            config_gateway=config_repository, env_config_gateway=config_repository
+        ).create()
     elif cfg.alg.name == "sac_mp":
         ...  # TODO
     else:

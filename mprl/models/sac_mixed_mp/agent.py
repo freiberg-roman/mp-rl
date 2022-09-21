@@ -14,7 +14,7 @@ from mprl.utils.math_helper import hard_update, soft_update
 from ...controllers import MPTrajectory, PDController
 from .. import Actable, Evaluable, Predictable, Serializable, Trainable
 from ..common import QNetwork
-from .networks import GaussianMotionPrimitivePolicy
+from .networks import GaussianPolicyWeights
 
 LOG_PROB_MIN = -27.5
 LOG_PROB_MAX = 0.0
@@ -69,7 +69,7 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
             (state_dim, action_dim), network_width, network_depth
         ).to(self.device)
         hard_update(self.critic_target, self.critic)
-        self.policy: GaussianMotionPrimitivePolicy = GaussianMotionPrimitivePolicy(
+        self.policy: GaussianPolicyWeights = GaussianPolicyWeights(
             (state_dim, num_basis * num_dof), network_width, network_depth
         ).to(self.device)
         self.optimizer_policy = Adam(self.policy.parameters(), lr=lr)
@@ -176,6 +176,9 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         self.policy.train()
         self.critic.train()
         self.critic_target.train()
+
+    def parameters(self):
+        return self.policy.parameters()
 
     def update(self) -> dict:
         batch = next(self.buffer.get_iter(1, self.batch_size)).to_torch_batch()

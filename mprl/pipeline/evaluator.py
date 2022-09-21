@@ -1,13 +1,13 @@
 import cv2
 
-from mprl.env import MujocoEnv
+from mprl.env import MPRLEnvironment
 from mprl.models.common import Evaluable
 
 from .config_gateway import TrainConfigGateway
 
 
 class Evaluator:
-    def __init__(self, env: MujocoEnv, eval_config_gateway: TrainConfigGateway):
+    def __init__(self, env: MPRLEnvironment, eval_config_gateway: TrainConfigGateway):
         cfg = eval_config_gateway.get_evaluation_config()
         self.num_eval_episodes: int = cfg.num_eval_episodes
         self.env = env

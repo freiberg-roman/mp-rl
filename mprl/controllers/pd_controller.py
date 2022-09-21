@@ -8,9 +8,14 @@ from mprl.utils.ds_helper import to_ts
 
 
 class PDController:
-    def __init__(self, cfg: DictConfig):
-        self.pgains: torch.Tensor = torch.tensor(cfg.pgains)
-        self.dgains: torch.Tensor = torch.tensor(cfg.dgains)
+    def __init__(
+        self,
+        pgains: Union[np.ndarray, torch.Tensor],
+        dgains: Union[np.ndarray, torch.Tensor],
+        device: torch.device,
+    ):
+        self.pgains: torch.Tensor = to_ts(pgains).to(device)
+        self.dgains: torch.Tensor = to_ts(dgains).to(device)
 
     def get_action(
         self,

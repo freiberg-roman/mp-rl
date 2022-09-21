@@ -201,3 +201,10 @@ class MujocoEnv(MPRLEnvironment):
 
     def full_reset(self):
         self.current_steps = 0
+
+    def decompose_fn(
+        self, states: np.ndarray, sim_states: Tuple[np.ndarray, np.ndarray]
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        qpos_joint = sim_states[0][..., self.qpos_idx]
+        qvel_joint = sim_states[1][..., self.qvel_idx]
+        return qpos_joint, qvel_joint

@@ -27,3 +27,11 @@ class ModelConfigGateway(ABC):
     @abstractmethod
     def get_model_config(self) -> DictConfig:
         pass
+
+    @abstractmethod
+    def get_mp_config(self) -> DictConfig:
+        pass
+
+    @abstractmethod
+    def get_ctrl_config(self) -> DictConfig:
+        pass

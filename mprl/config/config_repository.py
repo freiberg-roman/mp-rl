@@ -1,3 +1,4 @@
+import torch
 from omegaconf import OmegaConf
 from omegaconf.omegaconf import DictConfig
 
@@ -46,13 +47,18 @@ class ConfigRepository(ModelConfigGateway, EnvConfigGateway, TrainConfigGateway)
         :return: The hyperparameters configuration.
         """
         train_cfg = self._config.train
+        network_cfg = self._config.alg.network
         cfg = OmegaConf.create(
             {
-                **OmegaConf.to_container(self._config.alg.agent.hyper_parameter),
+                **OmegaConf.to_container(self._config.alg.hyper),
                 **OmegaConf.to_container(train_cfg),
+                **OmegaConf.to_container(network_cfg),
             }
         )
-        cfg.alpha = self._config.alg.agent.hyper_parameter.alpha
+        cfg.alpha = self._config.alg.hyper.alpha
+        cfg.num_basis = self._config.alg.hyper.num_basis
+        cfg.num_dof = self._config.alg.hyper.num_dof
+        cfg.basis_bandwidth_factor = self._config.alg.hyper.basis_bandwidth_factor
         return cfg
 
     def get_buffer_config(self) -> DictConfig:
@@ -69,7 +75,23 @@ class ConfigRepository(ModelConfigGateway, EnvConfigGateway, TrainConfigGateway)
 
         :return: The network configuration.
         """
-        return self._config.alg.agent.network
+        return self._config.alg.network
+
+    def get_mp_config(self) -> DictConfig:
+        """
+        Returns the multiprocessing configuration.
+
+        :return: The multiprocessing configuration.
+        """
+        return self._config.alg.mp
+
+    def get_ctrl_config(self) -> DictConfig:
+        """
+        Returns the control configuration.
+
+        :return: The control configuration.
+        """
+        return self._config.alg.ctrl
 
     def get_environment_config(self) -> DictConfig:
         """
@@ -85,7 +107,7 @@ class ConfigRepository(ModelConfigGateway, EnvConfigGateway, TrainConfigGateway)
 
         :return: The device to use.
         """
-        return self._config.device
+        return torch.device(self._config.device)
 
     def get_env_name(self) -> str:
         """
@@ -101,7 +123,14 @@ class ConfigRepository(ModelConfigGateway, EnvConfigGateway, TrainConfigGateway)
 
         :return: The training configuration.
         """
-        return self._config.train
+        train_cfg = self._config.train
+        cfg = OmegaConf.create(
+            {
+                **OmegaConf.to_container(train_cfg),
+                **{"time_out_after": self._config.env.time_out_after},
+            }
+        )
+        return cfg
 
     def get_evaluation_config(self) -> DictConfig:
         """
@@ -117,4 +146,4 @@ class ConfigRepository(ModelConfigGateway, EnvConfigGateway, TrainConfigGateway)
 
         :return: The model configuration.
         """
-        return self._config.model
+        return self._config.prediction

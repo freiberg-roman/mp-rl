@@ -1,4 +1,4 @@
-name: "MixtureOfExperts"
+name: "mixture_of_experts"
 
 hidden_dim: 512
 num_experts: 5

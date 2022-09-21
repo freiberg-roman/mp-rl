@@ -25,7 +25,7 @@ class SACFactory:
             action_dim=env_cfg.action_dim,
             network_width=cfg_net.network_width,
             network_depth=cfg_net.network_depth,
-            lr=cfg_hyper.lr,
+            lr=cfg_net.lr,
             gamma=cfg_hyper.gamma,
             tau=cfg_hyper.tau,
             alpha=cfg_hyper.alpha,

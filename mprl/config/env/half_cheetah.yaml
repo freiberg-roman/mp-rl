@@ -3,7 +3,7 @@ name: "HalfCheetah"
 num_dof: 6
 q_dim: 8
 vel_dim: 8
-time_out: 1000  # only for SAC activated
+time_out_after: 1000
 action_dim: 6
 state_dim: 17
 sim_qpos_dim: 9

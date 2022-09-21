@@ -10,7 +10,7 @@ class MPRLEnvironment(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def reset(self, timeout_after: int):
+    def reset(self, time_out_after: int):
         raise NotImplementedError
 
     @abstractmethod
@@ -33,11 +33,17 @@ class MPRLEnvironment(ABC):
     def close_viewer(self):
         raise NotImplementedError
 
-    @abstractmethod
     @property
+    @abstractmethod
     def dt(self) -> float:
         raise NotImplementedError
 
     @abstractmethod
     def random_action(self) -> np.array:
+        raise NotImplementedError
+
+    @abstractmethod
+    def decompose_fn(
+        self, states: np.ndarray, sim_states: Tuple[np.ndarray, np.ndarray]
+    ) -> Tuple[np.ndarray, np.ndarray]:
         raise NotImplementedError

@@ -1,4 +1,4 @@
-name: "idmp"
+mp_type: "idmp"
 
 alpha: 10
 tau: 4.0
