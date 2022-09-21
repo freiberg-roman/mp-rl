@@ -1,3 +1,5 @@
+from typing import Tuple
+
 import numpy as np
 
 from mprl.env.mujoco.mj_env import MujocoEnv
@@ -48,7 +50,7 @@ class HalfCheetahEnv(MujocoEnv):
         )
         return observation, reward, False, done, self.get_sim_state()
 
-    def sample_random_action(self):
+    def random_action(self):
         return np.random.uniform(-1, 1, (6,))
 
     def _get_obs(self):
@@ -72,7 +74,7 @@ class HalfCheetahEnv(MujocoEnv):
             self.model.nv
         )
 
-        self.set_state(qpos, qvel)
+        self.set_sim_state((qpos, qvel))
 
         observation = self._get_obs()
         return observation
@@ -98,3 +100,10 @@ class HalfCheetahEnv(MujocoEnv):
     @property
     def get_jnt_names(self):
         return ["bthigh", "bshin", "bfoot", "fthigh", "fshin", "ffoot"]
+
+    def decompose_fn(
+        self, states: np.ndarray, sim_states: Tuple[np.ndarray, np.ndarray]
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        qpos_joint = sim_states[0][..., self.qpos_idx]
+        qvel_joint = sim_states[1][..., self.qvel_idx]
+        return qpos_joint, qvel_joint

@@ -9,17 +9,19 @@ from mprl.utils.buffer.replay_buffer import ReplayBuffer
 
 
 class RandomRB(ReplayBuffer):
-    def __init__(self, cfg: DictConfig):
-        self._cfg = cfg
+    def __init__(
+        self, capacity: int, state_dim, action_dim, sim_qpos_dim, sim_qvel_dim
+    ):
         self._capacity = 0
+        self._max_capacity = capacity
         self._ind = 0
-        self._s = np.empty((cfg.capacity, cfg.env.state_dim), dtype=np.float32)
-        self._next_s = np.empty((cfg.capacity, cfg.env.state_dim), dtype=np.float32)
-        self._acts = np.empty((cfg.capacity, cfg.env.action_dim), dtype=np.float32)
-        self._rews = np.empty(cfg.capacity, dtype=np.float32)
-        self._dones = np.empty(cfg.capacity, dtype=bool)
-        self._qposes = np.empty((cfg.capacity, cfg.env.sim_qpos_dim), dtype=np.float32)
-        self._qvels = np.empty((cfg.capacity, cfg.env.sim_qvel_dim), dtype=np.float32)
+        self._s = np.empty((capacity, state_dim), dtype=np.float32)
+        self._next_s = np.empty((capacity, state_dim), dtype=np.float32)
+        self._acts = np.empty((capacity, action_dim), dtype=np.float32)
+        self._rews = np.empty(capacity, dtype=np.float32)
+        self._dones = np.empty(capacity, dtype=bool)
+        self._qposes = np.empty((capacity, sim_qpos_dim), dtype=np.float32)
+        self._qvels = np.empty((capacity, sim_qvel_dim), dtype=np.float32)
 
     def add(
         self,
@@ -37,8 +39,8 @@ class RandomRB(ReplayBuffer):
         self._dones[self._ind] = done
         self._qposes[self._ind, :] = sim_state[0]
         self._qvels[self._ind, :] = sim_state[1]
-        self._capacity = min(self._capacity + 1, self._cfg.capacity)
-        self._ind = (self._ind + 1) % self._cfg.capacity
+        self._capacity = min(self._capacity + 1, self._max_capacity)
+        self._ind = (self._ind + 1) % self._max_capacity
 
     def get_iter(self, it, batch_size):
         return RandomBatchIter(self, it, batch_size)

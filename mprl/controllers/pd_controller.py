@@ -2,17 +2,20 @@ from typing import Union
 
 import numpy as np
 import torch
-import wandb
 from omegaconf import DictConfig
 
 from mprl.utils.ds_helper import to_ts
 
 
 class PDController:
-    def __init__(self, cfg: DictConfig):
-        self.pgains: torch.Tensor = torch.tensor(cfg.pgains)
-        self.dgains: torch.Tensor = torch.tensor(cfg.dgains)
-        self.times_called = 0
+    def __init__(
+        self,
+        pgains: Union[np.ndarray, torch.Tensor],
+        dgains: Union[np.ndarray, torch.Tensor],
+        device: torch.device,
+    ):
+        self.pgains: torch.Tensor = to_ts(pgains).to(device)
+        self.dgains: torch.Tensor = to_ts(dgains).to(device)
 
     def get_action(
         self,
@@ -28,9 +31,4 @@ class PDController:
         qd_d = desired_pos - current_pos
         vd_d = desired_vel - current_vel
         target_j_acc = self.pgains * qd_d + self.dgains * vd_d
-        return torch.clamp(target_j_acc, -1, 1), {
-            "acc_pd": wandb.Histogram(
-                np_histogram=np.histogram(target_j_acc.squeeze().detach().cpu().numpy())
-            ),
-            "pd_times_called": self.times_called,
-        }
+        return torch.clamp(target_j_acc, -1, 1)

@@ -1,4 +1,0 @@
-total_steps: 1000000
-steps_per_epoch: 1000
-batch_size: 128
-warm_start_steps: 1000

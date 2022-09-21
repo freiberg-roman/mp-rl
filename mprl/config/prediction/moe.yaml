@@ -1,0 +1,8 @@
+name: "mixture_of_experts"
+
+hidden_dim: 512
+num_experts: 5
+
+env:
+  state_dim: ${env.state_dim}
+  action_dim: ${env.action_dim}

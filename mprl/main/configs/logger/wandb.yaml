@@ -1,5 +1,0 @@
-name: ${env.name}
-mode: "disabled"  # use option "online" to enable and "disabled" to disable
-record: False
-project: ${algorithm.name}
-run_id: ${run_id}

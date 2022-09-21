@@ -1,0 +1,8 @@
+alpha: 0.1
+gamma: 0.99
+tau: 0.005
+num_basis: ${env.idmp.num_basis}
+num_dof: ${env.num_dof}
+basis_bandwidth_factor: ${env.idmp.basis_bandwidth_factor}
+num_steps: 5
+policy_loss: "weighted"  # other options is "weighted"

@@ -8,7 +8,6 @@ from torch.distributions.independent import Independent
 from torch.distributions.mixture_same_family import MixtureSameFamily
 from torch.distributions.multivariate_normal import MultivariateNormal
 
-from mprl.models.physics.prediction import Prediction
 from mprl.utils.ds_helper import to_np, to_ts
 
 
@@ -34,6 +33,7 @@ class MixtureOfExperts(nn.Module, Prediction):
         for _ in range(cfg.num_experts):
             self.expert_heads.append(nn.Linear(cfg.hidden_dim, cfg.env.state_dim))
 
+        self.expert_heads = nn.ModuleList(self.expert_heads)
         self._action_dim = cfg.env.action_dim
         self.optimizer: torch.optim.Optimizer = torch.optim.Adam(self.parameters())
 

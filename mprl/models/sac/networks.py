@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions import Normal
 
-from mprl.models.sac_common import weights_init_
+from ..common import weights_init_
 
 LOG_SIG_MAX = 2
 LOG_SIG_MIN = -20
@@ -13,14 +13,19 @@ epsilon = 1e-6
 
 
 class GaussianPolicy(nn.Module):
-    def __init__(self, num_inputs: int, num_actions: int, hidden_dim: int):
+    def __init__(
+        self, input_dim: Tuple[int, int], network_width: int, network_depth: int
+    ):
         super(GaussianPolicy, self).__init__()
 
-        self.linear1: nn.Linear = nn.Linear(num_inputs, hidden_dim)
-        self.linear2: nn.Linear = nn.Linear(hidden_dim, hidden_dim)
-
-        self.mean_linear: nn.Linear = nn.Linear(hidden_dim, num_actions)
-        self.log_std_linear: nn.Linear = nn.Linear(hidden_dim, num_actions)
+        state_dim, action_dim = input_dim
+        self.linear_input: nn.Linear = nn.Linear(state_dim, network_width)
+        self.pipeline = []
+        for i in range(network_depth - 1):
+            self.pipeline.append(nn.Linear(network_width, network_width))
+        self.pipeline = nn.ModuleList(self.pipeline)
+        self.mean_linear: nn.Linear = nn.Linear(network_width, action_dim)
+        self.log_std_linear: nn.Linear = nn.Linear(network_width, action_dim)
 
         self.apply(weights_init_)
 
@@ -29,8 +34,10 @@ class GaussianPolicy(nn.Module):
         self.action_bias: torch.Tensor = torch.tensor(0.0)
 
     def forward(self, state: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        x = F.silu(self.linear1(state))
-        x = F.silu(self.linear2(x))
+        x = F.silu(self.linear_input(state))
+        for l in self.pipeline:
+            x = F.silu(l(x))
+
         mean = self.mean_linear(x)
         log_std = self.log_std_linear(x)
         log_std = torch.clamp(log_std, min=LOG_SIG_MIN, max=LOG_SIG_MAX)
@@ -50,7 +57,7 @@ class GaussianPolicy(nn.Module):
         log_prob -= torch.log(self.action_scale * (1 - y_t.pow(2)) + epsilon)
         log_prob = log_prob.sum(1, keepdim=True)
         mean = torch.tanh(mean) * self.action_scale + self.action_bias
-        return action, log_prob, mean, {}  # used for logging
+        return action, log_prob, mean
 
     def to(self, device: torch.device) -> "GaussianPolicy":
         self.action_scale = self.action_scale.to(device)

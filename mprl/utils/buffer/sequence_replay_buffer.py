@@ -9,19 +9,26 @@ from mprl.utils.buffer.replay_buffer import EnvSteps, ReplayBuffer
 
 
 class SequenceRB(ReplayBuffer):
-    def __init__(self, cfg: DictConfig):
-        self._s = np.empty((cfg.capacity, cfg.env.state_dim), dtype=np.float32)
-        self._next_s = np.empty((cfg.capacity, cfg.env.state_dim), dtype=np.float32)
-        self._acts = np.empty((cfg.capacity, cfg.env.action_dim), dtype=np.float32)
-        self._rews = np.empty(cfg.capacity, dtype=np.float32)
-        self._dones = np.empty(cfg.capacity, dtype=bool)
-        self._qposes = np.empty((cfg.capacity, cfg.env.sim_qpos_dim), dtype=np.float32)
-        self._qvels = np.empty((cfg.capacity, cfg.env.sim_qvel_dim), dtype=np.float32)
+    def __init__(
+        self,
+        capacity: int,
+        state_dim: int,
+        action_dim: int,
+        sim_qpos_dim: int,
+        sim_qvel_dim: int,
+    ):
+        self._s = np.empty((capacity, state_dim), dtype=np.float32)
+        self._next_s = np.empty((capacity, state_dim), dtype=np.float32)
+        self._acts = np.empty((capacity, action_dim), dtype=np.float32)
+        self._rews = np.empty(capacity, dtype=np.float32)
+        self._dones = np.empty(capacity, dtype=bool)
+        self._qposes = np.empty((capacity, sim_qpos_dim), dtype=np.float32)
+        self._qvels = np.empty((capacity, sim_qvel_dim), dtype=np.float32)
 
         self._capacity: int = 0
-        self._max_capacity: int = cfg.capacity
+        self._max_capacity: int = capacity
         self._ind: int = 0
-        self._free_space_till: int = cfg.capacity
+        self._free_space_till: int = capacity
         self._current_seq = 0
         self._valid_seq: List = [(0, 0)]
 
