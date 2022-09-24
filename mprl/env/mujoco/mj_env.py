@@ -34,17 +34,11 @@ class MujocoEnv(MPRLEnvironment):
             "render_fps": int(np.round(1.0 / self.dt)),
         }
 
-        self.low, self.high = self._set_action_space()
         self.jnt_names = self.get_jnt_names
         self.qpos_idx = self.get_qpos_idx(self.jnt_names)
         self.qvel_idx = self.get_qvel_idx(self.jnt_names)
         self.ctrl_idx = self.get_ctrl_idx(self.jnt_names)
         pass
-
-    def _set_action_space(self) -> Tuple[float, float]:
-        bounds = self.model.actuator_ctrlrange.copy().astype(np.float32)
-        low, high = bounds.T
-        return low, high
 
     def reset_model(self):
         """
@@ -156,17 +150,10 @@ class MujocoEnv(MPRLEnvironment):
     def state_vector(self):
         return np.concatenate([self.data.qpos.flat, self.data.qvel.flat])
 
-    def get_forces(self):
-        return self.data.qfrc_bias.flat
-
     def decompose(self, state):
         if isinstance(state, tuple):
             q, v = state
             return q[..., self.qpos_idx], v[..., self.qvel_idx]
-
-    @property
-    def reset_after(self):
-        return self.time_out_after
 
     def get_sim_state(self):
         return self.data.qpos.ravel().copy(), self.data.qvel.ravel().copy()
@@ -200,7 +187,7 @@ class MujocoEnv(MPRLEnvironment):
         raise NotImplementedError
 
     def full_reset(self):
-        self.current_steps = 0
+        self._total_steps = 0
 
     def decompose_fn(
         self, states: np.ndarray, sim_states: Tuple[np.ndarray, np.ndarray]
@@ -208,3 +195,7 @@ class MujocoEnv(MPRLEnvironment):
         qpos_joint = sim_states[0][..., self.qpos_idx]
         qvel_joint = sim_states[1][..., self.qvel_idx]
         return qpos_joint, qvel_joint
+
+    @property
+    def dof(self) -> int:
+        return len(self.jnt_names)

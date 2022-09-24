@@ -5,9 +5,10 @@ import numpy as np
 from gym.spaces import Box
 from scipy.spatial.transform import Rotation
 
-from mprl.env.mujoco.meta.base_sawyer import BaseSawyer
-from mprl.env.mujoco.meta.util import hamacher_product, tolerance
 from mprl.env.mujoco.mj_env import MujocoEnv
+
+from .base_sawyer import BaseSawyer
+from .util import hamacher_product, tolerance
 
 
 class SawyerButtonPressEnvV2(BaseSawyer):

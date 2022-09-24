@@ -1,5 +1,4 @@
 import os
-import pickle
 from typing import Optional
 
 import mujoco
@@ -7,9 +6,10 @@ import numpy as np
 from gym.spaces import Box
 from scipy.spatial.transform import Rotation
 
-from mprl.env.mujoco.meta.base_sawyer import BaseSawyer
-from mprl.env.mujoco.meta.util import tolerance
 from mprl.env.mujoco.mj_env import MujocoEnv
+
+from .base_sawyer import BaseSawyer
+from .util import tolerance
 
 
 class SawyerReachEnvV2(BaseSawyer):
