@@ -8,10 +8,11 @@ from torch.distributions.independent import Independent
 from torch.distributions.mixture_same_family import MixtureSameFamily
 from torch.distributions.multivariate_normal import MultivariateNormal
 
-from mprl.utils.ds_helper import to_np, to_ts
+from mprl.models import Predictable
+from mprl.utils.ds_helper import to_ts
 
 
-class MixtureOfExperts(nn.Module, Prediction):
+class MixtureOfExperts(nn.Module, Predictable):
     def __init__(
         self,
         cfg,

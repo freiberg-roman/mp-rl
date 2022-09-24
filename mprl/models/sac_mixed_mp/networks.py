@@ -25,7 +25,7 @@ class GaussianPolicyWeights(nn.Module):
 
         self.linear_input = nn.Linear(state_dim, network_width)
         self.pipeline = []
-        for i in range(network_depth - 1):
+        for _ in range(network_depth - 1):
             self.pipeline.append(nn.Linear(network_width, network_width))
         self.pipeline = nn.ModuleList(self.pipeline)
         self.mean_linear: nn.Linear = nn.Linear(network_width, weights_dim)
@@ -35,8 +35,8 @@ class GaussianPolicyWeights(nn.Module):
 
     def forward(self, state: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         x = F.silu(self.linear_input(state))
-        for l in self.pipeline:
-            x = F.silu(l(x))
+        for layer in self.pipeline:
+            x = F.silu(layer(x))
         mean = self.mean_linear(x)
         log_std = self.log_std_linear(x)
         log_std = torch.clamp(log_std, min=LOG_SIG_MIN, max=LOG_SIG_MAX)

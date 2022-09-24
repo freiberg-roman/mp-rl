@@ -27,7 +27,7 @@ class QNetwork(nn.Module):
         self.pipeline_one = []
         self.pipeline_two = []
         # Q1, Q2 architectures
-        for i in range(network_depth - 1):
+        for _ in range(network_depth - 1):
             self.pipeline_one.append(nn.Linear(network_width, network_width))
             self.pipeline_two.append(nn.Linear(network_width, network_width))
 

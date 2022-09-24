@@ -32,7 +32,7 @@ class SACMP:
             state_dim, action_dim, hidden_size, additional_actions=1
         ).to(self.device)
         hard_update(self.critic_target, self.critic)
-        self.policy = GaussianMotionPrimitiveTimePolicy(
+        self.policy = GaussianPolicyWeights(
             state_dim,
             action_dim,
             hidden_size,

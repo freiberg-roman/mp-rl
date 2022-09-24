@@ -38,6 +38,16 @@ class MPRLEnvironment(ABC):
     def dt(self) -> float:
         raise NotImplementedError
 
+    @property
+    @abstractmethod
+    def total_steps(self) -> int:
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def steps_after_reset(self) -> int:
+        raise NotImplementedError
+
     @abstractmethod
     def random_action(self) -> np.array:
         raise NotImplementedError
