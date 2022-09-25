@@ -441,6 +441,7 @@ class SawyerXYZEnv(SawyerMocapBase, ABC):
         reward, info = self.evaluate_state(self._last_stable_obs, action)
         return self._last_stable_obs, reward, False, done, self.get_sim_state(), info
 
+    @abstractmethod
     def evaluate_state(self, obs, action):
         """Does the heavy-lifting for `step()` -- namely, calculating reward
         and populating the `info` dict with training metrics

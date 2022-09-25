@@ -63,3 +63,6 @@ class SawyerPD(SawyerXYZEnv, ABC):
         qpos_joint = sim_states[0][..., self.qpos_idx]
         qvel_joint = sim_states[1][..., self.qvel_idx]
         return qpos_joint, qvel_joint
+
+    def evaluate_state(self, obs, action):
+        raise NotImplementedError
