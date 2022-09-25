@@ -1,5 +1,6 @@
 import copy
 from abc import ABC, abstractmethod
+from typing import Tuple
 
 import mujoco
 import numpy as np
@@ -609,5 +610,7 @@ class SawyerXYZEnv(SawyerMocapBase, ABC):
     def dof(self) -> int:
         return 3  # x, y, z position of end-effector for position control
 
-    def decompose(self, states, sim_states):
-        return states[..., :3]
+    def decompose_fn(
+        self, states: np.ndarray, sim_states: Tuple[np.ndarray, np.ndarray]
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        return states[..., :3], np.zeros_like(states[..., :3])

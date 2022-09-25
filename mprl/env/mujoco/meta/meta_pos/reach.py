@@ -152,7 +152,3 @@ class MetaPosReacher(SawyerXYZEnv):
         )
 
         return [10 * in_place, tcp_to_target, in_place]
-
-    @property
-    def dof(self) -> int:
-        return 4  # 3 for position and 1 for gripper
