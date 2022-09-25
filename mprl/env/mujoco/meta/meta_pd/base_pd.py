@@ -1,4 +1,5 @@
 from abc import ABC
+from typing import Tuple
 
 import numpy as np
 
@@ -39,6 +40,10 @@ class SawyerPD(SawyerXYZEnv, ABC):
         self.init_tcp = self.tcp_center
 
     @property
+    def dof(self) -> int:
+        return 9
+
+    @property
     def get_jnt_names(self):
         return [
             "right_j0",
@@ -51,3 +56,10 @@ class SawyerPD(SawyerXYZEnv, ABC):
             "r_close",
             "l_close",
         ]
+
+    def decompose_fn(
+        self, states: np.ndarray, sim_states: Tuple[np.ndarray, np.ndarray]
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        qpos_joint = sim_states[0][..., self.qpos_idx]
+        qvel_joint = sim_states[1][..., self.qvel_idx]
+        return qpos_joint, qvel_joint

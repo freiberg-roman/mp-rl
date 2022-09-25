@@ -603,3 +603,10 @@ class SawyerXYZEnv(SawyerMocapBase, ABC):
             caging_and_gripping = (caging_and_gripping + reach) / 2
 
         return caging_and_gripping
+
+    @property
+    def dof(self) -> int:
+        return 3  # x, y, z position of end-effector for position control
+
+    def decompose(self, states, sim_states):
+        return states[..., :3]
