@@ -107,9 +107,6 @@ class MetaPosReacher(SawyerXYZEnv):
     def _get_pos_objects(self):
         return self.get_body_com("obj")
 
-    def _get_quat_objects(self):
-        return Rotation.from_matrix(self.data.get_geom_xmat("objGeom")).as_quat()
-
     def fix_extreme_obj_pos(self, orig_init_pos):
         # This is to account for meshes for the geom and object are not
         # aligned. If this is not done, the object could be initialized in an

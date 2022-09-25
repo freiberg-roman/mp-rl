@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 
 import mujoco
 import numpy as np
+from scipy.spatial.transform import Rotation
 
 from ..mj_env import MujocoEnv
 from .util import hamacher_product, tolerance
@@ -314,6 +315,50 @@ class SawyerXYZEnv(SawyerMocapBase):
         )
         assert len(obs_obj_padded) in self._obs_obj_possible_lens
         return np.hstack((pos_hand, gripper_distance_apart, obs_obj_padded))
+
+    def _get_quat_objects(self):
+        id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_GEOM, "objGeom")
+        mat = self.data.geom_xmat[id].reshape((3, 3))
+        return Rotation.from_matrix(mat).as_quat()
+
+    def set_joint_qpos(self, name, value):
+
+        addr = self.get_joint_qpos_addr(name)
+        if isinstance(addr, (int, np.int32, np.int64)):
+            self.data.qpos[addr] = value
+        else:
+            start_i, end_i = addr
+            value = np.array(value)
+            assert value.shape == (
+                end_i - start_i,
+            ), "Value has incorrect shape %s: %s" % (name, value)
+            self.data.qpos[start_i:end_i] = value
+
+    def get_joint_qpos_addr(self, name):
+        """
+        Returns the qpos address for given joint.
+        Returns:
+        - address (int, tuple): returns int address if 1-dim joint, otherwise
+            returns the a (start, end) tuple for pos[start:end] access.
+        """
+        joint_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_JOINT, name)
+        joint_type = self.model.jnt_type[joint_id]
+        joint_addr = self.model.jnt_qposadr[joint_id]
+        if joint_type == mujoco.mjtJoint.mjJNT_FREE:
+            ndim = 7
+        elif joint_type == mujoco.mjtJoint.mjJNT_BALL:
+            ndim = 4
+        else:
+            assert joint_type in (
+                mujoco.mjtJoint.mjJNT_HINGE,
+                mujoco.mjtJoint.mjJNT_SLIDE,
+            )
+            ndim = 1
+
+        if ndim == 1:
+            return joint_addr
+        else:
+            return (joint_addr, joint_addr + ndim)
 
     def _get_obs(self):
         """Frame stacks `_get_curr_obs_combined_no_goal()` and concatenates the

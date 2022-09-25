@@ -1,3 +1,4 @@
+import mujoco
 import numpy as np
 
 from ..base import SawyerXYZEnv
@@ -7,14 +8,15 @@ from ..util import hamacher_product, tolerance
 class MetaPosWindowOpen(SawyerXYZEnv):
     TARGET_RADIUS = 0.05
 
-    def __init__(self):
+    def __init__(self, base):
         hand_low = (-0.5, 0.40, 0.05)
         hand_high = (0.5, 1, 0.5)
         obj_low = (-0.1, 0.7, 0.16)
         obj_high = (0.1, 0.9, 0.16)
+        self.base = base
 
         super().__init__(
-            self.model_name,
+            base + "meta_pos_window_open.xml",
             hand_low=hand_low,
             hand_high=hand_high,
         )
@@ -44,6 +46,64 @@ class MetaPosWindowOpen(SawyerXYZEnv):
 
         self.maxPullDist = 0.2
         self.target_reward = 1000 * self.maxPullDist + 1000 * 2
+
+    def load_assets(self):
+        ASSETS = {}
+
+        # files to load
+        mesh_files = [
+            "base.stl",
+            "block.stl",
+            "eGripperBase.stl",
+            "head.stl",
+            "l0.stl",
+            "l1.stl",
+            "l2.stl",
+            "l3.stl",
+            "l4.stl",
+            "l5.stl",
+            "l6.stl",
+            "pedestal.stl",
+            "tablebody.stl",
+            "tabletop.stl",
+            "window/window_base.stl",
+            "window/window_frame.stl",
+            "window/window_h_frame.stl",
+            "window/window_h_base.stl",
+            "window/windowa_frame.stl",
+            "window/windowa_glass.stl",
+            "window/windowa_h_frame.stl",
+            "window/windowa_h_glass.stl",
+            "window/windowb_frame.stl",
+            "window/windowb_glass.stl",
+            "window/windowb_h_frame.stl",
+            "window/windowb_h_glass.stl",
+        ]
+        texuture_files = [
+            "floor2.png",
+            "metal.png",
+            "wood2.png",
+            "wood4.png",
+        ]
+        xml_files = [
+            "basic_scene.xml",
+            "window_dependencies.xml",
+            "window_horiz.xml",
+            "xyz_base_dependencies.xml",
+            "xyz_base.xml",
+        ]
+        for file in mesh_files:
+            with open(self.base + "meshes/" + file, "rb") as f:
+                ASSETS[file] = f.read()
+
+        for file in texuture_files:
+            with open(self.base + "textures/" + file, "rb") as f:
+                ASSETS[file] = f.read()
+
+        for file in xml_files:
+            with open(self.base + file, "rb") as f:
+                ASSETS[file] = f.read()
+        return ASSETS
 
     def evaluate_state(self, obs, action):
         (
@@ -82,9 +142,11 @@ class MetaPosWindowOpen(SawyerXYZEnv):
 
         self._target_pos = self.obj_init_pos + np.array([0.2, 0.0, 0.0])
 
-        self.sim.model.body_pos[self.model.body_name2id("window")] = self.obj_init_pos
+        self.model.body_pos[
+            mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, "window")
+        ] = self.obj_init_pos
         self.window_handle_pos_init = self._get_pos_objects()
-        self.data.set_joint_qpos("window_slide", 0.0)
+        self.set_joint_qpos("window_slide", 0.0)
 
         return self._get_obs()
 

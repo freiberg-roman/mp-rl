@@ -1,10 +1,9 @@
-import numpy as np
 from mprl.env import MujocoFactory, EnvConfigGateway
 
 envs = [
     "MetaPosReacher",
-    # "MetaPosOpenWindow",
-    # "MetaPosButtonPress",
+    "MetaPosWindowOpen",
+    "MetaPosButtonPress",
 ]
 
 

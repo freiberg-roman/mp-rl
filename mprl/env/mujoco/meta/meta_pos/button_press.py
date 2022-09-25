@@ -1,19 +1,22 @@
+import mujoco
 import numpy as np
+from scipy.spatial.transform import Rotation
 
 from ..base import SawyerXYZEnv
 from ..util import hamacher_product, tolerance
 
 
 class MetaPosButtonPress(SawyerXYZEnv):
-    def __init__(self):
+    def __init__(self, base):
 
         hand_low = (-0.5, 0.40, 0.05)
         hand_high = (0.5, 1, 0.5)
         obj_low = (-0.1, 0.85, 0.115)
         obj_high = (0.1, 0.9, 0.115)
+        self.base = base
 
         super().__init__(
-            self.model_name,
+            base + "meta_pos_button_press.xml",
             hand_low=hand_low,
             hand_high=hand_high,
         )
@@ -33,6 +36,60 @@ class MetaPosButtonPress(SawyerXYZEnv):
             np.array(obj_high),
         )
         self.goal_space = (np.array(goal_low), np.array(goal_high))
+
+    def load_assets(self):
+        ASSETS = {}
+
+        # files to load
+        mesh_files = [
+            "base.stl",
+            "block.stl",
+            "eGripperBase.stl",
+            "head.stl",
+            "l0.stl",
+            "l1.stl",
+            "l2.stl",
+            "l3.stl",
+            "l4.stl",
+            "l5.stl",
+            "l6.stl",
+            "pedestal.stl",
+            "tablebody.stl",
+            "tabletop.stl",
+            "button/button.stl",
+            "button/buttonring.stl",
+            "button/stopbot.stl",
+            "button/stopbutton.stl",
+            "button/stopbuttonrim.stl",
+            "button/stopbuttonrod.stl",
+            "button/stoptop.stl",
+        ]
+        texuture_files = [
+            "floor2.png",
+            "metal.png",
+            "wood2.png",
+            "wood4.png",
+            "button/metal1.png",
+        ]
+        xml_files = [
+            "basic_scene.xml",
+            "buttonbox_dependencies.xml",
+            "buttonbox.xml",
+            "xyz_base_dependencies.xml",
+            "xyz_base.xml",
+        ]
+        for file in mesh_files:
+            with open(self.base + "meshes/" + file, "rb") as f:
+                ASSETS[file] = f.read()
+
+        for file in texuture_files:
+            with open(self.base + "textures/" + file, "rb") as f:
+                ASSETS[file] = f.read()
+
+        for file in xml_files:
+            with open(self.base + file, "rb") as f:
+                ASSETS[file] = f.read()
+        return ASSETS
 
     def evaluate_state(self, obs, action):
         (
@@ -67,14 +124,16 @@ class MetaPosButtonPress(SawyerXYZEnv):
         return self.get_body_com("button") + np.array([0.0, -0.193, 0.0])
 
     def _get_quat_objects(self):
-        return self.sim.data.get_body_xquat("button")
+        id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, "button")
+        mat = self.data.geom_xmat[id].reshape((3, 3))
+        return Rotation.from_matrix(mat).as_quat()
 
     def _set_obj_xyz(self, pos):
         qpos = self.data.qpos.flat.copy()
         qvel = self.data.qvel.flat.copy()
         qpos[9] = pos
         qvel[9] = 0
-        self.set_state(qpos, qvel)
+        self.set_sim_state((qpos, qvel))
 
     def reset_model(self):
         self._reset_hand()
@@ -85,7 +144,9 @@ class MetaPosButtonPress(SawyerXYZEnv):
             goal_pos = self._get_state_rand_vec()
             self.obj_init_pos = goal_pos
 
-        self.sim.model.body_pos[self.model.body_name2id("box")] = self.obj_init_pos
+        self.model.body_pos[
+            mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, "box")
+        ] = self.obj_init_pos
         self._set_obj_xyz(0)
         self._target_pos = self._get_site_pos("hole")
 
