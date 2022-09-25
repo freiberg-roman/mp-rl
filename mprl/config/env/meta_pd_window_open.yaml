@@ -1,9 +1,9 @@
-name: "MetaWindowOpen"
+name: "MetaPDWindowOpen"
 
 num_dof: 9
 q_dim: 9
 vel_dim: 2
-time_out: 1000  # only for SAC activated
+time_out_after: 1000  # only for SAC activated
 
 action_dim: 9
 state_dim: 39
@@ -22,4 +22,11 @@ idmp:
 
 sac:
   alpha: 0.2
-  hidden_size: 512
+
+sac_mixed_mp:
+  alpha: 0.05
+  alpha_q: 0.0
+
+network:
+  network_width: 512
+  network_depth: 3

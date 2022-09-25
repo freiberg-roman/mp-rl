@@ -1,5 +1,6 @@
 gamma: 0.99
 tau: 0.005
 alpha: ${env.sac.alpha}
-
-
+num_basis: ${env.idmp.num_basis}
+num_dof: ${env.num_dof}
+basis_bandwidth_factor: ${env.idmp.basis_bandwidth_factor}

@@ -152,3 +152,7 @@ class MetaPDReacher(SawyerPD):
         )
 
         return [10 * in_place, tcp_to_target, in_place]
+
+    @property
+    def name(self) -> str:
+        return "MetaPDReacherEnv"

@@ -2,12 +2,13 @@ from typing import Union
 
 import numpy as np
 import torch
-from omegaconf import DictConfig
 
 from mprl.utils.ds_helper import to_ts
 
+from .ctrl import Controller
 
-class PDController:
+
+class PDController(Controller):
     def __init__(
         self,
         pgains: Union[np.ndarray, torch.Tensor],

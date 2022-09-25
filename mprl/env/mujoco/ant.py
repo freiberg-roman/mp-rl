@@ -154,3 +154,7 @@ class AntEnv(MujocoEnv):
             "hip_4",
             "ankle_4",
         ]
+
+    @property
+    def name(self) -> str:
+        return "Ant"

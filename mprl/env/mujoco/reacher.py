@@ -80,3 +80,7 @@ class ReacherEnv(MujocoEnv):
     @property
     def get_jnt_names(self):
         return ["joint0", "joint1"]
+
+    @property
+    def name(self) -> str:
+        return "Reacher"

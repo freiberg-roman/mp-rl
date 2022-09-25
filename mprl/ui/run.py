@@ -48,6 +48,7 @@ def run(cfg: DictConfig):
             agent, after_performed_steps=trainer.performed_training_steps
         )
         print(result)
+        wandb.log(result)
         agent = trainer.train_one_epoch(agent)
 
 

@@ -2,14 +2,12 @@ from copy import deepcopy
 
 import numpy as np
 from mp_pytorch import MPFactory
-from omegaconf import OmegaConf
 
-from mprl.controllers.mp_trajectory import MPTrajectory
+from mprl.controllers import MetaController, MPTrajectory, PDController
 from mprl.env.config_gateway import EnvConfigGateway
 from mprl.env.mj_factory import MujocoFactory
 from mprl.utils import SequenceRB
 
-from ...controllers import PDController
 from ..common.config_gateway import ModelConfigGateway
 from ..physics.ground_truth import GroundTruthPrediction
 from .agent import SACMixedMP
@@ -48,9 +46,14 @@ class SACMixedMPFactory:
         planner = MPTrajectory(dt=env.dt, mp=idmp, device=self._gateway.get_device())
         pgains = np.array(self._gateway.get_ctrl_config().pgains)
         dgains = np.array(self._gateway.get_ctrl_config().dgains)
-        pd_ctrl = PDController(
-            pgains=pgains, dgains=dgains, device=self._gateway.get_device()
-        )
+
+        is_pos_ctrl = "Pos" in self._env_gateway.get_env_name()
+        if is_pos_ctrl:
+            ctrl = MetaController(pgains=pgains)
+        else:
+            ctrl = PDController(
+                pgains=pgains, dgains=dgains, device=self._gateway.get_device()
+            )
 
         return SACMixedMP(
             buffer=buffer,
@@ -73,5 +76,5 @@ class SACMixedMPFactory:
             planner_act=deepcopy(planner),
             planner_update=deepcopy(planner),
             planner_eval=deepcopy(planner),
-            ctrl=pd_ctrl,
+            ctrl=ctrl,
         )

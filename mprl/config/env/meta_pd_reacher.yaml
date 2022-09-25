@@ -1,0 +1,31 @@
+name: "MetaPDReacher"
+
+num_dof: 9
+q_dim: 9
+vel_dim: 2
+time_out_after: 1000  # only for SAC activated
+action_dim: 9
+state_dim: 39
+sim_qpos_dim: 16
+sim_qvel_dim: 15
+coordinate_dim: 0
+dt: 0.0125
+
+pd:
+  pgains: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+  dgains: [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+
+idmp:
+  num_basis: 5
+  basis_bandwidth_factor: 1.0
+
+sac:
+  alpha: 0.1
+
+sac_mixed_mp:
+  alpha: 0.05
+  alpha_q: 0.0
+
+network:
+  network_width: 512
+  network_depth: 3

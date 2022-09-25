@@ -62,3 +62,8 @@ class MPRLEnvironment(ABC):
     @abstractmethod
     def dof(self) -> int:
         raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        raise NotImplementedError

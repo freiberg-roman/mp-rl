@@ -184,3 +184,7 @@ class MetaPDButtonPress(SawyerPD):
             reward += 8 * button_pressed
 
         return (reward, tcp_to_obj, obs[3], obj_to_target, near_button, button_pressed)
+
+    @property
+    def name(self) -> str:
+        return "MetaPDButtonPress"

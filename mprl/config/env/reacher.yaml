@@ -3,7 +3,7 @@ name: "Reacher"
 num_dof: 2
 q_dim: 2
 vel_dim: 2
-time_out: 200  # only for SAC activated
+time_out_after: 200  # only for SAC activated
 
 action_dim: 2
 state_dim: 11
@@ -21,5 +21,12 @@ idmp:
   basis_bandwidth_factor: 1.0
 
 sac:
-  alpha: 0.2
-  hidden_size: 256
+  alpha: 0.1
+
+sac_mixed_mp:
+  alpha: 0.05
+  alpha_q: 0.0
+
+network:
+  network_width: 256
+  network_depth: 3

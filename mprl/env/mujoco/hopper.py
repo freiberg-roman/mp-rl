@@ -143,3 +143,7 @@ class HopperEnv(MujocoEnv):
     @property
     def get_jnt_names(self):
         return ["thigh_joint", "leg_joint", "foot_joint"]
+
+    @property
+    def name(self) -> str:
+        return "Hopper"

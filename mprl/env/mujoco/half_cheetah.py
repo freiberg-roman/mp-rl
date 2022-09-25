@@ -107,3 +107,7 @@ class HalfCheetahEnv(MujocoEnv):
         qpos_joint = sim_states[0][..., self.qpos_idx]
         qvel_joint = sim_states[1][..., self.qvel_idx]
         return qpos_joint, qvel_joint
+
+    @property
+    def name(self):
+        return "HalfCheetah"
