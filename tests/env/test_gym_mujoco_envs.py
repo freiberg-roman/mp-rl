@@ -40,12 +40,12 @@ def test_reset_sim_states():
 
         state, sim_state = env.reset(time_out_after=100)
         action = env.random_action()
-        new_state, _, _, _, _ = env.step(action)
+        new_state, _, _, _, _, _ = env.step(action)
         for _ in range(10):
             env.step(action)
 
         env.set_sim_state(sim_state)
-        state_after_sss, _, _, _, _ = env.step(action)
+        state_after_sss, _, _, _, _, _ = env.step(action)
         assert np.allclose(state_after_sss, new_state)
 
 

@@ -1,9 +1,9 @@
 from mprl.env import MujocoFactory, EnvConfigGateway
 
 envs = [
-    "MetaPosReacher",
-    "MetaPosWindowOpen",
-    "MetaPosButtonPress",
+    "MetaPDReacher",
+    # "MetaPDWindowOpen",
+    # "MetaPDButtonPress",
 ]
 
 

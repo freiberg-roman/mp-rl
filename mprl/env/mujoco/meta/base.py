@@ -81,7 +81,7 @@ class SawyerMocapBase(MujocoEnv, ABC):
         return np.random.uniform(-1, 1, (4,))
 
 
-class SawyerXYZEnv(SawyerMocapBase):
+class SawyerXYZEnv(SawyerMocapBase, ABC):
     _HAND_SPACE = (np.array([-0.525, 0.348, -0.0525]), np.array([+0.525, 1.025, 0.7]))
     max_path_length = 500
 
@@ -433,9 +433,13 @@ class SawyerXYZEnv(SawyerMocapBase):
         for site in self._target_site_config:
             self._set_pos_site(*site)
 
+        done = (
+            self.time_out_after is not None
+            and self.current_steps >= self.time_out_after
+        )
         self._last_stable_obs = self._get_obs()
         reward, info = self.evaluate_state(self._last_stable_obs, action)
-        return self._last_stable_obs, reward, False, info, self.get_sim_state()
+        return self._last_stable_obs, reward, False, done, self.get_sim_state(), info
 
     def evaluate_state(self, obs, action):
         """Does the heavy-lifting for `step()` -- namely, calculating reward

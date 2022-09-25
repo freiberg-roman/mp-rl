@@ -6,6 +6,9 @@ from .mujoco import (
     AntEnv,
     HalfCheetahEnv,
     HopperEnv,
+    MetaPDButtonPress,
+    MetaPDReacher,
+    MetaPDWindowOpen,
     MetaPosButtonPress,
     MetaPosReacher,
     MetaPosWindowOpen,
@@ -36,3 +39,9 @@ class MujocoFactory:
             return MetaPosWindowOpen(base=BASE + "meta/")
         if cfg.get_env_name() == "MetaPosButtonPress":
             return MetaPosButtonPress(base=BASE + "meta/")
+        if cfg.get_env_name() == "MetaPDReacher":
+            return MetaPDReacher(base=BASE + "meta/")
+        if cfg.get_env_name() == "MetaPDWindowOpen":
+            return MetaPDWindowOpen(base=BASE + "meta/")
+        if cfg.get_env_name() == "MetaPDButtonPress":
+            return MetaPDButtonPress(base=BASE + "meta/")

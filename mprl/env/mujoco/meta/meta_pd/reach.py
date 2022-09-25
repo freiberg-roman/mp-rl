@@ -1,10 +1,10 @@
 import numpy as np
 
-from ..base import SawyerXYZEnv
 from ..util import tolerance
+from .base_pd import SawyerPD
 
 
-class MetaPosReacher(SawyerXYZEnv):
+class MetaPDReacher(SawyerPD):
     def __init__(self, base):
         goal_low = (-0.1, 0.8, 0.05)
         goal_high = (0.1, 0.9, 0.3)
@@ -15,7 +15,7 @@ class MetaPosReacher(SawyerXYZEnv):
         self.base = base
 
         super().__init__(
-            base + "meta_pos_reacher.xml",
+            base + "meta_pd_reacher.xml",
             hand_low=hand_low,
             hand_high=hand_high,
         )
