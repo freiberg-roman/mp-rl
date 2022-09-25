@@ -1,5 +1,5 @@
 alpha: ${env.sac.alpha}
-alpha_q: ${env.sac.alpha_q}
+alpha_q: ${env.sac_mixed_mp.alpha_q}
 basis_bandwidth_factor: ${env.idmp.basis_bandwidth_factor}
 gamma: 0.99
 num_basis: ${env.idmp.num_basis}

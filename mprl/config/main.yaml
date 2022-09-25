@@ -10,6 +10,7 @@ defaults:
 
 root_dir: "../experiments"
 device: "cpu"
+project_name: "mp_rl_sac"
 run_id: 0
 
 hydra:

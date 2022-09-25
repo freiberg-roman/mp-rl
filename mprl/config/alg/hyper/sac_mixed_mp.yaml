@@ -1,9 +1,9 @@
-alpha: 0.1
-alpha_q: 0.1
+alpha: ${env.sac_mixed_mp.alpha}
+alpha_q: ${env.sac_mixed_mp.alpha_q}
 basis_bandwidth_factor: ${env.idmp.basis_bandwidth_factor}
 gamma: 0.99
 num_basis: ${env.idmp.num_basis}
 num_dof: ${env.num_dof}
 num_steps: 5
-policy_loss: "weighted"  # other options is "weighted"
+policy_loss: "mean"  # other options is "weighted"
 tau: 0.005
