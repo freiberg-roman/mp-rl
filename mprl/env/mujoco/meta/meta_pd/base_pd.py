@@ -1,4 +1,4 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 from typing import Tuple
 
 import numpy as np
@@ -64,5 +64,6 @@ class SawyerPD(SawyerXYZEnv, ABC):
         qvel_joint = sim_states[1][..., self.qvel_idx]
         return qpos_joint, qvel_joint
 
+    @abstractmethod
     def evaluate_state(self, obs, action):
         raise NotImplementedError
