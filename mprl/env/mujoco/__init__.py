@@ -1,12 +1,12 @@
 from .ant import AntEnv
 from .half_cheetah import HalfCheetahEnv
 from .hopper import HopperEnv
-from .humanoid import HumanoidEnv
 from .meta import (
-    SawyerButtonPressEnvV2,
-    SawyerPickPlaceEnvV2,
-    SawyerPushEnvV2,
-    SawyerReachEnvV2,
-    SawyerWindowOpenEnvV2,
+    MetaPDButtonPress,
+    MetaPDReacher,
+    MetaPDWindowOpen,
+    MetaPosButtonPress,
+    MetaPosReacher,
+    MetaPosWindowOpen,
 )
 from .reacher import ReacherEnv

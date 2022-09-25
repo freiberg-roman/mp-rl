@@ -45,7 +45,7 @@ class Trainer:
             else:
                 action = agent.action(state, sim_state)
 
-            next_state, reward, done, time_out, info = self.env.step(action)
+            next_state, reward, done, time_out, info, _ = self.env.step(action)
             agent.add_step(state, next_state, action, reward, done, sim_state)
 
             state = next_state

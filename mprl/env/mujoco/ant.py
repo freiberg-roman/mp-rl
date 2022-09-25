@@ -96,9 +96,9 @@ class AntEnv(MujocoEnv):
             self.time_out_after is not None
             and self.current_steps >= self.time_out_after
         )
-        return observation, reward, done, timeout, self.get_sim_state()
+        return observation, reward, done, timeout, self.get_sim_state(), {}
 
-    def sample_random_action(self):
+    def random_action(self):
         return np.random.uniform(-1, 1, (8,))
 
     def _get_obs(self):
@@ -123,7 +123,7 @@ class AntEnv(MujocoEnv):
         qvel = self.init_qvel + self._reset_noise_scale * np.random.standard_normal(
             self.model.nv
         )
-        self.set_state(qpos, qvel)
+        self.set_sim_state((qpos, qvel))
         observation = self._get_obs()
         return observation
 
@@ -133,9 +133,6 @@ class AntEnv(MujocoEnv):
                 getattr(self.viewer.cam, key)[:] = value
             else:
                 setattr(self.viewer.cam, key, value)
-
-    def get_forces(self):
-        return super(AntEnv, self).get_forces()[-8:]
 
     @property
     def total_steps(self):

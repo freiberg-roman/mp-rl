@@ -1,20 +1,19 @@
 import pathlib
 
-from mprl.env.mujoco import (
+from .config_gateway import EnvConfigGateway
+from .mp_rl_environment import MPRLEnvironment
+from .mujoco import (
     AntEnv,
     HalfCheetahEnv,
     HopperEnv,
-    HumanoidEnv,
+    MetaPDButtonPress,
+    MetaPDReacher,
+    MetaPDWindowOpen,
+    MetaPosButtonPress,
+    MetaPosReacher,
+    MetaPosWindowOpen,
     ReacherEnv,
-    SawyerButtonPressEnvV2,
-    SawyerPickPlaceEnvV2,
-    SawyerPushEnvV2,
-    SawyerReachEnvV2,
-    SawyerWindowOpenEnvV2,
 )
-
-from .config_gateway import EnvConfigGateway
-from .mp_rl_environment import MPRLEnvironment
 
 BASE = str(pathlib.Path(__file__).parent.resolve()) + "/../../resources/"
 
@@ -32,17 +31,17 @@ class MujocoFactory:
             return AntEnv(base=BASE)
         if cfg.get_env_name() == "Hopper":
             return HopperEnv(base=BASE)
-        if cfg.get_env_name() == "Humanoid":
-            return HumanoidEnv(base=BASE)
         if cfg.get_env_name() == "Reacher":
             return ReacherEnv(base=BASE)
-        if cfg.get_env_name() == "MetaReacher":
-            return SawyerReachEnvV2(base=BASE + "meta/")
-        if cfg.get_env_name() == "MetaPush":
-            return SawyerPushEnvV2(base=BASE + "meta/")
-        if cfg.get_env_name() == "MetaButtonPress":
-            return SawyerButtonPressEnvV2(base=BASE + "meta/")
-        if cfg.get_env_name() == "MetaPickAndPlace":
-            return SawyerPickPlaceEnvV2(base=BASE + "meta/")
-        if cfg.get_env_name() == "MetaWindowOpen":
-            return SawyerWindowOpenEnvV2(base=BASE + "meta/")
+        if cfg.get_env_name() == "MetaPosReacher":
+            return MetaPosReacher(base=BASE + "meta/")
+        if cfg.get_env_name() == "MetaPosWindowOpen":
+            return MetaPosWindowOpen(base=BASE + "meta/")
+        if cfg.get_env_name() == "MetaPosButtonPress":
+            return MetaPosButtonPress(base=BASE + "meta/")
+        if cfg.get_env_name() == "MetaPDReacher":
+            return MetaPDReacher(base=BASE + "meta/")
+        if cfg.get_env_name() == "MetaPDWindowOpen":
+            return MetaPDWindowOpen(base=BASE + "meta/")
+        if cfg.get_env_name() == "MetaPDButtonPress":
+            return MetaPDButtonPress(base=BASE + "meta/")

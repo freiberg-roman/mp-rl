@@ -57,3 +57,8 @@ class MPRLEnvironment(ABC):
         self, states: np.ndarray, sim_states: Tuple[np.ndarray, np.ndarray]
     ) -> Tuple[np.ndarray, np.ndarray]:
         raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def dof(self) -> int:
+        raise NotImplementedError

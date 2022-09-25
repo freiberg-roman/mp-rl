@@ -25,9 +25,9 @@ class ReacherEnv(MujocoEnv):
             self.time_out_after is not None
             and self.current_steps >= self.time_out_after
         )
-        return observation, reward, False, done, self.get_sim_state()
+        return observation, reward, False, done, self.get_sim_state(), {}
 
-    def sample_random_action(self):
+    def random_action(self):
         return np.random.uniform(-1, 1, (2,))
 
     def _get_obs(self):
@@ -58,7 +58,7 @@ class ReacherEnv(MujocoEnv):
             low=-0.005, high=0.005, size=self.model.nv
         )
         qvel[-2:] = 0
-        self.set_state(qpos, qvel)
+        self.set_sim_state((qpos, qvel))
         return self._get_obs()
 
     def set_robot_to(self, qpos):

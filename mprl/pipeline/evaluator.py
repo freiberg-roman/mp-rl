@@ -27,7 +27,7 @@ class Evaluator:
             done, time_out = False, False
             while not done and not time_out:
                 action = agent.action_eval(state, sim_state)
-                state, reward, done, time_out, _ = self.env.step(action)
+                state, reward, done, time_out, sim_state, _ = self.env.step(action)
                 total_reward += reward
 
                 # Only record the last episode if we are recording

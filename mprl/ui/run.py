@@ -25,7 +25,7 @@ def run(cfg: DictConfig):
     else:
         raise ValueError(f"Unknown algorithm {cfg.alg.name}")
 
-    # Main loop
+    # Setup
     training_environment = MujocoFactory(env_config_gateway=config_repository).create()
     evaluation_environment = MujocoFactory(
         env_config_gateway=config_repository
@@ -42,6 +42,7 @@ def run(cfg: DictConfig):
         mode=cfg_wandb.mode,
     )
 
+    # Main loop
     while trainer.has_training_steps_left:
         result = evaluator.evaluate(
             agent, after_performed_steps=trainer.performed_training_steps
