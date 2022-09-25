@@ -34,7 +34,7 @@ class GroundTruthPrediction(Predictable):
         for i, qva in enumerate(zip(qposes, qvels, actions)):
             q, v, a = qva
             self.env.set_sim_state((q, v))
-            next_state, _, _, _, next_sim_states = self.env.step(a)
+            next_state, _, _, _, next_sim_states, _ = self.env.step(a)
             next_states[i] = next_state
             next_qposes[i] = next_sim_states[0]
             next_qvels[i] = next_sim_states[1]

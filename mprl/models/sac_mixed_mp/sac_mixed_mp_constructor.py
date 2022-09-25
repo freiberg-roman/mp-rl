@@ -65,6 +65,7 @@ class SACMixedMPFactory:
             gamma=cfg_hyper.gamma,
             tau=cfg_hyper.tau,
             alpha=cfg_hyper.alpha,
+            alpha_q=cfg_hyper.alpha_q,
             batch_size=cfg_hyper.batch_size,
             device=self._gateway.get_device(),
             num_steps=cfg_hyper.num_steps,

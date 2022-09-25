@@ -26,6 +26,7 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         gamma: float,
         tau: float,
         alpha: float,
+        alpha_q: float,
         num_steps: int,
         lr: float,
         batch_size: int,
@@ -49,6 +50,7 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         self.gamma: float = gamma
         self.tau: float = tau
         self.alpha: float = alpha
+        self.alpha_q: float = alpha_q
         self.num_steps: int = num_steps
         self.device: torch.device = device
         self.buffer = buffer
@@ -206,7 +208,7 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
             )
             min_qf_next_target = (
                 torch.min(qf1_next_target, qf2_next_target)
-                - self.alpha * next_state_log_pi
+                - self.alpha_q * next_state_log_pi
             )
             next_q_value = rewards + (1 - dones.to(torch.float32)) * self.gamma * (
                 min_qf_next_target
@@ -274,7 +276,7 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
             num_t=self.num_steps,
         )
         next_s = states[:, 0, :]
-        next_sim_states = sim_states[0][:, 0, :], sim_states[1][0, 0, :]
+        next_sim_states = sim_states[0][:, 0, :], sim_states[1][:, 0, :]
         min_qf = 0
         for i, qv in enumerate(self.planner_update):
             q, v = qv
@@ -308,7 +310,7 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
             dones,
             sim_states,
         ) = batch.to_torch_batch()
-        # dimension (1, batch_size, sequence_len, weight_dimension)
+        # dimension (batch_size, sequence_len, weight_dimension)
         weights, log_pi, _ = self.policy.sample(states)
         b_q, b_v = self.decompose_fn(states, sim_states)
         self.planner_update.init(
@@ -318,7 +320,7 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
             num_t=self.num_steps,
         )
         next_s = states[:, 0, :]
-        next_sim_states = sim_states[0][:, 0, :], sim_states[1][0, 0, :]
+        next_sim_states = sim_states[0][:, 0, :], sim_states[1][:, 0, :]
         # dimensions (batch_size, sequence_len, 1)
         q_prob = torch.zeros(size=(len(states), self.num_steps, 1))
         min_qf = torch.zeros_like(q_prob)
@@ -340,7 +342,7 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
                 sim_states[1][:, i + 1, :],
             )
         q_prob = F.normalize(q_prob, p=1.0, dim=1)
-        policy_loss = (-q_prob.detach() * min_qf).mean()
+        policy_loss = (-q_prob.detach() * min_qf).mean() + self.alpha * log_pi.mean()
         return policy_loss
 
     def _model_policy_mean_loss(self):
@@ -354,7 +356,7 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
             dones,
             sim_states,
         ) = batch.to_torch_batch()
-        # dimension (1, batch_size, weight_dimension)
+        # dimension (batch_size, weight_dimension)
         weights, log_pi, _ = self.policy.sample(states)
         b_q, b_v = self.decompose_fn(states, sim_states)
         self.planner_update.init(weights, bc_pos=b_q, bc_vel=b_v, num_t=self.num_steps)
@@ -389,7 +391,7 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
             dones,
             sim_states,
         ) = batch.to_torch_batch()
-        # dimension (1, batch_size, weight_dimension)
+        # dimension (batch_size, weight_dimension)
         weights, log_pi, _ = self.policy.sample(states)
         b_q, b_v = self.decompose_fn(states, sim_states)
         self.planner_update.init(weights, bc_pos=b_q, bc_vel=b_v, num_t=self.num_steps)
