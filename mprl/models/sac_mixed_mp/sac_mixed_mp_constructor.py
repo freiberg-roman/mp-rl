@@ -45,12 +45,12 @@ class SACMixedMPFactory:
         idmp = MPFactory.init_mp(self._gateway.get_mp_config())
         planner = MPTrajectory(dt=env.dt, mp=idmp, device=self._gateway.get_device())
         pgains = np.array(self._gateway.get_ctrl_config().pgains)
-        dgains = np.array(self._gateway.get_ctrl_config().dgains)
 
         is_pos_ctrl = "Pos" in self._env_gateway.get_env_name()
         if is_pos_ctrl:
             ctrl = MetaController(pgains=pgains)
         else:
+            dgains = np.array(self._gateway.get_ctrl_config().dgains)
             ctrl = PDController(
                 pgains=pgains, dgains=dgains, device=self._gateway.get_device()
             )

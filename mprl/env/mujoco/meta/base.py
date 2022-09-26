@@ -608,9 +608,13 @@ class SawyerXYZEnv(SawyerMocapBase, ABC):
 
     @property
     def dof(self) -> int:
-        return 3  # x, y, z position of end-effector for position control
+        return 4  # x, y, z position of end-effector for position control
 
     def decompose_fn(
         self, states: np.ndarray, sim_states: Tuple[np.ndarray, np.ndarray]
     ) -> Tuple[np.ndarray, np.ndarray]:
-        return states[..., :3], np.zeros_like(states[..., :3])
+        # 4 dim for absolute position of r_close gripper
+        r_close_qpos = sim_states[0][..., [self.qpos_idx[0]]]
+        return np.concatenate((states[..., :3], r_close_qpos), axis=-1), np.zeros_like(
+            states[..., :4]
+        )
