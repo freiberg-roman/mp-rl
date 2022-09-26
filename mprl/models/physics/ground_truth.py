@@ -25,6 +25,7 @@ class GroundTruthPrediction(Predictable):
         :param actions: (batch_size, action_dim)
         :return:
         """
+        self.env.reset(time_out_after=1000)
         qposes = to_np(sim_states[0])
         qvels = to_np(sim_states[1])
         actions = to_np(actions)

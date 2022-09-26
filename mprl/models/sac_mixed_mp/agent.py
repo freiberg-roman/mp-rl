@@ -11,7 +11,7 @@ from mprl.utils import SequenceRB
 from mprl.utils.ds_helper import to_np, to_ts
 from mprl.utils.math_helper import hard_update, soft_update
 
-from ...controllers import MPTrajectory, PDController
+from ...controllers import Controller, MPTrajectory
 from .. import Actable, Evaluable, Predictable, Serializable, Trainable
 from ..common import QNetwork
 from .networks import GaussianPolicyWeights
@@ -40,7 +40,7 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         planner_act: MPTrajectory,
         planner_eval: MPTrajectory,
         planner_update: MPTrajectory,
-        ctrl: PDController,
+        ctrl: Controller,
         buffer: SequenceRB,
         decompose_fn: Callable,
         model: Optional[Predictable] = None,
@@ -57,7 +57,7 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         self.planner_act: MPTrajectory = planner_act
         self.planner_eval: MPTrajectory = planner_eval
         self.planner_update: MPTrajectory = planner_update
-        self.ctrl: PDController = ctrl
+        self.ctrl: Controller = ctrl
         self.decompose_fn = decompose_fn
         self.batch_size: int = batch_size
         self.mode: str = policy_loss_type
