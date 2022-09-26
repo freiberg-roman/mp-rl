@@ -232,16 +232,16 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
 
         if self.model is None:
             if self.mode == "mean":
-                loss = self._off_policy_mean_loss()
+                loss, loggable = self._off_policy_mean_loss()
             elif self.mode == "weighted":
-                loss = self._off_policy_weighted_loss()
+                loss, loggable = self._off_policy_weighted_loss()
             else:
                 raise ValueError("Invalid mode")
         else:
             if self.mode == "mean":
-                loss = self._model_policy_mean_loss()
+                loss, loggable = self._model_policy_mean_loss()
             elif self.mode == "weighted":
-                loss = self._model_policy_weighted_loss()
+                loss, loggable = self._model_policy_weighted_loss()
             else:
                 raise ValueError("Invalid mode")
 
@@ -251,7 +251,10 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         self.optimizer_policy.step()
 
         soft_update(self.critic_target, self.critic, self.tau)
-        return {"critic_loss": qf_loss.item(), "policy_loss": loss.item()}
+        return {
+            **{"critic_loss": qf_loss.item(), "policy_loss": loss.item()},
+            **loggable,
+        }
 
     def _off_policy_mean_loss(self):
         batch = next(
@@ -295,7 +298,7 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
             )
         min_qf /= self.num_steps
         policy_loss = (-min_qf).mean() + self.alpha * log_pi.mean()
-        return policy_loss
+        return policy_loss, {"entropy": log_pi.detach().cpu().mean().item()}
 
     def _off_policy_weighted_loss(self):
         batch = next(
@@ -343,7 +346,7 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
             )
         q_prob = F.normalize(q_prob, p=1.0, dim=1)
         policy_loss = (-q_prob.detach() * min_qf).mean() + self.alpha * log_pi.mean()
-        return policy_loss
+        return policy_loss, {"entropy": log_pi.detach().cpu().mean().item()}
 
     def _model_policy_mean_loss(self):
         batch = next(self.buffer.get_iter(1, self.batch_size))
@@ -378,7 +381,7 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         policy_loss = (-min_qf).mean() + self.alpha * log_pi.mean()
         if isinstance(self.model, Trainable):
             self.model.update(batch=batch)
-        return policy_loss
+        return policy_loss, {"entropy": log_pi.detach().cpu().mean().item()}
 
     def _model_policy_weighted_loss(self):
         batch = next(self.buffer.get_iter(1, self.batch_size))
@@ -417,4 +420,4 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         policy_loss = (-q_prob * min_qf).mean() + self.alpha * log_pi.mean()
         if isinstance(self.model, Trainable):
             self.model.update(batch=batch)
-        return policy_loss
+        return policy_loss, {"entropy": log_pi.detach().cpu().mean().item()}
