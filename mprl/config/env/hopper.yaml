@@ -26,4 +26,4 @@ sac_mixed_mp:
 
 network:
   network_width: 256
-  network_depth: 3
+  network_depth: 2
