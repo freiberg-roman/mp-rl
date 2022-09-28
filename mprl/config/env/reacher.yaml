@@ -3,7 +3,7 @@ name: "Reacher"
 num_dof: 2
 q_dim: 2
 vel_dim: 2
-time_out_after: 200  # only for SAC activated
+time_out_after: 200
 
 action_dim: 2
 state_dim: 11

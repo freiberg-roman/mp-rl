@@ -1,13 +1,14 @@
 import numpy as np
 import torch
-from mp_pytorch import IDMP, tensor_linspace
+from mp_pytorch.mp import ProDMP
+from mp_pytorch.util import tensor_linspace
 
 from mprl.utils.ds_helper import to_ts
 
 
 class MPTrajectory:
-    def __init__(self, dt: float, mp: IDMP, device: torch.device):
-        self.mp: IDMP = mp
+    def __init__(self, dt: float, mp: ProDMP, device: torch.device):
+        self.mp: ProDMP = mp
         self.dt = dt
         self.current_traj: torch.Tensor = None
         self.current_traj_v: torch.Tensor = None
