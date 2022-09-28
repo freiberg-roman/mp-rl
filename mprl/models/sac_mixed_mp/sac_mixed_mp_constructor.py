@@ -1,7 +1,7 @@
 from copy import deepcopy
 
 import numpy as np
-from mp_pytorch import MPFactory
+from mp_pytorch.mp import MPFactory
 
 from mprl.controllers import MetaController, MPTrajectory, PDController
 from mprl.env.config_gateway import EnvConfigGateway
@@ -42,7 +42,14 @@ class SACMixedMPFactory:
         else:
             raise ValueError(f"Unknown model name {cfg_model.name}")
 
-        idmp = MPFactory.init_mp(self._gateway.get_mp_config())
+        cfg_idmp = self._gateway.get_mp_config()
+        idmp = MPFactory.init_mp(
+            mp_type="prodmp",
+            mp_args=cfg_idmp.mp_args,
+            num_dof=cfg_idmp.num_dof,
+            tau=cfg_idmp.tau,
+        )
+
         planner = MPTrajectory(dt=env.dt, mp=idmp, device=self._gateway.get_device())
         pgains = np.array(self._gateway.get_ctrl_config().pgains)
 
