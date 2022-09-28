@@ -176,4 +176,8 @@ class SAC(Actable, Evaluable, Serializable, Trainable):
         # Update target networks
         soft_update(self.critic_target, self.critic, self.tau)
 
-        return {"critic_loss": qf_loss.item(), "policy_loss": policy_loss.item()}
+        return {
+            "critic_loss": qf_loss.item(),
+            "policy_loss": policy_loss.item(),
+            "entropy": (-log_pi).detach().cpu().mean().item(),
+        }

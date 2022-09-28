@@ -7,10 +7,6 @@ def run():
         "half_cheetah",
         "meta_pd_reacher",
         "meta_pos_reacher",
-        "meta_pd_window_open",
-        "meta_pos_window_open",
-        "meta_pd_button_press",
-        "meta_pos_button_press",
     ]:
         for i in range(5):
             launch_command = "python -m mprl.ui.run alg=sac " "env={} run_id={}".format(
