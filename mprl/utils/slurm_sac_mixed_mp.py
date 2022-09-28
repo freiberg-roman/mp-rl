@@ -6,8 +6,8 @@ def run():
     for env_name in [
         "half_cheetah",
     ]:
-        for alpha in [0.0, 0.01, 0.1, 0.5, 1.0]:
-            for i in range(5):
+        for alpha in [0.01, 0.1, 0.5, 1.0]:
+            for i in range(3):
                 launch_command = (
                     "python -m mprl.ui.run alg=sac_mixed_mp "
                     "env={} run_id={} alg.hyper.alpha={}".format(
