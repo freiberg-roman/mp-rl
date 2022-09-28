@@ -1,6 +1,7 @@
 from copy import deepcopy
 
 import numpy as np
+import torch
 from mp_pytorch.mp import MPFactory
 
 from mprl.controllers import MetaController, MPTrajectory, PDController
@@ -49,7 +50,7 @@ class SACMixedMPFactory:
             num_dof=cfg_idmp.num_dof,
             tau=cfg_idmp.tau,
         )
-
+        idmp.weights_scale = torch.tensor(cfg_idmp.mp_args.weight_scale)
         planner = MPTrajectory(dt=env.dt, mp=idmp, device=self._gateway.get_device())
         pgains = np.array(self._gateway.get_ctrl_config().pgains)
 

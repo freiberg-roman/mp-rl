@@ -1,15 +1,15 @@
 mp_type: "prodmp"
 
-alpha: 10
 tau: 4.0
 num_basis: ${env.idmp.num_basis}
 num_dof: ${env.num_dof}
 device: ${device}
 
 mp_args:
-  alpha_phase: 2.0
+  alpha_phase: 0.5
   num_basis: ${env.idmp.num_basis}
   basis_bandwidth_factor: ${env.idmp.basis_bandwidth_factor}
   num_basis_outside: 0
   dt: ${env.dt}
-  alpha: 10
+  alpha: 20
+  weight_scale: 1000.0
