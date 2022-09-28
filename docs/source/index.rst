@@ -6,6 +6,8 @@
 Welcome to SAC with Motion Primitives's documentation!
 ======================================================
 
+This repository is under active development. Proper documentation will be provided upon stable release.
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
