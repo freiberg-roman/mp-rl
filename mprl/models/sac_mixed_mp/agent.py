@@ -53,7 +53,7 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         self.alpha_q: float = alpha_q
         self.num_steps: int = num_steps
         self.device: torch.device = device
-        self.buffer = buffer
+        self.buffer: SequenceRB = buffer
         self.planner_act: MPTrajectory = planner_act
         self.planner_eval: MPTrajectory = planner_eval
         self.planner_update: MPTrajectory = planner_update
