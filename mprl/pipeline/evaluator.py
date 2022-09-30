@@ -1,4 +1,8 @@
+import math
+
 import cv2
+import numpy as np
+import wandb
 
 from mprl.env import MPRLEnvironment
 from mprl.models.common import Evaluable
@@ -12,11 +16,15 @@ class Evaluator:
         self.num_eval_episodes: int = cfg.num_eval_episodes
         self.env = env
         self.should_record: bool = cfg.record_video
+        self.record_each = cfg.record_each
+        self.current_evaluation = 0
+        self.record_mode = cfg.record_mode
         self.time_out_after: int = cfg.time_out_after
         self.images = []
 
     def evaluate(self, agent: Evaluable, after_performed_steps: int) -> dict:
         self.images = []
+        to_log = {}
 
         total_reward = 0.0
         success: float = 0.0
@@ -37,22 +45,30 @@ class Evaluator:
 
             success += info.get("success", 0.0)
 
-        if self.should_record:
-            out: cv2.VideoWriter = cv2.VideoWriter(
-                self.env.name + "_" + str(after_performed_steps) + ".avi",
-                cv2.VideoWriter_fourcc(*"DIVX"),
-                30,
-                (480, 480),
-            )
-            # save video
-            for im in self.images:
-                out.write(im)
-            out.release()
+        if self.should_record and self.current_evaluation % self.record_each == 0:
+            if self.record_mode == "disabled":
+                out: cv2.VideoWriter = cv2.VideoWriter(
+                    self.env.name + "_" + str(after_performed_steps) + ".avi",
+                    cv2.VideoWriter_fourcc(*"DIVX"),
+                    30,
+                    (480, 480),
+                )
+                # save video
+                for im in self.images:
+                    out.write(im)
+                out.release()
+            elif self.record_mode == "online":
+                imgs = np.transpose(np.array(self.images), (0, 3, 1, 2))
+                to_log = {"video": wandb.Video(imgs, fps=math.floor(1 / self.env.dt))}
 
         avg_reward = total_reward / self.num_eval_episodes
         success_rate = success / self.num_eval_episodes
+        self.current_evaluation += 1
         return {
-            "avg_episode_reward": avg_reward,
-            "performance_steps": after_performed_steps,
-            "success_rate": success_rate,
+            **{
+                "avg_episode_reward": avg_reward,
+                "performance_steps": after_performed_steps,
+                "success_rate": success_rate,
+            },
+            **to_log,
         }
