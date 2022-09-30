@@ -11,3 +11,5 @@ opencv-python==4.6.0.66
 opencv-contrib-python==4.6.0.66
 scipy==1.7.3
 gym==0.25.0
+moviepy==1.0.3
+imageio==2.19.2
