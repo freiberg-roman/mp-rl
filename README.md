@@ -2,7 +2,7 @@ This library is under active development! Benchmarks will be added soon.
 
 # Motion Primitive - Reinforcement Learning (MP-RL)
 Pytorch implementation of sequenced based RL algorithms. This library contains the following algorithms:
-* Soft Actor-Critic (SAC)
+* Soft Actor-Critic (SAC) [*adaptation of [praz24](https://github.com/pranz24/pytorch-soft-actor-critic) pytorch implementation*]
 * Mition Primitive SAC (MP-SAC)  [*currently under revision*]
 * Mixed Motion Primitive SAC (MMP-SAC)
 
