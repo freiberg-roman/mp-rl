@@ -52,6 +52,9 @@ class SACMP(Actable, Trainable, Serializable, Evaluable):
         self.ctrl: Controller = ctrl
         self.decompose_fn: Callable = decompose_fn
         self.batch_size: int = batch_size
+        self._current_weights: torch.Tensor = None
+        self._current_time: int = -1
+        action_dim = (num_basis + 1) * num_dof + 1
 
         # Networks
         # Networks
@@ -94,9 +97,12 @@ class SACMP(Actable, Trainable, Serializable, Evaluable):
             q, v = next(self.planner_act)
         except StopIteration:
             weights, _, _ = self.policy.sample(state)
+            self._current_weights = weights
+            self._current_time = self.num_steps
             self.planner_act.init(weights, bc_pos=b_q, bc_vel=b_v, num_t=self.num_steps)
             q, v = next(self.planner_act)
         action = self.ctrl.get_action(q, v, b_q, b_v)
+        self._current_time -= 1
         return to_np(action.squeeze())
 
     def eval_reset(self) -> np.ndarray:
@@ -127,7 +133,13 @@ class SACMP(Actable, Trainable, Serializable, Evaluable):
         done: bool,
         sim_state: Tuple[np.ndarray, np.ndarray],
     ):
-        self.buffer.add(state, next_state, action, reward, done, sim_state)
+        time = np.array([self._current_time]) + np.random.uniform(
+            low=0.0, high=1.0
+        )  # smear time
+        weight_time = np.concatenate(
+            (self._current_weights.squeeze().cpu().numpy(), time)
+        )
+        self.buffer.add(state, next_state, weight_time, reward, done, sim_state)
 
     def sample(self, state):
         return self.policy.sample(state)
@@ -177,20 +189,42 @@ class SACMP(Actable, Trainable, Serializable, Evaluable):
         self.critic_target.train()
 
     def update(self) -> dict:
-        batch = next(self.buffer.get_iter(1, self.batch_size)).to_torch_batch()
+        batch = next(
+            self.buffer.get_true_k_sequence_iter(1, self.num_steps, self.batch_size)
+        ).to_torch_batch()
+        # dimensions (batch_size, sequence_len, data_dimension)
         states, next_states, actions, rewards, dones, sim_states = batch
 
+        next_states_idx = torch.floor(actions[:, 0, -1]).to(
+            torch.long
+        )  # get the time left for the action
+        # TODO: think of version without for loop
+        next_states_reduced = torch.zeros_like(next_states[:, 0, :])
+        rewards_reduced = torch.zeros_like(rewards[:, 0, :])
+        dones_reduced = torch.zeros_like(dones[:, 0, :])
+        for i, idx in zip(range(self.batch_size), next_states_idx):
+            next_states_reduced[i, :] = next_states[i, idx, :]
+            rewards_reduced[i, :] = rewards[i, idx, :]
+            dones_reduced[i, :] = dones[i, idx, :]
+
+        next_states = next_states_reduced
+        states = states[:, 0, :]
+        actions = actions[:, 0, :]
+        rewards = rewards_reduced
+        dones = dones_reduced
         # Compute critic loss
         with torch.no_grad():
-            next_state_action, next_state_log_pi, _ = self.sample(
-                next_states, sim_states
-            )
+            next_state_action, next_state_log_pi, _ = self.sample(next_states)
+            time = (
+                torch.rand((self.batch_size, 1)) * self.num_steps
+            )  # agent has no control over time
+            next_state_action = torch.cat((next_state_action, time), dim=1)
             qf1_next_target, qf2_next_target = self.critic_target(
                 next_states, next_state_action
             )
             min_qf_next_target = (
                 torch.min(qf1_next_target, qf2_next_target)
-                - self.alpha_q * next_state_log_pi
+                - self.alpha * next_state_log_pi
             )
             next_q_value = rewards + (1 - dones.to(torch.float32)) * self.gamma * (
                 min_qf_next_target
@@ -212,6 +246,32 @@ class SACMP(Actable, Trainable, Serializable, Evaluable):
         qf_loss.backward()
         self.optimizer_critic.step()
 
-        # TODO
+        # Compute policy loss
+        weights, log_pi, _ = self.sample(states)
+        time = (
+            torch.rand((self.batch_size, 1)) * self.num_steps
+        )  # agent has no control over time
+        weights_time = torch.cat((weights, time), dim=1)
+        qf1_pi, qf2_pi = self.critic(states, weights_time)
+        min_qf_pi = torch.min(qf1_pi, qf2_pi)
+        policy_loss = (self.alpha * log_pi - min_qf_pi).mean()
+
+        # Update policy
+        self.optimizer_policy.zero_grad()
+        policy_loss.backward()
+        self.optimizer_policy.step()
 
         soft_update(self.critic_target, self.critic, self.tau)
+        return {
+            "qf_loss": qf_loss.item(),
+            "policy_loss": policy_loss.item(),
+            # weight statistics
+            "weight_mean": weights[..., :-1].detach().cpu().mean().item(),
+            "weight_std": weights[..., :-1].detach().cpu().std().item(),
+            "weight_max": weights[..., :-1].detach().cpu().max().item(),
+            "weight_min": weights[..., :-1].detach().cpu().min().item(),
+            "weight_goal_mean": weights[..., -1].detach().cpu().mean().item(),
+            "weight_goal_std": weights[..., -1].detach().cpu().std().item(),
+            "weight_goal_max": weights[..., -1].detach().cpu().max().item(),
+            "weight_goal_min": weights[..., -1].detach().cpu().min().item(),
+        }

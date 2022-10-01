@@ -1,4 +1,4 @@
-alpha: ${env.sac_mixed_mp.alpha}
+alpha: ${env.sac_mp.alpha}
 alpha_q: ${env.sac_mixed_mp.alpha_q}
 basis_bandwidth_factor: ${env.idmp.basis_bandwidth_factor}
 gamma: 0.99
@@ -6,3 +6,4 @@ num_basis: ${env.idmp.num_basis}
 num_dof: ${env.num_dof}
 num_steps: 5
 tau: 0.005
+warm_start_steps: 0

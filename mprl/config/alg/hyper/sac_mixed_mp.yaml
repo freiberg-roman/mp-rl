@@ -7,3 +7,4 @@ num_dof: ${env.num_dof}
 num_steps: 5
 policy_loss: "mean"  # other options is "weighted"
 tau: 0.005
+warm_start_steps: 10000

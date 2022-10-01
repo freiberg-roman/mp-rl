@@ -13,7 +13,7 @@ from ..common.config_gateway import ModelConfigGateway
 from .agent import SACMP
 
 
-class SACMixedMPFactory:
+class SACMPFactory:
     def __init__(
         self, config_gateway: ModelConfigGateway, env_config_gateway: EnvConfigGateway
     ):
@@ -22,15 +22,16 @@ class SACMixedMPFactory:
 
     def create(self):
         env_cfg = self._gateway.get_environment_config()
+        cfg_hyper = self._gateway.get_hyper_parameter_config()
+        cfg_net = self._gateway.get_network_config()
+
         buffer = SequenceRB(
             capacity=self._gateway.get_buffer_config().capacity,
             state_dim=env_cfg.state_dim,
-            action_dim=env_cfg.action_dim,
+            action_dim=((cfg_hyper.num_basis + 1) * cfg_hyper.num_dof) + 1,
             sim_qpos_dim=env_cfg.sim_qpos_dim,
             sim_qvel_dim=env_cfg.sim_qvel_dim,
         )
-        cfg_net = self._gateway.get_network_config()
-        cfg_hyper = self._gateway.get_hyper_parameter_config()
         env = MujocoFactory(self._env_gateway).create()
 
         cfg_idmp = self._gateway.get_mp_config()
