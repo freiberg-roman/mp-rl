@@ -4,8 +4,6 @@ import os
 def run():
 
     for env_name in [
-        "half_cheetah",
-        "meta_pd_reacher",
         "meta_pos_reacher",
     ]:
         for i in range(5):
