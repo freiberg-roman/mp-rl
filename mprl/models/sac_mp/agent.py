@@ -57,7 +57,6 @@ class SACMP(Actable, Trainable, Serializable, Evaluable):
         action_dim = (num_basis + 1) * num_dof + 1
 
         # Networks
-        # Networks
         self.critic: QNetwork = QNetwork(
             (state_dim, action_dim), network_width, network_depth
         ).to(device=self.device)
