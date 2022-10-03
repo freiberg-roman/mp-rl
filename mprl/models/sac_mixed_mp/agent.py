@@ -1,9 +1,11 @@
 from pathlib import Path
-from typing import Callable, Optional, Tuple
+from typing import Callable, Dict, Optional, Tuple
 
 import numpy as np
 import torch
 import torch.nn.functional as F
+from matplotlib import pyplot as plt
+from mp_pytorch.util import tensor_linspace
 from torch.distributions import Independent, Normal
 from torch.optim import Adam
 
@@ -101,6 +103,20 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
     def eval_reset(self) -> np.ndarray:
         self.planner_eval.reset_planner()
 
+    def eval_log(self) -> Dict:
+        times = tensor_linspace(
+            0,
+            self.planner_eval.dt * self.planner_eval.num_t,
+            self.planner_eval.num_t + 1,
+        )
+        pos = self.planner_eval.current_traj
+        if pos is None:
+            return {}
+        plt.close()
+        for dim in range(self.num_dof):
+            plt.plot(times, pos[:, dim])
+        return {"traj": plt}
+
     @torch.no_grad()
     def action_eval(self, state: np.ndarray, info: any) -> np.ndarray:
         sim_state = info
@@ -109,11 +125,13 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         b_v = torch.FloatTensor(b_v).to(self.device).unsqueeze(0)
         state = torch.FloatTensor(state).to(self.device).unsqueeze(0)
         try:
-            q, v = next(self.planner_act)
+            q, v = next(self.planner_eval)
         except StopIteration:
             _, _, weights = self.policy.sample(state)
-            self.planner_act.init(weights, bc_pos=b_q, bc_vel=b_v, num_t=self.num_steps)
-            q, v = next(self.planner_act)
+            self.planner_eval.init(
+                weights, bc_pos=b_q, bc_vel=b_v, num_t=self.num_steps
+            )
+            q, v = next(self.planner_eval)
         action = self.ctrl.get_action(q, v, b_q, b_v)
         return to_np(action.squeeze())
 

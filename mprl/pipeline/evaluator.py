@@ -64,11 +64,13 @@ class Evaluator:
         avg_reward = total_reward / self.num_eval_episodes
         success_rate = success / self.num_eval_episodes
         self.current_evaluation += 1
+        agent_log = agent.eval_log()
         return {
             **{
                 "avg_episode_reward": avg_reward,
                 "performance_steps": after_performed_steps,
                 "success_rate": success_rate,
             },
+            **agent_log,
             **to_log,
         }

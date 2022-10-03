@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Tuple
+from typing import Dict, Tuple
 
 import numpy as np
 
@@ -21,6 +21,10 @@ class Evaluable(ABC):
 
     @abstractmethod
     def action_eval(self, state: np.ndarray, info: any) -> np.ndarray:
+        raise NotImplementedError
+
+    @abstractmethod
+    def eval_log(self) -> Dict:
         raise NotImplementedError
 
 
