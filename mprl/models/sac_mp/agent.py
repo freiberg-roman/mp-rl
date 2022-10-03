@@ -15,7 +15,7 @@ from mprl.utils.math_helper import hard_update, soft_update
 from ...controllers import Controller, MPTrajectory
 from .. import Actable, Evaluable, Serializable, Trainable
 from ..common import QNetwork
-from ..sac_mixed_mp.networks import GaussianPolicyWeights
+from ..sac.networks import GaussianPolicy
 
 
 class SACMP(Actable, Trainable, Serializable, Evaluable):
@@ -67,8 +67,11 @@ class SACMP(Actable, Trainable, Serializable, Evaluable):
             (state_dim, action_dim), network_width, network_depth
         ).to(self.device)
         hard_update(self.critic_target, self.critic)
-        self.policy: GaussianPolicyWeights = GaussianPolicyWeights(
-            (state_dim, (num_basis + 1) * num_dof), network_width, network_depth
+        self.policy: GaussianPolicy = GaussianPolicy(
+            (state_dim, (num_basis + 1) * num_dof),
+            network_width,
+            network_depth,
+            action_scale=1000.0,
         ).to(self.device)
         self.optimizer_policy = Adam(self.policy.parameters(), lr=lr)
         self.optimizer_critic = Adam(self.critic.parameters(), lr=lr)

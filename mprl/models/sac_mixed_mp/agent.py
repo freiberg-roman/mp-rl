@@ -16,7 +16,7 @@ from mprl.utils.math_helper import hard_update, soft_update
 from ...controllers import Controller, MPTrajectory
 from .. import Actable, Evaluable, Predictable, Serializable, Trainable
 from ..common import QNetwork
-from .networks import GaussianPolicyWeights
+from ..sac.networks import GaussianPolicy
 
 LOG_PROB_MIN = -27.5
 LOG_PROB_MAX = 0.0
@@ -64,6 +64,7 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         self.batch_size: int = batch_size
         self.mode: str = policy_loss_type
         self.model = model
+        self.num_dof = num_dof
 
         # Networks
         self.critic: QNetwork = QNetwork(
@@ -73,8 +74,11 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
             (state_dim, action_dim), network_width, network_depth
         ).to(self.device)
         hard_update(self.critic_target, self.critic)
-        self.policy: GaussianPolicyWeights = GaussianPolicyWeights(
-            (state_dim, (num_basis + 1) * num_dof), network_width, network_depth
+        self.policy: GaussianPolicy = GaussianPolicy(
+            (state_dim, (num_basis + 1) * num_dof),
+            network_width,
+            network_depth,
+            action_scale=1000.0,
         ).to(self.device)
         self.optimizer_policy = Adam(self.policy.parameters(), lr=lr)
         self.optimizer_critic = Adam(self.critic.parameters(), lr=lr)
