@@ -32,4 +32,4 @@ class PDController(Controller):
         qd_d = desired_pos - current_pos
         vd_d = desired_vel - current_vel
         target_j_acc = self.pgains * qd_d + self.dgains * vd_d
-        return torch.clamp(target_j_acc, -1, 1)
+        return target_j_acc

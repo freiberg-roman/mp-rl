@@ -22,4 +22,4 @@ class MetaController(Controller):
         cur_pos = torch.squeeze(cur_pos)
 
         trq = torch.hstack([self.pgains * (xyz_pos - cur_pos), gripper_pos])
-        return torch.clamp(trq, -1, 1)
+        return trq

@@ -10,7 +10,7 @@ defaults:
 
 root_dir: "../experiments"
 device: "cpu"
-project_name: "video_runs"
+project_name: "sac_mixed_mp_tanh"
 run_id: 0
 
 hydra:

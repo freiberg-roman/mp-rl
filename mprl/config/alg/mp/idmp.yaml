@@ -11,5 +11,5 @@ mp_args:
   basis_bandwidth_factor: ${env.idmp.basis_bandwidth_factor}
   num_basis_outside: 0
   dt: ${env.dt}
-  alpha: 20
+  alpha: 10
   weight_scale: 1000.0
