@@ -78,7 +78,6 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
             (state_dim, (num_basis + 1) * num_dof),
             network_width,
             network_depth,
-            action_scale=1000.0,
         ).to(self.device)
         self.optimizer_policy = Adam(self.policy.parameters(), lr=lr)
         self.optimizer_critic = Adam(self.critic.parameters(), lr=lr)

@@ -2,7 +2,9 @@ from copy import deepcopy
 
 import numpy as np
 import torch
-from mp_pytorch.mp import MPFactory
+from mp_pytorch.basis_gn import ProDMPBasisGenerator
+from mp_pytorch.mp import ProDMP
+from mp_pytorch.phase_gn import ExpDecayPhaseGenerator
 
 from mprl.controllers import MetaController, MPTrajectory, PDController
 from mprl.env.config_gateway import EnvConfigGateway
@@ -44,13 +46,35 @@ class SACMixedMPFactory:
             raise ValueError(f"Unknown model name {cfg_model.name}")
 
         cfg_idmp = self._gateway.get_mp_config()
-        idmp = MPFactory.init_mp(
-            mp_type="prodmp",
-            mp_args=cfg_idmp.mp_args,
-            num_dof=cfg_idmp.num_dof,
+
+        # Build ProDMP Controller
+        phase_gn = ExpDecayPhaseGenerator(
             tau=cfg_idmp.tau,
+            delay=0.0,
+            learn_tau=False,
+            learn_delay=False,
+            alpha_phase=cfg_idmp.mp_args["alpha_phase"],
+            dtype=torch.float32,
+            device=self._gateway.get_device(),
         )
-        idmp.weights_scale = torch.tensor(cfg_idmp.mp_args.weight_scale)
+        basis_gn = ProDMPBasisGenerator(
+            phase_generator=phase_gn,
+            num_basis=cfg_idmp.mp_args["num_basis"],
+            basis_bandwidth_factor=cfg_idmp.mp_args["basis_bandwidth_factor"],
+            num_basis_outside=cfg_idmp.mp_args["num_basis_outside"],
+            dt=cfg_idmp.mp_args["dt"],
+            alpha=cfg_idmp.mp_args["alpha"],
+            dtype=torch.float32,
+            device=self._gateway.get_device(),
+        )
+        idmp = ProDMP(
+            basis_gn=basis_gn,
+            num_dof=cfg_idmp.num_dof,
+            dtype=torch.float32,
+            device=self._gateway.get_device(),
+            weights_scale=cfg_idmp.mp_args["weight_scale"],
+            **cfg_idmp.mp_args,
+        )
         planner = MPTrajectory(dt=env.dt, mp=idmp, device=self._gateway.get_device())
         pgains = np.array(self._gateway.get_ctrl_config().pgains)
 
