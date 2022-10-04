@@ -4,7 +4,7 @@ from omegaconf import DictConfig, OmegaConf
 
 from mprl.config import ConfigRepository
 from mprl.env import MujocoFactory
-from mprl.models import SACFactory, SACMixedMPFactory
+from mprl.models import SACFactory, SACMixedMPFactory, SACMPFactory
 from mprl.pipeline import Evaluator, Trainer
 
 
@@ -21,7 +21,9 @@ def run(cfg: DictConfig):
             config_gateway=config_repository, env_config_gateway=config_repository
         ).create()
     elif cfg.alg.name == "sac_mp":
-        ...  # TODO
+        agent = SACMPFactory(
+            config_gateway=config_repository, env_config_gateway=config_repository
+        ).create()
     else:
         raise ValueError(f"Unknown algorithm {cfg.alg.name}")
 

@@ -25,6 +25,9 @@ sac_mixed_mp:
   alpha: 0.05
   alpha_q: 0.0
 
+sac_mp:
+  alpha: 0.5
+
 network:
   network_width: 256
   network_depth: 2

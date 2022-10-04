@@ -14,7 +14,11 @@ epsilon = 1e-6
 
 class GaussianPolicy(nn.Module):
     def __init__(
-        self, input_dim: Tuple[int, int], network_width: int, network_depth: int
+        self,
+        input_dim: Tuple[int, int],
+        network_width: int,
+        network_depth: int,
+        action_scale: float = 1.0,
     ):
         super(GaussianPolicy, self).__init__()
 
@@ -30,7 +34,7 @@ class GaussianPolicy(nn.Module):
         self.apply(weights_init_)
 
         # action rescaling
-        self.action_scale: torch.Tensor = torch.tensor(1.0)
+        self.action_scale: torch.Tensor = torch.tensor(action_scale)
         self.action_bias: torch.Tensor = torch.tensor(0.0)
 
     def forward(self, state: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:

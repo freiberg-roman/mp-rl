@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Iterator, Tuple
+from typing import Dict, Iterator, Tuple
 
 import numpy as np
 import torch
@@ -66,6 +66,9 @@ class SAC(Actable, Evaluable, Serializable, Trainable):
     def eval_reset(self) -> np.ndarray:
         """Reset the internal state of the agent. In this case, the agent is stateless."""
         pass
+
+    def eval_log(self) -> Dict:
+        return {}
 
     def action_eval(self, state: np.ndarray, info: any) -> np.ndarray:
         _ = info

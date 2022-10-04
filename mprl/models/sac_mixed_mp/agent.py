@@ -1,9 +1,11 @@
 from pathlib import Path
-from typing import Callable, Optional, Tuple
+from typing import Callable, Dict, Optional, Tuple
 
 import numpy as np
 import torch
 import torch.nn.functional as F
+from matplotlib import pyplot as plt
+from mp_pytorch.util import tensor_linspace
 from torch.distributions import Independent, Normal
 from torch.optim import Adam
 
@@ -14,7 +16,7 @@ from mprl.utils.math_helper import hard_update, soft_update
 from ...controllers import Controller, MPTrajectory
 from .. import Actable, Evaluable, Predictable, Serializable, Trainable
 from ..common import QNetwork
-from .networks import GaussianPolicyWeights
+from ..sac.networks import GaussianPolicy
 
 LOG_PROB_MIN = -27.5
 LOG_PROB_MAX = 0.0
@@ -53,7 +55,7 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         self.alpha_q: float = alpha_q
         self.num_steps: int = num_steps
         self.device: torch.device = device
-        self.buffer = buffer
+        self.buffer: SequenceRB = buffer
         self.planner_act: MPTrajectory = planner_act
         self.planner_eval: MPTrajectory = planner_eval
         self.planner_update: MPTrajectory = planner_update
@@ -62,6 +64,7 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         self.batch_size: int = batch_size
         self.mode: str = policy_loss_type
         self.model = model
+        self.num_dof = num_dof
 
         # Networks
         self.critic: QNetwork = QNetwork(
@@ -71,8 +74,11 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
             (state_dim, action_dim), network_width, network_depth
         ).to(self.device)
         hard_update(self.critic_target, self.critic)
-        self.policy: GaussianPolicyWeights = GaussianPolicyWeights(
-            (state_dim, (num_basis + 1) * num_dof), network_width, network_depth
+        self.policy: GaussianPolicy = GaussianPolicy(
+            (state_dim, (num_basis + 1) * num_dof),
+            network_width,
+            network_depth,
+            action_scale=1000.0,
         ).to(self.device)
         self.optimizer_policy = Adam(self.policy.parameters(), lr=lr)
         self.optimizer_critic = Adam(self.critic.parameters(), lr=lr)
@@ -101,6 +107,20 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
     def eval_reset(self) -> np.ndarray:
         self.planner_eval.reset_planner()
 
+    def eval_log(self) -> Dict:
+        times = tensor_linspace(
+            0,
+            self.planner_eval.dt * self.planner_eval.num_t,
+            self.planner_eval.num_t + 1,
+        )
+        pos = self.planner_eval.current_traj
+        if pos is None:
+            return {}
+        plt.close()
+        for dim in range(self.num_dof):
+            plt.plot(times, pos[:, dim])
+        return {"traj": plt}
+
     @torch.no_grad()
     def action_eval(self, state: np.ndarray, info: any) -> np.ndarray:
         sim_state = info
@@ -109,11 +129,13 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         b_v = torch.FloatTensor(b_v).to(self.device).unsqueeze(0)
         state = torch.FloatTensor(state).to(self.device).unsqueeze(0)
         try:
-            q, v = next(self.planner_act)
+            q, v = next(self.planner_eval)
         except StopIteration:
             _, _, weights = self.policy.sample(state)
-            self.planner_act.init(weights, bc_pos=b_q, bc_vel=b_v, num_t=self.num_steps)
-            q, v = next(self.planner_act)
+            self.planner_eval.init(
+                weights, bc_pos=b_q, bc_vel=b_v, num_t=self.num_steps
+            )
+            q, v = next(self.planner_eval)
         action = self.ctrl.get_action(q, v, b_q, b_v)
         return to_np(action.squeeze())
 

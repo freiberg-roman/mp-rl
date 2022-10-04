@@ -125,12 +125,14 @@ class ConfigRepository(ModelConfigGateway, EnvConfigGateway, TrainConfigGateway)
         :return: The training configuration.
         """
         train_cfg = self._config.train
+        warm_start_steps = train_cfg.warm_start_steps
         cfg = OmegaConf.create(
             {
                 **OmegaConf.to_container(train_cfg),
                 **{"time_out_after": self._config.env.time_out_after},
             }
         )
+        cfg.warm_start_steps = warm_start_steps
         return cfg
 
     def get_evaluation_config(self) -> DictConfig:

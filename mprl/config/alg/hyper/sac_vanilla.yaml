@@ -5,3 +5,4 @@ gamma: 0.99
 num_basis: ${env.idmp.num_basis}
 num_dof: ${env.num_dof}
 tau: 0.005
+warm_start_steps: 10000

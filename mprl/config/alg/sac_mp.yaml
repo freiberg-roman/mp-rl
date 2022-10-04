@@ -1,0 +1,7 @@
+defaults:
+  - ctrl: pd
+  - hyper: sac_mp
+  - network: ff
+  - mp: idmp
+
+name: "sac_mp"

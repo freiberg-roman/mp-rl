@@ -20,7 +20,7 @@ idmp:
   basis_bandwidth_factor: 1.0
 
 sac:
-  alpha: 0.1
+  alpha: 0.05
 
 sac_mixed_mp:
   alpha: 0.05
