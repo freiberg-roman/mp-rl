@@ -73,4 +73,5 @@ class Evaluator:
             },
             **agent_log,
             **to_log,
+            **info,
         }
