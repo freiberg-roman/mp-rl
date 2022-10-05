@@ -43,7 +43,7 @@ class Evaluator:
                 if self.should_record and i == self.num_eval_episodes - 1:
                     self.images.append(self.env.render(mode="rgb_array"))
 
-            success += info.get("success", 0.0)
+            success += info["success"]
 
         if self.should_record and self.current_evaluation % self.record_each == 0:
             if self.record_mode == "disabled":
@@ -73,4 +73,5 @@ class Evaluator:
             },
             **agent_log,
             **to_log,
+            **info,
         }

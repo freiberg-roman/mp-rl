@@ -8,5 +8,6 @@ from .meta import (
     MetaPosButtonPress,
     MetaPosReacher,
     MetaPosWindowOpen,
+    OriginalMetaWorld,
 )
 from .reacher import ReacherEnv
