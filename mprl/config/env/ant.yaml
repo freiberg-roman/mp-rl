@@ -27,3 +27,4 @@ sac_mixed_mp:
 network:
   network_width: 512
   network_depth: 3
+  action_scale: 10.0

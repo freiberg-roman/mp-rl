@@ -31,3 +31,4 @@ sac_mp:
 network:
   network_width: 256
   network_depth: 2
+  action_scale: 10.0

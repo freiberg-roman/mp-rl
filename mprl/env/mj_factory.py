@@ -12,7 +12,6 @@ from .mujoco import (
     MetaPosButtonPress,
     MetaPosReacher,
     MetaPosWindowOpen,
-    OriginalMetaWorld,
     ReacherEnv,
 )
 
@@ -47,8 +46,14 @@ class MujocoFactory:
         if cfg.get_env_name() == "MetaPDButtonPress":
             return MetaPDButtonPress(base=BASE + "meta/")
         if cfg.get_env_name() == "OriginalMetaReacher":
+            from .mujoco.meta.adapters import OriginalMetaWorld
+
             return OriginalMetaWorld("reach-v2")
         if cfg.get_env_name() == "OriginalMetaWindowOpen":
+            from .mujoco.meta.adapters import OriginalMetaWorld
+
             return OriginalMetaWorld("window-open-v2")
         if cfg.get_env_name() == "OriginalMetaButtonPress":
+            from .mujoco.meta.adapters import OriginalMetaWorld
+
             return OriginalMetaWorld("button-press-v2")

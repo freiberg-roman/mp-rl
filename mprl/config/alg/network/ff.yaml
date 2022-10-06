@@ -1,3 +1,4 @@
 network_width: ${env.network.network_width}
 network_depth: ${env.network.network_depth}
+action_scale: ${env.network.action_scale}
 lr: 0.0003

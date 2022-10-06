@@ -3,7 +3,7 @@ name: "Reacher"
 num_dof: 2
 q_dim: 2
 vel_dim: 2
-time_out_after: 200
+time_out_after: 50
 
 action_dim: 2
 state_dim: 11
@@ -28,5 +28,6 @@ sac_mixed_mp:
   alpha_q: 0.0
 
 network:
-  network_width: 256
+  network_width: 128
   network_depth: 2
+  action_scale: 10.0

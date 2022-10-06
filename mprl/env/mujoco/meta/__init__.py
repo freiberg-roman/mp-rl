@@ -1,4 +1,3 @@
-from .adapters import OriginalMetaWorld
 from .meta_pd.button_press import MetaPDButtonPress
 from .meta_pd.reach import MetaPDReacher
 from .meta_pd.window_open import MetaPDWindowOpen
