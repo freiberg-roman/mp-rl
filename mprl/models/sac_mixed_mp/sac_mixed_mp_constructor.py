@@ -105,7 +105,7 @@ class SACMixedMPFactory:
             **cfg_idmp.mp_args,
         )
         pgains = np.array(self._gateway.get_ctrl_config().pgains)
-        planner_eval = MPTrajectory(
+        _ = MPTrajectory(
             dt=env.dt, mp=idmp_eval, device=self._gateway.get_device()
         )
 
@@ -141,6 +141,6 @@ class SACMixedMPFactory:
             decompose_fn=env.decompose_fn,
             planner_act=deepcopy(planner),
             planner_update=deepcopy(planner),
-            planner_eval=planner_eval,
+            planner_eval=deepcopy(planner),
             ctrl=ctrl,
         )

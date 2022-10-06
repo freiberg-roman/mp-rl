@@ -1,7 +1,7 @@
 mp_type: "prodmp"
 
-tau: 1.0
-tau_eval: 1.0
+tau: 4.0
+tau_eval: 4.0
 num_basis: ${env.idmp.num_basis}
 num_dof: ${env.num_dof}
 device: ${device}
