@@ -105,9 +105,7 @@ class SACMixedMPFactory:
             **cfg_idmp.mp_args,
         )
         pgains = np.array(self._gateway.get_ctrl_config().pgains)
-        _ = MPTrajectory(
-            dt=env.dt, mp=idmp_eval, device=self._gateway.get_device()
-        )
+        _ = MPTrajectory(dt=env.dt, mp=idmp_eval, device=self._gateway.get_device())
 
         is_pos_ctrl = "Pos" in self._env_gateway.get_env_name()
         if is_pos_ctrl:
