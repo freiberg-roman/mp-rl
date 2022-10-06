@@ -30,6 +30,7 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         alpha: float,
         alpha_q: float,
         num_steps: int,
+        num_steps_eval: int,
         lr: float,
         batch_size: int,
         device: torch.device,
@@ -55,6 +56,7 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         self.alpha: float = alpha
         self.alpha_q: float = alpha_q
         self.num_steps: int = num_steps
+        self.num_steps_eval: int = num_steps_eval
         self.device: torch.device = device
         self.buffer: SequenceRB = buffer
         self.planner_act: MPTrajectory = planner_act
@@ -134,7 +136,7 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         except StopIteration:
             _, _, weights = self.policy.sample(state)
             self.planner_eval.init(
-                weights, bc_pos=b_q, bc_vel=b_v, num_t=self.num_steps
+                weights, bc_pos=b_q, bc_vel=b_v, num_t=self.num_steps_eval
             )
             q, v = next(self.planner_eval)
         action = self.ctrl.get_action(q, v, b_q, b_v)
