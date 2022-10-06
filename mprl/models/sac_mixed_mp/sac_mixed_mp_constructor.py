@@ -87,7 +87,7 @@ class SACMixedMPFactory:
             device=self._gateway.get_device(),
         )
         basis_gn_eval = ProDMPBasisGenerator(
-            phase_generator=phase_gn,
+            phase_generator=phase_gn_eval,
             num_basis=cfg_idmp.mp_args["num_basis"],
             basis_bandwidth_factor=cfg_idmp.mp_args["basis_bandwidth_factor"],
             num_basis_outside=cfg_idmp.mp_args["num_basis_outside"],
@@ -97,7 +97,7 @@ class SACMixedMPFactory:
             device=self._gateway.get_device(),
         )
         idmp_eval = ProDMP(
-            basis_gn=basis_gn,
+            basis_gn=basis_gn_eval,
             num_dof=cfg_idmp.num_dof,
             dtype=torch.float32,
             device=self._gateway.get_device(),
