@@ -321,7 +321,17 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
             )
         min_qf /= self.num_steps
         policy_loss = (-min_qf).mean() + self.alpha * log_pi.mean()
-        return policy_loss, {"entropy": (-log_pi).detach().cpu().mean().item()}
+        return policy_loss, {
+            "entropy": (-log_pi).detach().cpu().mean().item(),
+            "weight_mean": weights[..., :-1].detach().cpu().mean().item(),
+            "weight_std": weights[..., :-1].detach().cpu().std().item(),
+            "weight_max": weights[..., :-1].detach().cpu().max().item(),
+            "weight_min": weights[..., :-1].detach().cpu().min().item(),
+            "weight_goal_mean": weights[..., -1].detach().cpu().mean().item(),
+            "weight_goal_std": weights[..., -1].detach().cpu().std().item(),
+            "weight_goal_max": weights[..., -1].detach().cpu().max().item(),
+            "weight_goal_min": weights[..., -1].detach().cpu().min().item(),
+        }
 
     def _off_policy_weighted_loss(self):
         batch = next(
