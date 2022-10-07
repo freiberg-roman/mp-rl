@@ -6,7 +6,7 @@ def run():
     for env_name in [
         "half_cheetah",
     ]:
-        for alpha in [0.0, 0.01, 0.1, 0.5]:
+        for alpha in [0.0, 0.001, 0.01, 0.1]:
             for i in range(5):
                 launch_command = (
                     "python -m mprl.ui.run alg=sac_mixed_mp prediction=off_policy "
