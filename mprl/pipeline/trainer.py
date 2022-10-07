@@ -58,7 +58,13 @@ class Trainer:
             if self.env.total_steps % self.update_each == 0:
                 for _ in range(self.update_for):
                     loggable = agent.update()
-                wandb.log({**loggable, "update_step": self.env.total_steps})
+                wandb.log(
+                    {
+                        **loggable,
+                        "update_step": self.env.total_steps,
+                        "train_reward": reward,
+                    }
+                )
 
         return agent
 

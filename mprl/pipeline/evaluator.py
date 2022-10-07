@@ -34,16 +34,18 @@ class Evaluator:
 
             state, sim_state = self.env.reset(time_out_after=self.time_out_after)
             done, time_out = False, False
+            successes = []
             while not done and not time_out:
                 action = agent.action_eval(state, sim_state)
                 state, reward, done, time_out, sim_state, info = self.env.step(action)
                 total_reward += reward
+                successes.append(info.get("success", 0.0))
 
                 # Only record the last episode if we are recording
                 if self.should_record and i == self.num_eval_episodes - 1:
                     self.images.append(self.env.render(mode="rgb_array"))
 
-            success += info.get("success", 0.0)
+            success += float(max(successes))
 
         if self.should_record and self.current_evaluation % self.record_each == 0:
             if self.record_mode == "disabled":

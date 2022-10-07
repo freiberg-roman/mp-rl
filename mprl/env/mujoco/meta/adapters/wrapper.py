@@ -62,3 +62,13 @@ class OriginalMetaWorld(MujocoEnv):
 
     def random_action(self):
         return self.env.action_space.sample()
+
+    def render(
+        self,
+        mode="human",
+        width=480,
+        height=480,
+        camera_id=None,
+        camera_name=None,
+    ):
+        return self.env.render(resolution=(width, height))
