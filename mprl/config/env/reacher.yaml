@@ -17,17 +17,18 @@ pd:
   dgains: [0.1, 0.1]
 
 idmp:
-  num_basis: 5
+  num_basis: 7
   basis_bandwidth_factor: 1.0
 
 sac:
   alpha: 0.2
+  auto_alpha: True
 
 sac_mixed_mp:
-  alpha: 0.05
+  alpha: 0.0
   alpha_q: 0.0
 
 network:
   network_width: 128
   network_depth: 2
-  action_scale: 10.0
+  action_scale: 1.0

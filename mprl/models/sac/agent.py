@@ -20,6 +20,7 @@ class SAC(Actable, Evaluable, Serializable, Trainable):
         gamma: float,
         tau: float,
         alpha: float,
+        automatic_entropy_tuning: bool,
         lr: float,
         batch_size: int,
         device: torch.device,
@@ -37,6 +38,7 @@ class SAC(Actable, Evaluable, Serializable, Trainable):
         self.device: torch.device = device
         self.buffer = buffer
         self.batch_size = batch_size
+        self.automatic_entropy_tuning = automatic_entropy_tuning
 
         # Networks
         self.critic: QNetwork = QNetwork(
@@ -51,6 +53,10 @@ class SAC(Actable, Evaluable, Serializable, Trainable):
         ).to(self.device)
         self.optimizer_policy = Adam(self.policy.parameters(), lr=lr)
         self.optimizer_critic = Adam(self.critic.parameters(), lr=lr)
+        if automatic_entropy_tuning:
+            self.target_entropy = -action_dim
+            self.log_alpha = torch.zeros(1, requires_grad=True, device=self.device)
+            self.alpha_optim = Adam([self.log_alpha], lr=lr)
 
     def sequence_reset(self):
         """Reset the internal state of the agent. In this case, the agent is stateless."""
@@ -176,6 +182,13 @@ class SAC(Actable, Evaluable, Serializable, Trainable):
         policy_loss.backward()
         self.optimizer_policy.step()
 
+        if self.automatic_entropy_tuning:
+            alpha_loss = -(self.log_alpha * (log_pi + self.target_entropy).detach()).mean()
+            self.alpha_optim.zero_grad()
+            alpha_loss.backward()
+            self.alpha_optim.step()
+            self.alpha = self.log_alpha.exp()
+
         # Update target networks
         soft_update(self.critic_target, self.critic, self.tau)
 
@@ -183,4 +196,6 @@ class SAC(Actable, Evaluable, Serializable, Trainable):
             "critic_loss": qf_loss.item(),
             "policy_loss": policy_loss.item(),
             "entropy": (-log_pi).detach().cpu().mean().item(),
+            "alpha": self.alpha.item(),
+            "alpha_loss": alpha_loss.item(),
         }

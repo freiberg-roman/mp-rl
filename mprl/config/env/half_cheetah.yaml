@@ -20,6 +20,7 @@ idmp:
 
 sac:
   alpha: 0.1
+  auto_alpha: True
 
 sac_mixed_mp:
   alpha: 0.05

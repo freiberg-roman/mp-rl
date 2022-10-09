@@ -3,7 +3,7 @@ from typing import Tuple
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.distributions import Normal
+from torch.distributions import Normal, TanhTransform
 
 from ..common import weights_init_
 

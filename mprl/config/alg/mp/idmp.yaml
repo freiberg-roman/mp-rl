@@ -1,7 +1,6 @@
 mp_type: "prodmp"
 
-tau: 0.25
-tau_eval: 0.25
+tau: 0.20
 num_basis: ${env.idmp.num_basis}
 num_dof: ${env.num_dof}
 device: ${device}
@@ -14,3 +13,4 @@ mp_args:
   dt: ${env.dt}
   alpha: 20
   weight_scale: 1000.0
+  goals_scale: 10.0

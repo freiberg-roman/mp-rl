@@ -67,45 +67,18 @@ class SACMixedMPFactory:
             dtype=torch.float32,
             device=self._gateway.get_device(),
         )
+        basis_gn.show_basis(plot=True)
         idmp = ProDMP(
             basis_gn=basis_gn,
             num_dof=cfg_idmp.num_dof,
             dtype=torch.float32,
             device=self._gateway.get_device(),
             weights_scale=cfg_idmp.mp_args["weight_scale"],
+            goal_scale=cfg_idmp.mp_args["goals_scale"],
             **cfg_idmp.mp_args,
         )
         planner = MPTrajectory(dt=env.dt, mp=idmp, device=self._gateway.get_device())
-        # Build evaluation controller
-        phase_gn_eval = ExpDecayPhaseGenerator(
-            tau=cfg_idmp.tau_eval,
-            delay=0.0,
-            learn_tau=False,
-            learn_delay=False,
-            alpha_phase=cfg_idmp.mp_args["alpha_phase"],
-            dtype=torch.float32,
-            device=self._gateway.get_device(),
-        )
-        basis_gn_eval = ProDMPBasisGenerator(
-            phase_generator=phase_gn_eval,
-            num_basis=cfg_idmp.mp_args["num_basis"],
-            basis_bandwidth_factor=cfg_idmp.mp_args["basis_bandwidth_factor"],
-            num_basis_outside=cfg_idmp.mp_args["num_basis_outside"],
-            dt=cfg_idmp.mp_args["dt"],
-            alpha=cfg_idmp.mp_args["alpha"],
-            dtype=torch.float32,
-            device=self._gateway.get_device(),
-        )
-        idmp_eval = ProDMP(
-            basis_gn=basis_gn_eval,
-            num_dof=cfg_idmp.num_dof,
-            dtype=torch.float32,
-            device=self._gateway.get_device(),
-            weights_scale=cfg_idmp.mp_args["weight_scale"],
-            **cfg_idmp.mp_args,
-        )
         pgains = np.array(self._gateway.get_ctrl_config().pgains)
-        _ = MPTrajectory(dt=env.dt, mp=idmp_eval, device=self._gateway.get_device())
 
         is_pos_ctrl = "Pos" in self._env_gateway.get_env_name()
         if is_pos_ctrl:
@@ -131,7 +104,6 @@ class SACMixedMPFactory:
             batch_size=cfg_hyper.batch_size,
             device=self._gateway.get_device(),
             num_steps=cfg_hyper.num_steps,
-            num_steps_eval=cfg_hyper.num_steps_eval,
             num_basis=cfg_hyper.num_basis,
             num_dof=cfg_hyper.num_dof,
             model=model,

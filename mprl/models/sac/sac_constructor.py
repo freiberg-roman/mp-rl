@@ -29,6 +29,7 @@ class SACFactory:
             gamma=cfg_hyper.gamma,
             tau=cfg_hyper.tau,
             alpha=cfg_hyper.alpha,
+            automatic_entropy_tuning=cfg_hyper.auto_alpha,
             batch_size=cfg_hyper.batch_size,
             device=self._gateway.get_device(),
         )
