@@ -67,7 +67,6 @@ class SACMixedMPFactory:
             dtype=torch.float32,
             device=self._gateway.get_device(),
         )
-        basis_gn.show_basis(plot=True)
         idmp = ProDMP(
             basis_gn=basis_gn,
             num_dof=cfg_idmp.num_dof,
@@ -101,6 +100,7 @@ class SACMixedMPFactory:
             tau=cfg_hyper.tau,
             alpha=cfg_hyper.alpha,
             alpha_q=cfg_hyper.alpha_q,
+            automatic_entropy_tuning=cfg_hyper.auto_alpha,
             batch_size=cfg_hyper.batch_size,
             device=self._gateway.get_device(),
             num_steps=cfg_hyper.num_steps,

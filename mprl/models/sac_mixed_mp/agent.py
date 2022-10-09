@@ -29,6 +29,7 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         gamma: float,
         tau: float,
         alpha: float,
+        automatic_entropy_tuning: bool,
         alpha_q: float,
         num_steps: int,
         lr: float,
@@ -55,6 +56,7 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         self.tau: float = tau
         self.alpha: float = alpha
         self.alpha_q: float = alpha_q
+        self.automatic_entropy_tuning: bool = automatic_entropy_tuning
         self.num_steps: int = num_steps
         self.device: torch.device = device
         self.buffer: SequenceRB = buffer
@@ -84,6 +86,10 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         ).to(self.device)
         self.optimizer_policy = Adam(self.policy.parameters(), lr=lr)
         self.optimizer_critic = Adam(self.critic.parameters(), lr=lr)
+        if automatic_entropy_tuning:
+            self.target_entropy = -((num_basis + 1) * num_dof)
+            self.log_alpha = torch.zeros(1, requires_grad=True, device=self.device)
+            self.optimizer_alpha = Adam([self.log_alpha], lr=lr)
         self.weights_log = []
 
     def sequence_reset(self):
@@ -281,9 +287,23 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         loss.backward()
         self.optimizer_policy.step()
 
+        if self.automatic_entropy_tuning:
+            alpha_loss = -(
+                self.log_alpha * (-loggable["entropy"] + self.target_entropy)
+            ).mean()
+            self.optimizer_alpha.zero_grad()
+            alpha_loss.backward()
+            self.optimizer_alpha.step()
+            self.alpha = self.log_alpha.exp()
+            loggable["alpha_loss"] = alpha_loss.item()
+
         soft_update(self.critic_target, self.critic, self.tau)
         return {
-            **{"critic_loss": qf_loss.item(), "policy_loss": loss.item()},
+            **{
+                "critic_loss": qf_loss.item(),
+                "policy_loss": loss.item(),
+                "alpha": self.alpha,
+            },
             **loggable,
         }
 
@@ -333,8 +353,6 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
             "entropy": (-log_pi).detach().cpu().mean().item(),
             "weight_mean": weights[..., :-1].detach().cpu().mean().item(),
             "weight_std": weights[..., :-1].detach().cpu().std().item(),
-            "weight_max": weights[..., :-1].detach().cpu().max().item(),
-            "weight_min": weights[..., :-1].detach().cpu().min().item(),
             "weight_goal_mean": weights[..., -1].detach().cpu().mean().item(),
             "weight_goal_std": weights[..., -1].detach().cpu().std().item(),
             "weight_goal_max": weights[..., -1].detach().cpu().max().item(),
