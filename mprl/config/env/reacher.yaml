@@ -23,10 +23,15 @@ idmp:
 sac:
   alpha: 0.2
   auto_alpha: True
+  target_entropy: -2
 
 sac_mixed_mp:
   alpha: 0.0
   alpha_q: 0.0
+  auto_alpha: True
+  target_entropy: -100
+  tau_idmp: 1.0
+  num_steps: 50
 
 network:
   network_width: 128

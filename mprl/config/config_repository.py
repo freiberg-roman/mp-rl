@@ -57,6 +57,7 @@ class ConfigRepository(ModelConfigGateway, EnvConfigGateway, TrainConfigGateway)
         )
         cfg.alpha = self._config.alg.hyper.alpha
         cfg.auto_alpha = self._config.alg.hyper.auto_alpha
+        cfg.target_entropy = self._config.alg.hyper.target_entropy
         cfg.num_steps = self._config.alg.hyper.num_steps
         cfg.alpha_q = self._config.alg.hyper.alpha_q
         cfg.num_basis = self._config.alg.hyper.num_basis

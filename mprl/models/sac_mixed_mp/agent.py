@@ -50,6 +50,7 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         decompose_fn: Callable,
         model: Optional[Predictable] = None,
         policy_loss_type: str = "mean",  # other is "weighted"
+        target_entropy: Optional[float] = None,
     ):
         # Parameters
         self.gamma: float = gamma
@@ -57,6 +58,7 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         self.alpha: float = alpha
         self.alpha_q: float = alpha_q
         self.automatic_entropy_tuning: bool = automatic_entropy_tuning
+        self.target_entropy: Optional[float] = target_entropy
         self.num_steps: int = num_steps
         self.device: torch.device = device
         self.buffer: SequenceRB = buffer
@@ -87,7 +89,8 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         self.optimizer_policy = Adam(self.policy.parameters(), lr=lr)
         self.optimizer_critic = Adam(self.critic.parameters(), lr=lr)
         if automatic_entropy_tuning:
-            self.target_entropy = -((num_basis + 1) * num_dof)
+            if self.target_entropy is None:
+                self.target_entropy = -((num_basis + 1) * num_dof)
             self.log_alpha = torch.zeros(1, requires_grad=True, device=self.device)
             self.optimizer_alpha = Adam([self.log_alpha], lr=lr)
         self.weights_log = []

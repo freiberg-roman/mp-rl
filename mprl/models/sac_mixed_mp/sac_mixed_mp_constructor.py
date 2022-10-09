@@ -101,6 +101,7 @@ class SACMixedMPFactory:
             alpha=cfg_hyper.alpha,
             alpha_q=cfg_hyper.alpha_q,
             automatic_entropy_tuning=cfg_hyper.auto_alpha,
+            target_entropy=cfg_hyper.get("target_entropy", None),
             batch_size=cfg_hyper.batch_size,
             device=self._gateway.get_device(),
             num_steps=cfg_hyper.num_steps,

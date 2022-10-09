@@ -56,7 +56,10 @@ class Trainer:
                 state, sim_state = self.env.reset(self.time_out_after)
                 agent.sequence_reset()
 
-            if self.env.total_steps % self.update_each == 0:
+            if (
+                self.env.total_steps % self.update_each == 0
+                and self.env.total_steps >= self.warm_steps
+            ):
                 for _ in range(self.update_for):
                     loggable = agent.update()
                 wandb.log(
