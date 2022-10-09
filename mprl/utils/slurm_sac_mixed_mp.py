@@ -4,9 +4,9 @@ import os
 def run():
 
     for env_name in [
-        "reacher",
+        "half_cheetah",
     ]:
-        for tau, num_steps in zip([0.1, 0.2, 0.4, 1.0], [5, 10, 20, 50]):
+        for tau, num_steps in zip([0.5, 1.0, 2.5], [10, 20, 50]):
             for prediction in ["off_policy", "ground_truth"]:
                 for i in range(3):
                     launch_command = (

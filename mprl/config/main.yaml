@@ -10,7 +10,7 @@ defaults:
 
 root_dir: "../experiments"
 device: "cpu"
-project_name: "sac_reacher_mixed"
+project_name: "sac_mixed_mp_half_cheetah"
 run_id: 0
 
 hydra:

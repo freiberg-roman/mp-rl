@@ -30,8 +30,8 @@ sac_mixed_mp:
   alpha_q: 0.0
   auto_alpha: True
   target_entropy: -100
-  tau_idmp: 1.0
-  num_steps: 50
+  tau_idmp: 0.4
+  num_steps: 20
 
 network:
   network_width: 128
