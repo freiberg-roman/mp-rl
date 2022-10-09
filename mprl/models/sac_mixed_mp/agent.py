@@ -4,6 +4,7 @@ from typing import Callable, Dict, Optional, Tuple
 import numpy as np
 import torch
 import torch.nn.functional as F
+import wandb
 from matplotlib import pyplot as plt
 from mp_pytorch.util import tensor_linspace
 from torch.distributions import Independent, Normal
@@ -83,6 +84,7 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         ).to(self.device)
         self.optimizer_policy = Adam(self.policy.parameters(), lr=lr)
         self.optimizer_critic = Adam(self.critic.parameters(), lr=lr)
+        self.weights_log = []
 
     def sequence_reset(self):
         if len(self.buffer) > 0:
@@ -107,6 +109,7 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
 
     def eval_reset(self) -> np.ndarray:
         self.planner_eval.reset_planner()
+        self.weights_log = []
 
     def eval_log(self) -> Dict:
         times = tensor_linspace(
@@ -120,7 +123,10 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         plt.close()
         for dim in range(self.num_dof):
             plt.plot(times, pos[:, dim])
-        return {"traj": plt}
+        return {
+            "traj": plt,
+            "weights_histogram": wandb.Histogram(np.array(self.weights_log).flatten()),
+        }
 
     @torch.no_grad()
     def action_eval(self, state: np.ndarray, info: any) -> np.ndarray:
@@ -137,6 +143,7 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
                 weights, bc_pos=b_q, bc_vel=b_v, num_t=self.num_steps
             )
             q, v = next(self.planner_eval)
+            self.weights_log.append(to_np(weights.squeeze()).flatten())
         action = self.ctrl.get_action(q, v, b_q, b_v)
         return to_np(action.squeeze())
 
@@ -167,6 +174,7 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
 
         returns: [num_samples, 1]
         """
+        raise RuntimeError("Wrong policy")
         mean, log_std = self.policy.forward(states)
         std = log_std.exp()
         normal_dist = Independent(Normal(mean, std), 1)
@@ -331,6 +339,9 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
             "weight_goal_std": weights[..., -1].detach().cpu().std().item(),
             "weight_goal_max": weights[..., -1].detach().cpu().max().item(),
             "weight_goal_min": weights[..., -1].detach().cpu().min().item(),
+            "weights_histogram": wandb.Histogram(
+                weights[..., :-1].detach().cpu().numpy().flatten()
+            ),
         }
 
     def _off_policy_weighted_loss(self):
@@ -416,14 +427,13 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
             self.model.update(batch=batch)
         return policy_loss, {
             "entropy": (-log_pi).detach().cpu().mean().item(),
-            "weight_mean": weights[..., :-1].detach().cpu().mean().item(),
-            "weight_std": weights[..., :-1].detach().cpu().std().item(),
-            "weight_max": weights[..., :-1].detach().cpu().max().item(),
-            "weight_min": weights[..., :-1].detach().cpu().min().item(),
             "weight_goal_mean": weights[..., -1].detach().cpu().mean().item(),
             "weight_goal_std": weights[..., -1].detach().cpu().std().item(),
             "weight_goal_max": weights[..., -1].detach().cpu().max().item(),
             "weight_goal_min": weights[..., -1].detach().cpu().min().item(),
+            "weights_histogram": wandb.Histogram(
+                weights[..., :-1].detach().cpu().numpy().flatten()
+            ),
         }
 
     def _model_policy_weighted_loss(self):

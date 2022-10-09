@@ -5,7 +5,7 @@ basis_bandwidth_factor: ${env.idmp.basis_bandwidth_factor}
 gamma: 0.99
 num_basis: ${env.idmp.num_basis}
 num_dof: ${env.num_dof}
-num_steps: 10
+num_steps: ${env.sac_mixed_mp.num_steps}
 policy_loss: "mean"  # other options is "weighted"
 tau: 0.005
 warm_start_steps: 0

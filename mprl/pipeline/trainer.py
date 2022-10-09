@@ -1,5 +1,6 @@
 from typing import Union
 
+import numpy as np
 import wandb
 from tqdm import tqdm
 
@@ -63,6 +64,7 @@ class Trainer:
                         **loggable,
                         "update_step": self.env.total_steps,
                         "train_reward": reward,
+                        "action_train_histogram": wandb.Histogram(action.flatten()),
                     }
                 )
 

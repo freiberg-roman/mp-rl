@@ -35,11 +35,13 @@ class Evaluator:
             state, sim_state = self.env.reset(time_out_after=self.time_out_after)
             done, time_out = False, False
             successes = []
+            actions = []
             while not done and not time_out:
                 action = agent.action_eval(state, sim_state)
                 state, reward, done, time_out, sim_state, info = self.env.step(action)
                 total_reward += reward
                 successes.append(info.get("success", 0.0))
+                actions.append(action)
 
                 # Only record the last episode if we are recording
                 if self.should_record and i == self.num_eval_episodes - 1:
@@ -72,6 +74,7 @@ class Evaluator:
                 "avg_episode_reward": avg_reward,
                 "performance_steps": after_performed_steps,
                 "success_rate": success_rate,
+                "action_eval_histogram": wandb.Histogram(np.array(actions).flatten()),
             },
             **agent_log,
             **to_log,
