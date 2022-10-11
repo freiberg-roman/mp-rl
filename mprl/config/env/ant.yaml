@@ -19,12 +19,14 @@ idmp:
 
 sac:
   alpha: 0.1
+  auto_alpha: True
+  target_entropy: -8
 
 sac_mixed_mp:
   alpha: 0.05
   alpha_q: 0.0
 
 network:
-  network_width: 512
-  network_depth: 3
-  action_scale: 10.0
+  network_width: 256
+  network_depth: 2
+  action_scale: 1.0
