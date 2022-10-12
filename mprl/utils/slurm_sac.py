@@ -4,11 +4,13 @@ import os
 def run():
 
     for env_name in [
-        "reacher",
+        "half_cheetah",
+        "hopper",
+        "ant"
         # "meta_original_button_press",
         # "meta_original_window_open",
     ]:
-        for i in range(3):
+        for i in range(10):
             launch_command = "python -m mprl.ui.run alg=sac " "env={} run_id={}".format(
                 env_name,
                 i,
