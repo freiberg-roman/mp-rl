@@ -25,16 +25,17 @@ class SACMixedMPFactory:
 
     def create(self):
         env_cfg = self._gateway.get_environment_config()
+        cfg_net = self._gateway.get_network_config()
+        cfg_hyper = self._gateway.get_hyper_parameter_config()
+        cfg_model = self._gateway.get_model_config()
         buffer = SequenceRB(
             capacity=self._gateway.get_buffer_config().capacity,
             state_dim=env_cfg.state_dim,
             action_dim=env_cfg.action_dim,
             sim_qpos_dim=env_cfg.sim_qpos_dim,
             sim_qvel_dim=env_cfg.sim_qvel_dim,
+            min_length_sequence=cfg_hyper.num_steps,
         )
-        cfg_net = self._gateway.get_network_config()
-        cfg_hyper = self._gateway.get_hyper_parameter_config()
-        cfg_model = self._gateway.get_model_config()
         env = MujocoFactory(self._env_gateway).create()
         if cfg_model.name == "off_policy":
             model = None

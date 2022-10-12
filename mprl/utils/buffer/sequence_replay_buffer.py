@@ -8,6 +8,79 @@ from mprl.utils.buffer.random_replay_buffer import RandomBatchIter
 from mprl.utils.buffer.replay_buffer import EnvSteps, ReplayBuffer
 
 
+class ValidStartsManager:
+    def __init__(self, capacity: int, min_length_sequence: int):
+        self.capacity = capacity
+        self._buffers_usage = [(0, 0), (0, 0)]
+        self._valid_starts_buffers: Tuple[np.ndarray, np.ndarray] = [
+            np.empty(capacity, dtype=np.int32),
+            np.empty(capacity, dtype=np.int32),
+        ]
+        self._assosiated_valid_seq_starts: List = [(0, 0, 0)]  # (start, end, buffer_id)
+        self._current_seq = 0
+        self._max_seq = 0
+        self._buffer_used = 0
+        self._min_len = min_length_sequence
+        self._used_once = False
+
+    def swap_buffers(self):
+        if not self._used_once:
+            return
+        self._buffer_used = 1 - self._buffer_used
+        s, e = self._buffers_usage[self._buffer_used]
+        assert s == e
+        self._buffers_usage[self._buffer_used] = (0, 0)
+        self._current_seq = 0
+        self.invalidate_seq(0)
+        self._assosiated_valid_seq_starts.insert(0, (0, 0, self._buffer_used))
+
+    def insert(self, seq: int, start_end: Tuple[int, int]):
+        _, _ = start_end
+        self._current_seq += 1
+        assert seq == self._current_seq
+
+        last_entry = self._buffers_usage[self._buffer_used][1]
+        self._assosiated_valid_seq_starts.insert(
+            self._current_seq, (last_entry, last_entry, self._buffer_used)
+        )
+        self._max_seq = max(self._current_seq, self._max_seq)
+
+    def add_step(self, current_seq: int, current_start_end: Tuple[int, int]):
+        self._used_once = True
+        s, e = current_start_end
+        assert self._current_seq == current_seq
+        if e - s < self._min_len:
+            return
+        s_buf, e_buf, id_buf = self._assosiated_valid_seq_starts[self._current_seq]
+        self._valid_starts_buffers[id_buf][e_buf] = e - self._min_len
+        self._assosiated_valid_seq_starts[self._current_seq] = (
+            s_buf,
+            e_buf + 1,
+            id_buf,
+        )
+        c_s, c_e = self._buffers_usage[id_buf]
+        self._buffers_usage[id_buf] = (c_s, c_e + 1)
+
+    def invalidate_seq(self, seq_id: int):
+        if not self._used_once:
+            return
+        s, e, id = self._assosiated_valid_seq_starts[seq_id]
+        assert id == 1 - self._buffer_used
+        assert self._buffers_usage[id][0] == s
+        end = self._buffers_usage[id][1]
+        self._buffers_usage[id] = (e, end)
+        del self._assosiated_valid_seq_starts[seq_id]
+
+    def get_valid_starts(self):
+        first_valid_starts = self._valid_starts_buffers[0][
+            self._buffers_usage[0][0] : self._buffers_usage[0][1]
+        ]
+        second_valid_starts = self._valid_starts_buffers[1][
+            self._buffers_usage[1][0] : self._buffers_usage[1][1]
+        ]
+        return np.concatenate((first_valid_starts, second_valid_starts))
+
+
 class SequenceRB(ReplayBuffer):
     def __init__(
         self,
@@ -16,6 +89,7 @@ class SequenceRB(ReplayBuffer):
         action_dim: int,
         sim_qpos_dim: int,
         sim_qvel_dim: int,
+        min_length_sequence: int,
     ):
         self._s = np.empty((capacity, state_dim), dtype=np.float32)
         self._next_s = np.empty((capacity, state_dim), dtype=np.float32)
@@ -31,6 +105,9 @@ class SequenceRB(ReplayBuffer):
         self._free_space_till: int = capacity
         self._current_seq = 0
         self._valid_seq: List = [(0, 0)]
+        self.valid_seq_starts_manager: ValidStartsManager = ValidStartsManager(
+            capacity, min_length_sequence
+        )
 
     def add(self, state, next_state, action, reward, done, sim_state):
         self._s[self._ind, :] = state
@@ -45,21 +122,30 @@ class SequenceRB(ReplayBuffer):
         s, _ = self._valid_seq[self._current_seq]
         if self._ind == 0:
             self._valid_seq[self._current_seq] = (s, self._max_capacity)
+            self.valid_seq_starts_manager.add_step(
+                self._current_seq, (s, self._max_capacity)
+            )
             self.close_trajectory()
         else:
             if self._free_space_till == self._ind:
                 _, e = self._valid_seq[self._current_seq + 1]
+                self.valid_seq_starts_manager.invalidate_seq(self._current_seq + 1)
                 del self._valid_seq[self._current_seq + 1]
                 self._free_space_till = e
             self._valid_seq[self._current_seq] = (s, self._ind)
+            self.valid_seq_starts_manager.add_step(self._current_seq, (s, self._ind))
 
     def close_trajectory(self):
         if self._ind == 0:
             self._valid_seq[0] = (0, 0)
             self._current_seq = 0
             self._free_space_till = self._valid_seq[1][0]
+            self.valid_seq_starts_manager.swap_buffers()
         else:
             self._valid_seq.insert(self._current_seq + 1, (self._ind, self._ind))
+            self.valid_seq_starts_manager.insert(
+                self._current_seq + 1, (self._ind, self._ind)
+            )
             self._current_seq += 1
 
     def get_iter(self, it, batch_size):
@@ -127,6 +213,9 @@ class SequenceRB(ReplayBuffer):
     def capacity(self):
         return self._capacity
 
+    def get_valid_starts(self):
+        return self.valid_seq_starts_manager.get_valid_starts()
+
 
 class TrueKSequenceIter:
     def __init__(self, buffer: SequenceRB, it: int, k: int, batch_size: int):
@@ -135,12 +224,7 @@ class TrueKSequenceIter:
         self._k: int = k
         self._current_it: int = 0
         self._batch_size: int = batch_size
-        self._valid_starts: List = []
-        for (start, end) in self._buffer.stored_sequences:
-            if end - start < self._k:
-                continue
-            self._valid_starts.extend(list(range(start, end - self._k + 1)))
-        self._valid_starts = np.array(self._valid_starts)
+        self._valid_starts = buffer.get_valid_starts()
 
     def __iter__(self):
         return self

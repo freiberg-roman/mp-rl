@@ -39,7 +39,12 @@ def test_simple_random_buffer():
     """
     env = TestEnv(state_dim=5, action_dim=2)
     buffer = SequenceRB(
-        capacity=20, state_dim=5, action_dim=2, sim_qpos_dim=4, sim_qvel_dim=6
+        capacity=20,
+        state_dim=5,
+        action_dim=2,
+        sim_qpos_dim=4,
+        sim_qvel_dim=6,
+        min_length_sequence=10,
     )
 
     for _ in range(10):
@@ -62,7 +67,12 @@ def test_trajectory_buffer():
     """
     env = TestEnv(state_dim=6, action_dim=3)
     buffer = SequenceRB(
-        capacity=20, state_dim=6, action_dim=3, sim_qpos_dim=5, sim_qvel_dim=7
+        capacity=20,
+        state_dim=6,
+        action_dim=3,
+        sim_qpos_dim=5,
+        sim_qvel_dim=7,
+        min_length_sequence=3,
     )
 
     for _ in range(4):
@@ -97,17 +107,10 @@ def test_trajectory_buffer():
 
     assert len(buffer) == 15
     assert buffer.stored_sequences == [(0, 4), (4, 9), (9, 15), (15, 15)]
+    assert np.all(buffer.get_valid_starts() == np.array([0, 1, 4, 5, 6, 9, 10, 11, 12]))
 
     for batch in buffer.get_true_k_sequence_iter(it=1, k=3, batch_size=4):
         assert batch.states.shape == (4, 3, 6)
-
-    for batch in buffer.get_true_k_sequence_iter(it=2, k=6, batch_size=4):
-        assert (
-            batch.states[0, 0, 0] == batch.states[1, 0, 0]
-        )  # there is only one sequence of this size -> all are the same
-
-    for _ in buffer.get_true_k_sequence_iter(it=2, k=7, batch_size=4):
-        raise AssertionError()  # sequence of this size should not be possible
 
 
 def test_traj_overflow():
@@ -118,7 +121,12 @@ def test_traj_overflow():
     """
     env = TestEnv(state_dim=6, action_dim=3)
     buffer = SequenceRB(
-        capacity=25, state_dim=6, action_dim=3, sim_qpos_dim=5, sim_qvel_dim=7
+        capacity=25,
+        state_dim=6,
+        action_dim=3,
+        sim_qpos_dim=5,
+        sim_qvel_dim=7,
+        min_length_sequence=3,
     )
 
     for _ in range(10):
@@ -162,12 +170,20 @@ def test_traj_overflow():
         (5, 15),
         (15, 15),
     ]  # trajectories are split
+    assert np.all(
+        buffer.get_valid_starts() == np.array([0, 1, 2, 5, 6, 7, 8, 9, 10, 11, 12])
+    )
 
 
 def test_close_trajectory_immediately():
     env = TestEnv(state_dim=6, action_dim=3)
     buffer = SequenceRB(
-        capacity=25, state_dim=6, action_dim=3, sim_qpos_dim=5, sim_qvel_dim=7
+        capacity=25,
+        state_dim=6,
+        action_dim=3,
+        sim_qpos_dim=5,
+        sim_qvel_dim=7,
+        min_length_sequence=3,
     )
 
     for _ in range(10):
@@ -195,3 +211,6 @@ def test_close_trajectory_immediately():
         (10, 15),
         (15, 15),
     ]  # trajectories are split
+    assert np.all(
+        buffer.get_valid_starts() == np.array([0, 1, 2, 3, 4, 5, 6, 7, 10, 11, 12])
+    )
