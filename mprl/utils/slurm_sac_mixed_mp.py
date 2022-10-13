@@ -7,10 +7,12 @@ def run():
         "half_cheetah",
     ]:
         for tau, num_steps in zip([0.5], [10]):
-            for prediction in ["off_policy", "ground_truth"]:
-                for i in range(5):
+            for prediction in ["off_policy"]:
+                for i in range(10):
                     launch_command = (
-                        "python -m mprl.ui.run alg=sac_mixed_mp prediction={} "
+                        "python -m mprl.ui.run alg=sac_mixed_mp "
+                        "alg.hyper.policy_loss=mean_performance "
+                        "prediction={} "
                         "env={} run_id={} alg.hyper.num_steps={} alg.mp.tau={}".format(
                             prediction,
                             env_name,

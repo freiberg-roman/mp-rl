@@ -1,4 +1,5 @@
 from pathlib import Path
+from random import randrange
 from typing import Callable, Dict, Optional, Tuple
 
 import numpy as np
@@ -273,6 +274,8 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         if self.model is None:
             if self.mode == "mean":
                 loss, loggable = self._off_policy_mean_loss()
+            elif self.mode == "mean_performance":
+                loss, loggable = self._off_policy_mean_performance_loss()
             else:
                 raise ValueError("Invalid mode")
         else:
@@ -396,6 +399,51 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
             self.model.update(batch=batch)
         return policy_loss, {
             "entropy": (-log_pi).detach().cpu().mean().item(),
+            "weight_goal_mean": weights[..., -1].detach().cpu().mean().item(),
+            "weight_goal_std": weights[..., -1].detach().cpu().std().item(),
+            "weight_goal_max": weights[..., -1].detach().cpu().max().item(),
+            "weight_goal_min": weights[..., -1].detach().cpu().min().item(),
+            "weights_histogram": wandb.Histogram(
+                weights[..., :-1].detach().cpu().numpy().flatten()
+            ),
+        }
+
+    def _off_policy_mean_performance_loss(self):
+        batch = next(
+            self.buffer.get_true_k_sequence_iter(1, self.num_steps, self.batch_size)
+        )
+        # dimensions (batch_size, sequence_len, data_dimension)
+        (
+            states,
+            next_states,
+            actions,
+            rewards,
+            dones,
+            sim_states,
+        ) = batch.to_torch_batch()
+        # dimension (batch_size, sequence_len, weight_dimension)
+        weights, log_pi, _ = self.policy.sample(states[:, 0, :])
+        b_q, b_v = self.decompose_fn(states, sim_states)
+        self.planner_update.init(
+            weights,
+            bc_pos=b_q[:, 0, :],
+            bc_vel=b_v[:, 0, :],
+            num_t=self.num_steps,
+        )
+        # Compute loss for one random time step in the sequence
+        i = randrange(self.num_steps)
+        q, v = self.planner_update[i]
+        s = states[:, i, :]
+        sim_s = sim_states[0][:, i, :], sim_states[1][:, i, :]
+        b_q, b_v = self.decompose_fn(s, sim_s)
+        a = self.ctrl.get_action(q, v, b_q, b_v)
+        qf1_pi, qf2_pi = self.critic(s, a)
+        min_qf = torch.min(qf1_pi, qf2_pi)
+        policy_loss = (-min_qf).mean() + self.alpha * log_pi.mean()
+        return policy_loss, {
+            "entropy": (-log_pi).detach().cpu().mean().item(),
+            "weight_mean": weights[..., :-1].detach().cpu().mean().item(),
+            "weight_std": weights[..., :-1].detach().cpu().std().item(),
             "weight_goal_mean": weights[..., -1].detach().cpu().mean().item(),
             "weight_goal_std": weights[..., -1].detach().cpu().std().item(),
             "weight_goal_max": weights[..., -1].detach().cpu().max().item(),
