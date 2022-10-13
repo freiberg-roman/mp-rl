@@ -6,9 +6,9 @@ def run():
     for env_name in [
         "half_cheetah",
     ]:
-        for tau, num_steps in zip([0.5, 1.0, 2.5], [10, 20, 50]):
+        for tau, num_steps in zip([0.5], [10]):
             for prediction in ["off_policy", "ground_truth"]:
-                for i in range(3):
+                for i in range(5):
                     launch_command = (
                         "python -m mprl.ui.run alg=sac_mixed_mp prediction={} "
                         "env={} run_id={} alg.hyper.num_steps={} alg.mp.tau={}".format(
