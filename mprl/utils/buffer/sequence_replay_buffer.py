@@ -28,14 +28,15 @@ class ValidStartsManager:
             return
         self._buffer_used = 1 - self._buffer_used
         s, e = self._buffers_usage[self._buffer_used]
-        assert s == e
+        if s != e:
+            self._buffer_used = 1 - self._buffer_used
+            return
         self._buffers_usage[self._buffer_used] = (0, 0)
         self._current_seq = 0
         self.invalidate_seq(0)
         self._assosiated_valid_seq_starts.insert(0, (0, 0, self._buffer_used))
 
-    def insert(self, seq: int, start_end: Tuple[int, int]):
-        _, _ = start_end
+    def insert(self, seq: int):
         self._current_seq += 1
         assert seq == self._current_seq
 
@@ -143,9 +144,7 @@ class SequenceRB(ReplayBuffer):
             self.valid_seq_starts_manager.swap_buffers()
         else:
             self._valid_seq.insert(self._current_seq + 1, (self._ind, self._ind))
-            self.valid_seq_starts_manager.insert(
-                self._current_seq + 1, (self._ind, self._ind)
-            )
+            self.valid_seq_starts_manager.insert(self._current_seq + 1)
             self._current_seq += 1
 
     def get_iter(self, it, batch_size):

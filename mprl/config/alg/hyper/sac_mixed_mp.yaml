@@ -9,4 +9,4 @@ num_dof: ${env.num_dof}
 num_steps: ${env.sac_mixed_mp.num_steps}
 policy_loss: "mean"  # other options is "weighted"
 tau: 0.005
-warm_start_steps: 100
+warm_start_steps: 5000

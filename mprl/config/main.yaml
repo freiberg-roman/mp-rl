@@ -5,7 +5,7 @@ defaults:
   - env: half_cheetah
   - eval: scheme
   - logging: wandb
-  - prediction: ground_truth
+  - prediction: off_policy
   - train: scheme
 
 root_dir: "../experiments"
