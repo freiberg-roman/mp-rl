@@ -10,7 +10,7 @@ defaults:
 
 root_dir: "../experiments"
 device: "cpu"
-project_name: "sac-mixed-mp-new-buffer-alpha-rnd-q"
+project_name: "sac-mixed-mp-new-buffer-repeat"
 run_id: 0
 
 hydra:

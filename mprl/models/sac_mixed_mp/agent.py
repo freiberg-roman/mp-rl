@@ -281,6 +281,8 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         else:
             if self.mode == "mean":
                 loss, loggable = self._model_policy_mean_loss()
+            elif self.mode == "mean_performance":
+                loss, loggable = self._model_mean_performance_loss()
             else:
                 raise ValueError("Invalid mode")
 
@@ -323,10 +325,10 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
             sim_states,
         ) = batch.to_torch_batch()
         # dimension (batch_size, sequence_len, weight_dimension)
-        weights, log_pi, _ = self.policy.sample(states)
+        weights, log_pi, _ = self.policy.sample(states[:, 0, :])
         b_q, b_v = self.decompose_fn(states, sim_states)
         self.planner_update.init(
-            weights[:, 0, :],
+            weights,
             bc_pos=b_q[:, 0, :],
             bc_vel=b_v[:, 0, :],
             num_t=self.num_steps,
@@ -444,6 +446,52 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
             "entropy": (-log_pi).detach().cpu().mean().item(),
             "weight_mean": weights[..., :-1].detach().cpu().mean().item(),
             "weight_std": weights[..., :-1].detach().cpu().std().item(),
+            "weight_goal_mean": weights[..., -1].detach().cpu().mean().item(),
+            "weight_goal_std": weights[..., -1].detach().cpu().std().item(),
+            "weight_goal_max": weights[..., -1].detach().cpu().max().item(),
+            "weight_goal_min": weights[..., -1].detach().cpu().min().item(),
+            "weights_histogram": wandb.Histogram(
+                weights[..., :-1].detach().cpu().numpy().flatten()
+            ),
+        }
+
+    def _model_mean_performance_loss(self):
+        batch = next(self.buffer.get_iter(1, self.batch_size))
+        # dimension (batch_size, data_dimension)
+        (
+            states,
+            next_states,
+            actions,
+            rewards,
+            dones,
+            sim_states,
+        ) = batch.to_torch_batch()
+        # dimension (batch_size, weight_dimension)
+        weights, log_pi, _ = self.policy.sample(states)
+        b_q, b_v = self.decompose_fn(states, sim_states)
+        self.planner_update.init(weights, bc_pos=b_q, bc_vel=b_v, num_t=self.num_steps)
+        next_states = states
+        next_sim_states = sim_states
+        loss_at_iter = randrange(self.num_steps)
+        for i, qv in enumerate(self.planner_update):
+            q, v = qv
+            b_q, b_v = self.decompose_fn(next_states, next_sim_states)
+            action = self.ctrl.get_action(q, v, b_q, b_v)
+
+            # compute q val: dimension (batch_size, 1)
+            if loss_at_iter == i:
+                qf1_pi, qf2_pi = self.critic(next_states, action)
+                min_qf = torch.min(qf1_pi, qf2_pi)
+                break
+            next_states, next_sim_states = self.model.next_state(
+                next_states, next_sim_states, action
+            )
+            next_states = to_ts(next_states).to(self.device)
+        policy_loss = (-min_qf).mean() + self.alpha * log_pi.mean()
+        if isinstance(self.model, Trainable):
+            self.model.update(batch=batch)
+        return policy_loss, {
+            "entropy": (-log_pi).detach().cpu().mean().item(),
             "weight_goal_mean": weights[..., -1].detach().cpu().mean().item(),
             "weight_goal_std": weights[..., -1].detach().cpu().std().item(),
             "weight_goal_max": weights[..., -1].detach().cpu().max().item(),
