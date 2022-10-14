@@ -34,7 +34,7 @@ class SACMixedMPFactory:
             action_dim=env_cfg.action_dim,
             sim_qpos_dim=env_cfg.sim_qpos_dim,
             sim_qvel_dim=env_cfg.sim_qvel_dim,
-            min_length_sequence=cfg_hyper.num_steps,
+            minimum_sequence_length=cfg_hyper.num_steps,
         )
         env = MujocoFactory(self._env_gateway).create()
         if cfg_model.name == "off_policy":
