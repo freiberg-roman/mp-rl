@@ -249,7 +249,7 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
             )
             min_qf_next_target = (
                 torch.min(qf1_next_target, qf2_next_target)
-                - self.alpha * next_state_log_pi
+                - self.alpha_q * next_state_log_pi
             )
             next_q_value = rewards + (1 - dones.to(torch.float32)) * self.gamma * (
                 min_qf_next_target
