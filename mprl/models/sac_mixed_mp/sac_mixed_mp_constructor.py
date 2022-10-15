@@ -12,7 +12,7 @@ from mprl.env.mj_factory import MujocoFactory
 from mprl.utils import SequenceRB
 
 from ..common.config_gateway import ModelConfigGateway
-from ..physics.ground_truth import GroundTruthPrediction
+from ..physics.ground_truth import GroundTruthPrediction, GroundTruthPredictionMeta
 from .agent import SACMixedMP
 
 
@@ -36,13 +36,19 @@ class SACMixedMPFactory:
             sim_qvel_dim=env_cfg.sim_qvel_dim,
             minimum_sequence_length=cfg_hyper.num_steps,
         )
+        is_pos_ctrl = "Pos" in self._env_gateway.get_env_name()
         env = MujocoFactory(self._env_gateway).create()
         if cfg_model.name == "off_policy":
             model = None
         elif cfg_model.name == "ground_truth":
-            model = GroundTruthPrediction(
-                env=MujocoFactory(env_config_gateway=self._env_gateway).create()
-            )
+            if is_pos_ctrl:
+                model = GroundTruthPredictionMeta(
+                    env=MujocoFactory(env_config_gateway=self._env_gateway).create()
+                )
+            else:
+                model = GroundTruthPrediction(
+                    env=MujocoFactory(env_config_gateway=self._env_gateway).create()
+                )
         else:
             raise ValueError(f"Unknown model name {cfg_model.name}")
 
@@ -80,7 +86,6 @@ class SACMixedMPFactory:
         planner = MPTrajectory(dt=env.dt, mp=idmp, device=self._gateway.get_device())
         pgains = np.array(self._gateway.get_ctrl_config().pgains)
 
-        is_pos_ctrl = "Pos" in self._env_gateway.get_env_name()
         if is_pos_ctrl:
             ctrl = MetaController(pgains=pgains)
         else:
