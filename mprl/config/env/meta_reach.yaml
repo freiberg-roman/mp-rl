@@ -13,7 +13,7 @@ coordinate_dim: 0
 dt: 0.0125
 
 pd:
-  pgains: [1.0, 1.0, 1.0, 1.0]
+  pgains: [35, 35, 35, -10]  # weird ctrl for gripper (see tuning in utils)
 
 idmp:
   num_basis: 5
