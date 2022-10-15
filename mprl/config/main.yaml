@@ -5,12 +5,12 @@ defaults:
   - env: half_cheetah
   - eval: scheme
   - logging: wandb
-  - prediction: ground_truth
+  - prediction: off_policy
   - train: scheme
 
 root_dir: "../experiments"
 device: "cpu"
-project_name: "sac-repeat"
+project_name: "sac-mixed-mp-new-buffer-repeat"
 run_id: 0
 
 hydra:

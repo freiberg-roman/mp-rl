@@ -1,4 +1,5 @@
 from pathlib import Path
+from random import randrange
 from typing import Callable, Dict, Optional, Tuple
 
 import numpy as np
@@ -273,15 +274,15 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         if self.model is None:
             if self.mode == "mean":
                 loss, loggable = self._off_policy_mean_loss()
-            elif self.mode == "weighted":
-                loss, loggable = self._off_policy_weighted_loss()
+            elif self.mode == "mean_performance":
+                loss, loggable = self._off_policy_mean_performance_loss()
             else:
                 raise ValueError("Invalid mode")
         else:
             if self.mode == "mean":
                 loss, loggable = self._model_policy_mean_loss()
-            elif self.mode == "weighted":
-                loss, loggable = self._model_policy_weighted_loss()
+            elif self.mode == "mean_performance":
+                loss, loggable = self._model_mean_performance_loss()
             else:
                 raise ValueError("Invalid mode")
 
@@ -324,10 +325,10 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
             sim_states,
         ) = batch.to_torch_batch()
         # dimension (batch_size, sequence_len, weight_dimension)
-        weights, log_pi, _ = self.policy.sample(states)
+        weights, log_pi, _ = self.policy.sample(states[:, 0, :])
         b_q, b_v = self.decompose_fn(states, sim_states)
         self.planner_update.init(
-            weights[:, 0, :],
+            weights,
             bc_pos=b_q[:, 0, :],
             bc_vel=b_v[:, 0, :],
             num_t=self.num_steps,
@@ -364,54 +365,6 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
                 weights[..., :-1].detach().cpu().numpy().flatten()
             ),
         }
-
-    def _off_policy_weighted_loss(self):
-        batch = next(
-            self.buffer.get_true_k_sequence_iter(1, self.num_steps, self.batch_size)
-        )
-        # dimension (batch_size, sequence_len, data_dimension)
-        (
-            states,
-            next_states,
-            actions,
-            rewards,
-            dones,
-            sim_states,
-        ) = batch.to_torch_batch()
-        # dimension (batch_size, sequence_len, weight_dimension)
-        weights, log_pi, _ = self.policy.sample(states)
-        b_q, b_v = self.decompose_fn(states, sim_states)
-        self.planner_update.init(
-            weights[:, 0, :],
-            bc_pos=b_q[:, 0, :],
-            bc_vel=b_v[:, 0, :],
-            num_t=self.num_steps,
-        )
-        next_s = states[:, 0, :]
-        next_sim_states = sim_states[0][:, 0, :], sim_states[1][:, 0, :]
-        # dimensions (batch_size, sequence_len, 1)
-        q_prob = torch.zeros(size=(len(states), self.num_steps, 1))
-        min_qf = torch.zeros_like(q_prob)
-        for i, qv in enumerate(self.planner_update):
-            q, v = qv
-            b_q, b_v = self.decompose_fn(next_s, next_sim_states)
-            action = self.ctrl.get_action(q, v, b_q, b_v)
-
-            # compute q val
-            qf1_pi, qf2_pi = self.critic(next_s, action)
-            # dimension (batch_size, 1)
-            q_prob[:, i, :] = self.prob(next_s, weights[:, 0, :])
-            min_qf[:, i, :] = torch.min(qf1_pi, qf2_pi)
-            if i == self.num_steps - 1:
-                break
-            next_s = next_states[:, i, :]
-            next_sim_states = (
-                sim_states[0][:, i + 1, :],
-                sim_states[1][:, i + 1, :],
-            )
-        q_prob = F.normalize(q_prob, p=1.0, dim=1)
-        policy_loss = (-q_prob.detach() * min_qf).mean() + self.alpha * log_pi.mean()
-        return policy_loss, {"entropy": (-log_pi).detach().cpu().mean().item()}
 
     def _model_policy_mean_loss(self):
         batch = next(self.buffer.get_iter(1, self.batch_size))
@@ -457,7 +410,52 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
             ),
         }
 
-    def _model_policy_weighted_loss(self):
+    def _off_policy_mean_performance_loss(self):
+        batch = next(
+            self.buffer.get_true_k_sequence_iter(1, self.num_steps, self.batch_size)
+        )
+        # dimensions (batch_size, sequence_len, data_dimension)
+        (
+            states,
+            next_states,
+            actions,
+            rewards,
+            dones,
+            sim_states,
+        ) = batch.to_torch_batch()
+        # dimension (batch_size, sequence_len, weight_dimension)
+        weights, log_pi, _ = self.policy.sample(states[:, 0, :])
+        b_q, b_v = self.decompose_fn(states, sim_states)
+        self.planner_update.init(
+            weights,
+            bc_pos=b_q[:, 0, :],
+            bc_vel=b_v[:, 0, :],
+            num_t=self.num_steps,
+        )
+        # Compute loss for one random time step in the sequence
+        i = randrange(self.num_steps)
+        q, v = self.planner_update[i]
+        s = states[:, i, :]
+        sim_s = sim_states[0][:, i, :], sim_states[1][:, i, :]
+        b_q, b_v = self.decompose_fn(s, sim_s)
+        a = self.ctrl.get_action(q, v, b_q, b_v)
+        qf1_pi, qf2_pi = self.critic(s, a)
+        min_qf = torch.min(qf1_pi, qf2_pi)
+        policy_loss = (-min_qf).mean() + self.alpha * log_pi.mean()
+        return policy_loss, {
+            "entropy": (-log_pi).detach().cpu().mean().item(),
+            "weight_mean": weights[..., :-1].detach().cpu().mean().item(),
+            "weight_std": weights[..., :-1].detach().cpu().std().item(),
+            "weight_goal_mean": weights[..., -1].detach().cpu().mean().item(),
+            "weight_goal_std": weights[..., -1].detach().cpu().std().item(),
+            "weight_goal_max": weights[..., -1].detach().cpu().max().item(),
+            "weight_goal_min": weights[..., -1].detach().cpu().min().item(),
+            "weights_histogram": wandb.Histogram(
+                weights[..., :-1].detach().cpu().numpy().flatten()
+            ),
+        }
+
+    def _model_mean_performance_loss(self):
         batch = next(self.buffer.get_iter(1, self.batch_size))
         # dimension (batch_size, data_dimension)
         (
@@ -474,24 +472,31 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         self.planner_update.init(weights, bc_pos=b_q, bc_vel=b_v, num_t=self.num_steps)
         next_states = states
         next_sim_states = sim_states
-        # dimensions (batch_size, sequence_len, 1)
-        q_prob = torch.zeros(size=(len(states), self.num_steps, 1))
-        min_qf = torch.zeros_like(q_prob)
+        loss_at_iter = randrange(self.num_steps)
         for i, qv in enumerate(self.planner_update):
             q, v = qv
             b_q, b_v = self.decompose_fn(next_states, next_sim_states)
             action = self.ctrl.get_action(q, v, b_q, b_v)
-            # compute q val
-            qf1_pi, qf2_pi = self.critic(next_states, action)
-            # dimension (batch_size, 1)
-            q_prob[:, i, :] = self.prob(next_states, weights).detach()
-            min_qf[:, i, :] = torch.min(qf1_pi, qf2_pi)
+
+            # compute q val: dimension (batch_size, 1)
+            if loss_at_iter == i:
+                qf1_pi, qf2_pi = self.critic(next_states, action)
+                min_qf = torch.min(qf1_pi, qf2_pi)
+                break
             next_states, next_sim_states = self.model.next_state(
                 next_states, next_sim_states, action
             )
-            next_states = to_ts(next_states)
-        q_prob = F.normalize(q_prob, p=1.0, dim=1)
-        policy_loss = (-q_prob * min_qf).mean() + self.alpha * log_pi.mean()
+            next_states = to_ts(next_states).to(self.device)
+        policy_loss = (-min_qf).mean() + self.alpha * log_pi.mean()
         if isinstance(self.model, Trainable):
             self.model.update(batch=batch)
-        return policy_loss, {"entropy": (-log_pi).detach().cpu().mean().item()}
+        return policy_loss, {
+            "entropy": (-log_pi).detach().cpu().mean().item(),
+            "weight_goal_mean": weights[..., -1].detach().cpu().mean().item(),
+            "weight_goal_std": weights[..., -1].detach().cpu().std().item(),
+            "weight_goal_max": weights[..., -1].detach().cpu().max().item(),
+            "weight_goal_min": weights[..., -1].detach().cpu().min().item(),
+            "weights_histogram": wandb.Histogram(
+                weights[..., :-1].detach().cpu().numpy().flatten()
+            ),
+        }

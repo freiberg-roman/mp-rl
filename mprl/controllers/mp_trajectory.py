@@ -56,6 +56,13 @@ class MPTrajectory:
     def __iter__(self):
         return self
 
+    def __getitem__(self, item):
+        q, v = (
+            self.current_traj[..., item + 1, :],
+            self.current_traj_v[..., item, :],
+        )
+        return q, v
+
     def reset_planner(self):
         self.current_traj = None
         self.current_traj_v = None
