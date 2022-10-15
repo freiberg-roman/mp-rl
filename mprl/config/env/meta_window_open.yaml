@@ -1,4 +1,4 @@
-name: "OriginalMetaReacher"
+name: "MetaPosWindowOpen"
 
 num_dof: 4
 q_dim: 9
@@ -13,7 +13,7 @@ coordinate_dim: 0
 dt: 0.0125
 
 pd:
-  pgains: [1.0, 1.0, 1.0, 1.0]
+  pgains: [1.0, 1.0, 1.0]
 
 idmp:
   num_basis: 5

@@ -57,8 +57,9 @@ class OriginalMetaWorld(MujocoEnv):
     def reset_model(self):
         return self.env.reset_model()
 
+    @property
     def dt(self):
-        return self.env.model.opt.timestep * 5
+        return self.env.model.opt.timestep * self.env.frame_skip
 
     def random_action(self):
         return self.env.action_space.sample()
@@ -72,3 +73,11 @@ class OriginalMetaWorld(MujocoEnv):
         camera_name=None,
     ):
         return self.env.render(resolution=(width, height))
+
+    def decompose_fn(
+        self, states: np.ndarray, sim_states: Tuple[np.ndarray, np.ndarray]
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        return (
+            states[..., :4],
+            states[..., :4],
+        )  # note: velocity is not given for xyz -> dummy used
