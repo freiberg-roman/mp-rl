@@ -1,4 +1,4 @@
-name: "OriginalMetaReacher"
+name: "MetaPosReacher"
 
 num_dof: 4
 q_dim: 9
@@ -7,13 +7,13 @@ time_out_after: 500
 
 action_dim: 4
 state_dim: 39
-sim_qpos_dim: 16
-sim_qvel_dim: 15
+sim_qpos_dim: 19
+sim_qvel_dim: 22
 coordinate_dim: 0
 dt: 0.0125
 
 pd:
-  pgains: [1.0, 1.0, 1.0]
+  pgains: [35, 35, 35, -10]  # weird ctrl for gripper (see tuning in utils)
 
 idmp:
   num_basis: 5
@@ -23,8 +23,12 @@ sac:
   alpha: 0.2
 
 sac_mixed_mp:
-  alpha: 0.05
+  alpha: 0.005
   alpha_q: 0.0
+  auto_alpha: False
+  target_entropy: -30
+  tau_idmp: 0.625
+  num_steps: 50
 
 network:
   network_width: 256

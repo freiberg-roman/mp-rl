@@ -1,4 +1,4 @@
-name: "Reacher"
+name: "MetaPosReacher"
 
 num_dof: 2
 q_dim: 2

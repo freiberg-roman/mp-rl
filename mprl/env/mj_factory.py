@@ -33,27 +33,21 @@ class MujocoFactory:
             return HopperEnv(base=BASE)
         if cfg.get_env_name() == "Reacher":
             return ReacherEnv(base=BASE)
-        if cfg.get_env_name() == "MetaPosReacher":
-            return MetaPosReacher(base=BASE + "meta/")
-        if cfg.get_env_name() == "MetaPosWindowOpen":
-            return MetaPosWindowOpen(base=BASE + "meta/")
-        if cfg.get_env_name() == "MetaPosButtonPress":
-            return MetaPosButtonPress(base=BASE + "meta/")
         if cfg.get_env_name() == "MetaPDReacher":
             return MetaPDReacher(base=BASE + "meta/")
         if cfg.get_env_name() == "MetaPDWindowOpen":
             return MetaPDWindowOpen(base=BASE + "meta/")
         if cfg.get_env_name() == "MetaPDButtonPress":
             return MetaPDButtonPress(base=BASE + "meta/")
-        if cfg.get_env_name() == "OriginalMetaReacher":
+        if cfg.get_env_name() == "MetaPosReacher":
             from .mujoco.meta.adapters import OriginalMetaWorld
 
             return OriginalMetaWorld("reach-v2")
-        if cfg.get_env_name() == "OriginalMetaWindowOpen":
+        if cfg.get_env_name() == "MetaPosWindowOpen":
             from .mujoco.meta.adapters import OriginalMetaWorld
 
             return OriginalMetaWorld("window-open-v2")
-        if cfg.get_env_name() == "OriginalMetaButtonPress":
+        if cfg.get_env_name() == "MetaPosButtonPress":
             from .mujoco.meta.adapters import OriginalMetaWorld
 
             return OriginalMetaWorld("button-press-v2")
