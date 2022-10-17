@@ -5,27 +5,30 @@ def run():
 
     for env_name in [
         "half_cheetah",
+        "meta_reach",
+        "meta_window_open",
+        "meta_button_press",
     ]:
-        for tau, num_steps in zip([0.5], [10]):
-            for prediction in ["off_policy", "ground_truth"]:
-                for type in ["mean_performance", "mean"]:
+        for prediction in ["off_policy"]:
+            for type in ["mean_performance"]:
+                for alpha_q in ["0.025", "0.0"]:
                     for i in range(5):
                         launch_command = (
                             "python -m mprl.ui.run alg=sac_mixed_mp "
                             "alg.hyper.policy_loss={} "
                             "prediction={} "
-                            "env={} run_id={} alg.hyper.num_steps={} alg.mp.tau={}".format(
+                            "alg.hyper.alpha_q={} "
+                            "env={} run_id={}".format(
                                 type,
                                 prediction,
+                                alpha_q,
                                 env_name,
                                 i,
-                                num_steps,
-                                tau,
                             )
                         )
                         file_content = "#!/bin/bash\n" + launch_command
-                        file_name = "sac_mixed_mp_{}_{}_{}_{}_{}.sh".format(
-                            env_name, i, prediction, tau, num_steps
+                        file_name = "sac_mixed_mp_{}_{}_{}_{}.sh".format(
+                            env_name, i, prediction, alpha_q
                         )
                         with open(file_name, "w") as text_file:
                             text_file.write(file_content)

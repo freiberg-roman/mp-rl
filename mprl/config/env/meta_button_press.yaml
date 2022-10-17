@@ -25,7 +25,7 @@ sac:
   target_entropy: -4
 
 sac_mixed_mp:
-  alpha: 0.005
+  alpha: 0.025
   alpha_q: 0.0
   auto_alpha: False
   target_entropy: -30
