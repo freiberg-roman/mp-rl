@@ -1,7 +1,6 @@
 from typing import Tuple
 
 import torch
-import torch.nn.functional as F
 from torch.distributions import Normal
 
 from mprl.trd_party.trl.trust_region_projections.models.policy.abstract_gaussian_policy import (
@@ -32,7 +31,7 @@ class TrustRegionPolicy:
         network_depth: int,
         action_scale: float = 1.0,
         eps: float = 0.001,
-        eps_cov: float = 0.001,
+        eps_cov: float = 0.0001,
     ):
         self.policy = GaussianPolicy(
             input_dim, network_width, network_depth, action_scale
@@ -45,16 +44,6 @@ class TrustRegionPolicy:
         self.policy_stub = GaussianPolicyStub()
         self.eps = eps
         self.eps_cov = eps_cov
-
-    def forward(self, state: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        x = F.silu(self.linear_input(state))
-        for layer in self.pipeline:
-            x = F.silu(layer(x))
-
-        mean = self.mean_linear(x)
-        log_std = self.log_std_linear(x)
-        log_std = torch.clamp(log_std, min=LOG_SIG_MIN, max=LOG_SIG_MAX)
-        return mean, log_std
 
     def sample(
         self, state: torch.Tensor
