@@ -18,7 +18,7 @@ from .agent import SACTRL
 
 class SACMixedMPFactory:
     def __init__(
-            self, config_gateway: ModelConfigGateway, env_config_gateway: EnvConfigGateway
+        self, config_gateway: ModelConfigGateway, env_config_gateway: EnvConfigGateway
     ):
         self._gateway = config_gateway
         self._env_gateway = env_config_gateway
@@ -94,7 +94,7 @@ class SACMixedMPFactory:
                 pgains=pgains, dgains=dgains, device=self._gateway.get_device()
             )
 
-        return SACMixedMP(
+        return SACTRL(
             buffer=buffer,
             state_dim=env_cfg.state_dim,
             action_dim=env_cfg.action_dim,

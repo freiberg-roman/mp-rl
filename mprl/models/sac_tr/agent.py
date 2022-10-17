@@ -18,8 +18,7 @@ from mprl.utils.math_helper import hard_update, soft_update
 from ...controllers import Controller, MPTrajectory
 from .. import Actable, Evaluable, Predictable, Serializable, Trainable
 from ..common import QNetwork
-from ..sac.networks import GaussianPolicy
-
+from .tr_networks import TrustRegionPolicy
 
 LOG_PROB_MIN = -27.5
 LOG_PROB_MAX = 0.0
@@ -27,32 +26,32 @@ LOG_PROB_MAX = 0.0
 
 class SACTRL(Actable, Trainable, Serializable, Evaluable):
     def __init__(
-            self,
-            gamma: float,
-            tau: float,
-            alpha: float,
-            automatic_entropy_tuning: bool,
-            alpha_q: float,
-            num_steps: int,
-            lr: float,
-            batch_size: int,
-            device: torch.device,
-            state_dim: int,
-            action_dim: int,
-            num_basis: int,
-            num_dof: int,
-            network_width: int,
-            network_depth: int,
-            action_scale: float,
-            planner_act: MPTrajectory,
-            planner_eval: MPTrajectory,
-            planner_update: MPTrajectory,
-            ctrl: Controller,
-            buffer: SequenceRB,
-            decompose_fn: Callable,
-            model: Optional[Predictable] = None,
-            policy_loss_type: str = "mean",  # other is "weighted"
-            target_entropy: Optional[float] = None,
+        self,
+        gamma: float,
+        tau: float,
+        alpha: float,
+        automatic_entropy_tuning: bool,
+        alpha_q: float,
+        num_steps: int,
+        lr: float,
+        batch_size: int,
+        device: torch.device,
+        state_dim: int,
+        action_dim: int,
+        num_basis: int,
+        num_dof: int,
+        network_width: int,
+        network_depth: int,
+        action_scale: float,
+        planner_act: MPTrajectory,
+        planner_eval: MPTrajectory,
+        planner_update: MPTrajectory,
+        ctrl: Controller,
+        buffer: SequenceRB,
+        decompose_fn: Callable,
+        model: Optional[Predictable] = None,
+        policy_loss_type: str = "mean",  # other is "weighted"
+        target_entropy: Optional[float] = None,
     ):
         # Parameters
         self.gamma: float = gamma
@@ -82,19 +81,12 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
             (state_dim, action_dim), network_width, network_depth
         ).to(self.device)
         hard_update(self.critic_target, self.critic)
-        self.policy: GaussianPolicy = GaussianPolicy(
+        self.policy = TrustRegionPolicy(
             (state_dim, (num_basis + 1) * num_dof),
             network_width,
             network_depth,
-            action_scale=action_scale,
         ).to(self.device)
-        self.policy_old: GaussianPolicy = GaussianPolicy(
-            (state_dim, (num_basis + 1) * num_dof),
-            network_width,
-            network_depth,
-            action_scale=action_scale,
-        ).to(self.device)  # used for trl projection
-        hard_update(self.policy_old, self.policy)
+
         self.optimizer_policy = Adam(self.policy.parameters(), lr=lr)
         self.optimizer_critic = Adam(self.critic.parameters(), lr=lr)
         if automatic_entropy_tuning:
@@ -134,7 +126,7 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
             0,
             self.planner_eval.dt * self.planner_eval.num_t,
             self.planner_eval.num_t + 1,
-            )
+        )
         pos = self.planner_eval.current_traj
         if pos is None:
             return {}
@@ -166,13 +158,13 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
         return to_np(action.squeeze())
 
     def add_step(
-            self,
-            state: np.ndarray,
-            next_state: np.array,
-            action: np.ndarray,
-            reward: float,
-            done: bool,
-            sim_state: Tuple[np.ndarray, np.ndarray],
+        self,
+        state: np.ndarray,
+        next_state: np.array,
+        action: np.ndarray,
+        reward: float,
+        done: bool,
+        sim_state: Tuple[np.ndarray, np.ndarray],
     ):
         self.buffer.add(state, next_state, action, reward, done, sim_state)
 
@@ -197,7 +189,7 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
                 "policy_optimizer_state_dict": self.optimizer_policy.state_dict(),
             },
             path + "model.pt",
-            )
+        )
 
     # Load model parameters
     def load(self, path):
@@ -239,8 +231,8 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
                 next_states, next_state_action
             )
             min_qf_next_target = (
-                    torch.min(qf1_next_target, qf2_next_target)
-                    - self.alpha_q * next_state_log_pi
+                torch.min(qf1_next_target, qf2_next_target)
+                - self.alpha_q * next_state_log_pi
             )
             next_q_value = rewards + (1 - dones.to(torch.float32)) * self.gamma * (
                 min_qf_next_target
@@ -284,7 +276,7 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
 
         if self.automatic_entropy_tuning:
             alpha_loss = -(
-                    self.log_alpha * (-loggable["entropy"] + self.target_entropy)
+                self.log_alpha * (-loggable["entropy"] + self.target_entropy)
             ).mean()
             self.optimizer_alpha.zero_grad()
             alpha_loss.backward()
@@ -343,7 +335,7 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
                 sim_states[1][:, i + 1, :],
             )
         min_qf /= self.num_steps
-        policy_loss = (-min_qf).mean() + self.alpha * log_pi.mean()
+        policy_loss = (-min_qf).mean()
         return policy_loss, {
             "entropy": (-log_pi).detach().cpu().mean().item(),
             "weight_mean": weights[..., :-1].detach().cpu().mean().item(),
@@ -387,7 +379,7 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
             )
             next_states = to_ts(next_states).to(self.device)
         min_qf /= self.num_steps
-        policy_loss = (-min_qf).mean() + self.alpha * log_pi.mean()
+        policy_loss = (-min_qf).mean()
         if isinstance(self.model, Trainable):
             self.model.update(batch=batch)
         return policy_loss, {
@@ -432,7 +424,7 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
         a = self.ctrl.get_action(q, v, b_q, b_v)
         qf1_pi, qf2_pi = self.critic(s, a)
         min_qf = torch.min(qf1_pi, qf2_pi)
-        policy_loss = (-min_qf).mean() + self.alpha * log_pi.mean()
+        policy_loss = (-min_qf).mean()
         return policy_loss, {
             "entropy": (-log_pi).detach().cpu().mean().item(),
             "weight_mean": weights[..., :-1].detach().cpu().mean().item(),
@@ -478,7 +470,7 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
                 next_states, next_sim_states, action
             )
             next_states = to_ts(next_states).to(self.device)
-        policy_loss = (-min_qf).mean() + self.alpha * log_pi.mean()
+        policy_loss = (-min_qf).mean()
         if isinstance(self.model, Trainable):
             self.model.update(batch=batch)
         return policy_loss, {
