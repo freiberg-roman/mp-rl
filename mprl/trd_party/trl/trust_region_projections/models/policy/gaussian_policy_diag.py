@@ -14,12 +14,14 @@
 #   You should have received a copy of the GNU Affero General Public License
 #   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from typing import Tuple
+
 import numpy as np
 import torch as ch
 import torch.nn as nn
-from typing import Tuple
-
-from trust_region_projections.models.policy.abstract_gaussian_policy import AbstractGaussianPolicy
+from trust_region_projections.models.policy.abstract_gaussian_policy import (
+    AbstractGaussianPolicy,
+)
 from trust_region_projections.utils.network_utils import initialize_weights
 
 
@@ -46,7 +48,7 @@ class GaussianPolicyDiag(AbstractGaussianPolicy):
             x = self.activation(affine(x))
 
         std = self._pre_std(x) if self.contextual_std else self._pre_std
-        std = (self.diag_activation(std + self._pre_activation_shift) + self.minimal_std)
+        std = self.diag_activation(std + self._pre_activation_shift) + self.minimal_std
         std = std.diag_embed().expand(x.shape[0], -1, -1)
 
         return self._mean(x), std
@@ -77,7 +79,7 @@ class GaussianPolicyDiag(AbstractGaussianPolicy):
         _, std = p
         logdet = self.log_determinant(std)
         k = std.shape[-1]
-        return .5 * (k * np.log(2 * np.e * np.pi) + logdet)
+        return 0.5 * (k * np.log(2 * np.e * np.pi) + logdet)
 
     def log_determinant(self, std: ch.Tensor):
         """
@@ -103,7 +105,10 @@ class GaussianPolicyDiag(AbstractGaussianPolicy):
 
     def set_std(self, std: ch.Tensor) -> None:
         assert not self.contextual_std
-        self._pre_std.data = self.diag_activation_inv(std.diagonal() - self.minimal_std) - self._pre_activation_shift
+        self._pre_std.data = (
+            self.diag_activation_inv(std.diagonal() - self.minimal_std)
+            - self._pre_activation_shift
+        )
 
     @property
     def is_diag(self):

@@ -16,8 +16,9 @@
 
 import torch as ch
 import torch.nn as nn
-
-from trust_region_projections.models.policy.gaussian_policy_full import GaussianPolicyFull
+from trust_region_projections.models.policy.gaussian_policy_full import (
+    GaussianPolicyFull,
+)
 from trust_region_projections.models.value.vf_net import VFNet
 
 
@@ -27,11 +28,31 @@ class GaussianPolicySqrt(GaussianPolicyFull):
     The parameterizing tensor is a mean vector and the true matrix square root of the standard deviation.
     """
 
-    def __init__(self, obs_dim, action_dim, init, hidden_sizes=(64, 64), activation: str = "tanh",
-                 contextual_std: bool = False, init_std: float = 1., minimal_std: float = 1e-5, share_weights=False,
-                 vf_model: VFNet = None):
-        super().__init__(obs_dim, action_dim, init, hidden_sizes, activation, contextual_std, init_std, minimal_std,
-                         share_weights, vf_model)
+    def __init__(
+        self,
+        obs_dim,
+        action_dim,
+        init,
+        hidden_sizes=(64, 64),
+        activation: str = "tanh",
+        contextual_std: bool = False,
+        init_std: float = 1.0,
+        minimal_std: float = 1e-5,
+        share_weights=False,
+        vf_model: VFNet = None,
+    ):
+        super().__init__(
+            obs_dim,
+            action_dim,
+            init,
+            hidden_sizes,
+            activation,
+            contextual_std,
+            init_std,
+            minimal_std,
+            share_weights,
+            vf_model,
+        )
         self.diag_activation = nn.Softplus()
 
     def forward(self, x: ch.Tensor, train: bool = True):
@@ -57,7 +78,9 @@ class GaussianPolicySqrt(GaussianPolicyFull):
 
     def precision(self, std):
         cov = self.covariance(std)
-        return ch.solve(ch.eye(cov.shape[-1], dtype=std.dtype, device=std.device), cov)[0]
+        return ch.solve(ch.eye(cov.shape[-1], dtype=std.dtype, device=std.device), cov)[
+            0
+        ]
 
     def covariance(self, std: ch.Tensor):
         return std @ std

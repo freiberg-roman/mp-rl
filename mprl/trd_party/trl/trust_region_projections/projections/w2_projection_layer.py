@@ -14,18 +14,31 @@
 #   You should have received a copy of the GNU Affero General Public License
 #   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import torch as ch
 from typing import Tuple
 
-from trust_region_projections.models.policy.abstract_gaussian_policy import AbstractGaussianPolicy
-from trust_region_projections.projections.base_projection_layer import BaseProjectionLayer, mean_projection
-from trust_region_projections.utils.projection_utils import gaussian_wasserstein_commutative
+import torch as ch
+from trust_region_projections.models.policy.abstract_gaussian_policy import (
+    AbstractGaussianPolicy,
+)
+from trust_region_projections.projections.base_projection_layer import (
+    BaseProjectionLayer,
+    mean_projection,
+)
+from trust_region_projections.utils.projection_utils import (
+    gaussian_wasserstein_commutative,
+)
 
 
 class WassersteinProjectionLayer(BaseProjectionLayer):
-
-    def _trust_region_projection(self, policy: AbstractGaussianPolicy, p: Tuple[ch.Tensor, ch.Tensor],
-                                 q: Tuple[ch.Tensor, ch.Tensor], eps: ch.Tensor, eps_cov: ch.Tensor, **kwargs):
+    def _trust_region_projection(
+        self,
+        policy: AbstractGaussianPolicy,
+        p: Tuple[ch.Tensor, ch.Tensor],
+        q: Tuple[ch.Tensor, ch.Tensor],
+        eps: ch.Tensor,
+        eps_cov: ch.Tensor,
+        **kwargs
+    ):
         """
         Runs commutative Wasserstein projection layer and constructs sqrt of covariance
         Args:
@@ -47,7 +60,9 @@ class WassersteinProjectionLayer(BaseProjectionLayer):
         # precompute mean and cov part of W2, which are used for the projection.
         # Both parts differ based on precision scaling.
         # If activated, the mean part is the maha distance and the cov has a more complex term in the inner parenthesis.
-        mean_part, cov_part = gaussian_wasserstein_commutative(policy, p, q, self.scale_prec)
+        mean_part, cov_part = gaussian_wasserstein_commutative(
+            policy, p, q, self.scale_prec
+        )
 
         ####################################################################################################################
         # project mean (w/ or w/o precision scaling)
@@ -61,10 +76,12 @@ class WassersteinProjectionLayer(BaseProjectionLayer):
         if cov_mask.any():
             # gradient issue with ch.where, it executes both paths and gives NaN gradient.
             eta = ch.ones(batch_shape, dtype=sqrt.dtype, device=sqrt.device)
-            eta[cov_mask] = ch.sqrt(cov_part[cov_mask] / eps_cov) - 1.
+            eta[cov_mask] = ch.sqrt(cov_part[cov_mask] / eps_cov) - 1.0
             eta = ch.max(-eta, eta)
 
-            new_sqrt = (sqrt + ch.einsum('i,ijk->ijk', eta, old_sqrt)) / (1. + eta + 1e-16)[..., None, None]
+            new_sqrt = (sqrt + ch.einsum("i,ijk->ijk", eta, old_sqrt)) / (
+                1.0 + eta + 1e-16
+            )[..., None, None]
             proj_sqrt = ch.where(cov_mask[..., None, None], new_sqrt, sqrt)
         else:
             proj_sqrt = sqrt
@@ -81,4 +98,6 @@ class WassersteinProjectionLayer(BaseProjectionLayer):
         Returns:
             mean and covariance part of Wasserstein distance
         """
-        return gaussian_wasserstein_commutative(policy, p, q, scale_prec=self.scale_prec)
+        return gaussian_wasserstein_commutative(
+            policy, p, q, scale_prec=self.scale_prec
+        )

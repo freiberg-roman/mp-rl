@@ -25,7 +25,7 @@ class CustomStore(Store):
     cf. 3rd-party-licenses.txt file in the root directory of this source tree.
     """
 
-    def log_tb(self, table_name, update_dict, summary_type='scalar', step=None):
+    def log_tb(self, table_name, update_dict, summary_type="scalar", step=None):
         """
         Log to only tensorboard.
 
@@ -40,13 +40,15 @@ class CustomStore(Store):
         table = self.tables[table_name]
         update_dict = _clean_dict(update_dict, table.schema)
 
-        tb_func = getattr(self.tensorboard, 'add_%s' % summary_type)
+        tb_func = getattr(self.tensorboard, "add_%s" % summary_type)
         step = step if step else table.nrows
 
         for name, value in update_dict.items():
-            tb_func('/'.join([table_name, name]), value, step)
+            tb_func("/".join([table_name, name]), value, step)
 
-    def log_table_and_tb(self, table_name, update_dict, summary_type='scalar', step=None):
+    def log_table_and_tb(
+        self, table_name, update_dict, summary_type="scalar", step=None
+    ):
         """
         Log to a table and also a tensorboard.
 
@@ -61,15 +63,17 @@ class CustomStore(Store):
         table = self.tables[table_name]
         update_dict = _clean_dict(update_dict, table.schema)
 
-        tb_func = getattr(self.tensorboard, 'add_%s' % summary_type)
+        tb_func = getattr(self.tensorboard, "add_%s" % summary_type)
         step = step if step else table.nrows
 
         for name, value in update_dict.items():
-            tb_func('/'.join([table_name, name]), value, step)
+            tb_func("/".join([table_name, name]), value, step)
 
         table.update_row(update_dict)
 
-    def load(self, table: str, key: str, data_save_type: str, iteration: int = -1, **kwargs):
+    def load(
+        self, table: str, key: str, data_save_type: str, iteration: int = -1, **kwargs
+    ):
         """
         Load data from store.
             table: name of table to load from
@@ -81,11 +85,17 @@ class CustomStore(Store):
 
         """
 
-        if data_save_type == 'object':
-            return self.tables[table].get_object(self.tables[table].df[key].iloc[iteration], **kwargs)
-        elif data_save_type == 'state_dict':
-            return self.tables[table].get_state_dict(self.tables[table].df[key].iloc[iteration], **kwargs)
-        elif data_save_type == 'pickle':
-            return self.tables[table].get_pickle(self.tables[table].df[key].iloc[iteration], **kwargs)
+        if data_save_type == "object":
+            return self.tables[table].get_object(
+                self.tables[table].df[key].iloc[iteration], **kwargs
+            )
+        elif data_save_type == "state_dict":
+            return self.tables[table].get_state_dict(
+                self.tables[table].df[key].iloc[iteration], **kwargs
+            )
+        elif data_save_type == "pickle":
+            return self.tables[table].get_pickle(
+                self.tables[table].df[key].iloc[iteration], **kwargs
+            )
         else:
             return self.tables[table].df[key].iloc[iteration]

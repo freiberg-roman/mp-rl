@@ -16,34 +16,36 @@
 
 import abc
 import logging
-import torch as ch
 from typing import Tuple, Union
 
-from trust_region_projections.models.policy.abstract_gaussian_policy import AbstractGaussianPolicy
-from trust_region_projections.projections.base_projection_layer import BaseProjectionLayer
+import torch as ch
+from trust_region_projections.models.policy.abstract_gaussian_policy import (
+    AbstractGaussianPolicy,
+)
+from trust_region_projections.projections.base_projection_layer import (
+    BaseProjectionLayer,
+)
 from trust_region_projections.trajectories.trajectory_sampler import TrajectorySampler
 from trust_region_projections.utils.custom_store import CustomStore
 
 
 class AbstractAlgorithm(abc.ABC):
-    def __init__(self,
-                 policy: AbstractGaussianPolicy,
-                 env_runner: TrajectorySampler,
-                 projection: BaseProjectionLayer,
-
-                 train_steps: int = 1000,
-                 max_grad_norm: Union[float, None] = 0.5,
-
-                 discount_factor: float = 0.99,
-
-                 store: CustomStore = None,
-                 advanced_logging: bool = True,
-                 log_interval: int = 5,
-                 save_interval: int = -1,
-
-                 seed: int = 1,
-                 cpu: bool = True,
-                 dtype: ch.dtype = ch.float32):
+    def __init__(
+        self,
+        policy: AbstractGaussianPolicy,
+        env_runner: TrajectorySampler,
+        projection: BaseProjectionLayer,
+        train_steps: int = 1000,
+        max_grad_norm: Union[float, None] = 0.5,
+        discount_factor: float = 0.99,
+        store: CustomStore = None,
+        advanced_logging: bool = True,
+        log_interval: int = 5,
+        save_interval: int = -1,
+        seed: int = 1,
+        cpu: bool = True,
+        dtype: ch.dtype = ch.float32,
+    ):
         """
         Policy gradient that can be extended to PPO, PAPI, and to work with projections layers from [Otto, et al. 2021].
         Args:
@@ -91,7 +93,7 @@ class AbstractAlgorithm(abc.ABC):
 
         self.store = store
 
-        self._logger = logging.getLogger('abstract_algorithm')
+        self._logger = logging.getLogger("abstract_algorithm")
 
     def setup_stores(self):
         """
@@ -100,53 +102,60 @@ class AbstractAlgorithm(abc.ABC):
         Returns:
         """
         reward_schema = {
-            'mean': float,
-            'std': float,
-            'min': float,
-            'max': float,
-            'step_reward': float,
-            'length': float,
-            'length_std': float,
+            "mean": float,
+            "std": float,
+            "min": float,
+            "max": float,
+            "step_reward": float,
+            "length": float,
+            "length_std": float,
         }
-        self.store.add_table('exploration_reward', reward_schema)
-        self.store.add_table('evaluation_reward', reward_schema)
+        self.store.add_table("exploration_reward", reward_schema)
+        self.store.add_table("evaluation_reward", reward_schema)
 
         # Table for final results
-        self.store.add_table('final_results', {
-            'iteration': int,
-            '5_rewards': float,
-            '5_rewards_test': float
-        })
+        self.store.add_table(
+            "final_results",
+            {"iteration": int, "5_rewards": float, "5_rewards_test": float},
+        )
 
         constraint_schema = {
-            'kl': float,
-            'constraint': float,
-            'mean_constraint': float,
-            'cov_constraint': float,
-            'entropy': float,
-            'entropy_diff': float,
-            'kl_max': float,
-            'constraint_max': float,
-            'mean_constraint_max': float,
-            'cov_constraint_max': float,
-            'entropy_max': float,
-            'entropy_diff_max': float,
+            "kl": float,
+            "constraint": float,
+            "mean_constraint": float,
+            "cov_constraint": float,
+            "entropy": float,
+            "entropy_diff": float,
+            "kl_max": float,
+            "constraint_max": float,
+            "mean_constraint_max": float,
+            "cov_constraint_max": float,
+            "entropy_max": float,
+            "entropy_diff_max": float,
         }
 
-        self.store.add_table('constraints', constraint_schema)
+        self.store.add_table("constraints", constraint_schema)
 
         if self.advanced_logging:
-            self.store.add_table('distribution', {
-                'mean': self.store.PICKLE,
-                'std': self.store.PICKLE,
-            })
+            self.store.add_table(
+                "distribution",
+                {
+                    "mean": self.store.PICKLE,
+                    "std": self.store.PICKLE,
+                },
+            )
 
             if self.projection and self.projection.do_regression:
-                self.store.add_table('constraints_initial', constraint_schema)
-                self.store.add_table('constraints_projection', constraint_schema)
+                self.store.add_table("constraints_initial", constraint_schema)
+                self.store.add_table("constraints_projection", constraint_schema)
 
-    def evaluate_policy(self, logging_step: int, render: bool = False, deterministic: bool = True,
-                        generate_plots: bool = False):
+    def evaluate_policy(
+        self,
+        logging_step: int,
+        render: bool = False,
+        deterministic: bool = True,
+        generate_plots: bool = False,
+    ):
         """
         Evaluates the current policy on the test environments.
         Args:
@@ -159,18 +168,26 @@ class AbstractAlgorithm(abc.ABC):
             exploration_dict, evaluation_dict
         """
         exploration_dict = self.env_runner.get_exploration_performance()
-        evaluation_dict = self.env_runner.evaluate_policy(self.policy, render=render, deterministic=deterministic)
+        evaluation_dict = self.env_runner.evaluate_policy(
+            self.policy, render=render, deterministic=deterministic
+        )
 
         if self.log_interval != 0 and self._global_steps % self.log_interval == 0:
             if self.advanced_logging:
-                self._logger.info(self.generate_reward_string(exploration_dict, "train"))
+                self._logger.info(
+                    self.generate_reward_string(exploration_dict, "train")
+                )
                 self._logger.info(self.generate_reward_string(evaluation_dict))
 
-            self.store.log_table_and_tb('exploration_reward', exploration_dict, step=logging_step)
-            self.store['exploration_reward'].flush_row()
+            self.store.log_table_and_tb(
+                "exploration_reward", exploration_dict, step=logging_step
+            )
+            self.store["exploration_reward"].flush_row()
 
-            self.store.log_table_and_tb('evaluation_reward', evaluation_dict, step=logging_step)
-            self.store['evaluation_reward'].flush_row()
+            self.store.log_table_and_tb(
+                "evaluation_reward", evaluation_dict, step=logging_step
+            )
+            self.store["evaluation_reward"].flush_row()
 
         return exploration_dict, evaluation_dict
 
@@ -184,13 +201,21 @@ class AbstractAlgorithm(abc.ABC):
         Returns:
             String with relevant metrics for logging
         """
-        return f"Avg. {type} reward: {reward_dict['mean']:.4f} +/- {reward_dict['std']:.4f}| " \
-               f"Min/Max {type} reward: {reward_dict['min']:.4f}/{reward_dict['max']:.4f} | " \
-               f"Avg. step {type} reward: {reward_dict['step_reward']:.4f} | " \
-               f"Avg. {type} episode length: {reward_dict['length']:.4f} +/- " \
-               f"{reward_dict['length_std'] :.2f}"
+        return (
+            f"Avg. {type} reward: {reward_dict['mean']:.4f} +/- {reward_dict['std']:.4f}| "
+            f"Min/Max {type} reward: {reward_dict['min']:.4f}/{reward_dict['max']:.4f} | "
+            f"Avg. step {type} reward: {reward_dict['step_reward']:.4f} | "
+            f"Avg. {type} episode length: {reward_dict['length']:.4f} +/- "
+            f"{reward_dict['length_std'] :.2f}"
+        )
 
-    def regression_step(self, obs: ch.Tensor, q: Tuple[ch.Tensor, ch.Tensor], n_minibatches: int, logging_step: int):
+    def regression_step(
+        self,
+        obs: ch.Tensor,
+        q: Tuple[ch.Tensor, ch.Tensor],
+        n_minibatches: int,
+        logging_step: int,
+    ):
         """
         Execute additional regression steps to match policy output and projection.
         The policy parameters are updated in-place.
@@ -209,14 +234,22 @@ class AbstractAlgorithm(abc.ABC):
                 p = self.policy(obs)
                 p_proj = self.projection(self.policy, p, q, self._global_steps)
 
-            self.store.log_table_and_tb('constraints_initial',
-                                        self.projection.compute_metrics(self.policy, p, q), step=logging_step)
-            self.store.log_table_and_tb('constraints_projection',
-                                        self.projection.compute_metrics(self.policy, p_proj, q), step=logging_step)
-            self.store['constraints_initial'].flush_row()
-            self.store['constraints_projection'].flush_row()
+            self.store.log_table_and_tb(
+                "constraints_initial",
+                self.projection.compute_metrics(self.policy, p, q),
+                step=logging_step,
+            )
+            self.store.log_table_and_tb(
+                "constraints_projection",
+                self.projection.compute_metrics(self.policy, p_proj, q),
+                step=logging_step,
+            )
+            self.store["constraints_initial"].flush_row()
+            self.store["constraints_projection"].flush_row()
 
-        return self.projection.trust_region_regression(self.policy, obs, q, n_minibatches, self._global_steps)
+        return self.projection.trust_region_regression(
+            self.policy, obs, q, n_minibatches, self._global_steps
+        )
 
     def log_metrics(self, obs, q, logging_step):
         """
@@ -234,8 +267,8 @@ class AbstractAlgorithm(abc.ABC):
         metrics_dict = self.projection.compute_metrics(self.policy, p, q)
 
         if self.log_interval != 0 and self._global_steps % self.log_interval == 0:
-            self.store.log_table_and_tb('constraints', metrics_dict, step=logging_step)
-            self.store['constraints'].flush_row()
+            self.store.log_table_and_tb("constraints", metrics_dict, step=logging_step)
+            self.store["constraints"].flush_row()
 
         return metrics_dict
 

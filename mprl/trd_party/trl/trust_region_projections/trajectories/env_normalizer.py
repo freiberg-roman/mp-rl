@@ -29,7 +29,7 @@ class RunningMeanStd(object):
     Running mean and std metrics for normalization.
     """
 
-    def __init__(self, epsilon=0., shape=(), dtype=np.float64):
+    def __init__(self, epsilon=0.0, shape=(), dtype=np.float64):
         super().__init__()
         self._mean = np.zeros(shape, dtype=dtype)
         self._std = np.zeros(shape, dtype=dtype)
@@ -73,7 +73,11 @@ class RunningMeanStd(object):
             new_mean = self.mean + delta * batch_count / tot_count
 
             # Welford's online algorithm
-            M2 = self.var * self.count + batch_var * batch_count + delta ** 2 * self.count * batch_count / tot_count
+            M2 = (
+                self.var * self.count
+                + batch_var * batch_count
+                + delta**2 * self.count * batch_count / tot_count
+            )
             self._var = M2 / (tot_count - 1)
             self._std = np.sqrt(self._var)
 
@@ -89,7 +93,7 @@ class BaseNormalizer(object):
     def __call__(self, x, *args, **kwargs):
         return x
 
-    def reset(self, dones:np.ndarray=None):
+    def reset(self, dones: np.ndarray = None):
         """
         Reset Normalizer at the end of the episode.
         Args:
@@ -100,9 +104,15 @@ class BaseNormalizer(object):
 
 
 class MovingAvgNormalizer(BaseNormalizer):
-
-    def __init__(self, prev_filter: BaseNormalizer, shape: Sequence[int], center: bool = True, scale: bool = True,
-                 gamma: float = 0.99, clip: Union[None, float] = None):
+    def __init__(
+        self,
+        prev_filter: BaseNormalizer,
+        shape: Sequence[int],
+        center: bool = True,
+        scale: bool = True,
+        gamma: float = 0.99,
+        clip: Union[None, float] = None,
+    ):
         """
         Normalize as f(x) = (x-mean)/std with running estimates of mean and std.
         Args:
@@ -158,4 +168,4 @@ class MovingAvgNormalizer(BaseNormalizer):
 
     def reset(self, dones=None):
         self.prev_filter.reset(dones)
-        self.ret[dones] = 0.
+        self.ret[dones] = 0.0

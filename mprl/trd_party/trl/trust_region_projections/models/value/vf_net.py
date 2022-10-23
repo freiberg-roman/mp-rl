@@ -17,14 +17,22 @@
 from typing import Sequence
 
 import torch.nn as nn
-
-from trust_region_projections.utils.network_utils import get_activation, get_mlp, initialize_weights
+from trust_region_projections.utils.network_utils import (
+    get_activation,
+    get_mlp,
+    initialize_weights,
+)
 
 
 class VFNet(nn.Module):
-
-    def __init__(self, obs_dim: int, output_dim: int = 1, init: str = "orthogonal",
-                 hidden_sizes: Sequence[int] = (64, 64), activation: str = "tanh"):
+    def __init__(
+        self,
+        obs_dim: int,
+        output_dim: int = 1,
+        init: str = "orthogonal",
+        hidden_sizes: Sequence[int] = (64, 64),
+        activation: str = "tanh",
+    ):
         """
         A value network using a fully connected neural network.
         Args:

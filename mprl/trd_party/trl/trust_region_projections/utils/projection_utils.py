@@ -14,11 +14,13 @@
 #   You should have received a copy of the GNU Affero General Public License
 #   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import numpy as np
-import torch as ch
 from typing import Tuple, Union
 
-from trust_region_projections.models.policy.abstract_gaussian_policy import AbstractGaussianPolicy
+import numpy as np
+import torch as ch
+from trust_region_projections.models.policy.abstract_gaussian_policy import (
+    AbstractGaussianPolicy,
+)
 from trust_region_projections.utils.torch_utils import torch_batched_trace
 
 
@@ -27,7 +29,7 @@ def mean_distance(policy, mean, mean_other, std_other=None, scale_prec=False):
     Compute mahalanobis distance for mean or euclidean distance
     Args:
         policy: policy instance
-        mean: current mean vectors 
+        mean: current mean vectors
         mean_other: old mean vectors
         std_other: scaling covariance matrix
         scale_prec: True computes the mahalanobis distance based on std_other for scaling. False the Euclidean distance.
@@ -47,8 +49,11 @@ def mean_distance(policy, mean, mean_other, std_other=None, scale_prec=False):
     return mean_part
 
 
-def gaussian_kl(policy: AbstractGaussianPolicy, p: Tuple[ch.Tensor, ch.Tensor],
-                q: Tuple[ch.Tensor, ch.Tensor]) -> Tuple[ch.Tensor, ch.Tensor]:
+def gaussian_kl(
+    policy: AbstractGaussianPolicy,
+    p: Tuple[ch.Tensor, ch.Tensor],
+    q: Tuple[ch.Tensor, ch.Tensor],
+) -> Tuple[ch.Tensor, ch.Tensor]:
     """
     Get the expected KL divergence between two sets of Gaussians over states -
     Calculates E KL(p||q): E[sum p(x) log(p(x)/q(x))] in closed form for Gaussians.
@@ -72,17 +77,23 @@ def gaussian_kl(policy: AbstractGaussianPolicy, p: Tuple[ch.Tensor, ch.Tensor],
     cov = policy.covariance(std)
     prec_other = policy.precision(std_other)
 
-    maha_part = .5 * policy.maha(mean, mean_other, std_other)
+    maha_part = 0.5 * policy.maha(mean, mean_other, std_other)
     # trace_part = (var * precision_other).sum([-1, -2])
     trace_part = torch_batched_trace(prec_other @ cov)
-    cov_part = .5 * (trace_part - k + det_term_other - det_term)
+    cov_part = 0.5 * (trace_part - k + det_term_other - det_term)
 
     return maha_part, cov_part
 
 
-def gaussian_frobenius(policy: AbstractGaussianPolicy, p: Tuple[ch.Tensor, ch.Tensor], q: Tuple[ch.Tensor, ch.Tensor],
-                       scale_prec: bool = False, return_cov: bool = False) \
-        -> Union[Tuple[ch.Tensor, ch.Tensor], Tuple[ch.Tensor, ch.Tensor, ch.Tensor, ch.Tensor]]:
+def gaussian_frobenius(
+    policy: AbstractGaussianPolicy,
+    p: Tuple[ch.Tensor, ch.Tensor],
+    q: Tuple[ch.Tensor, ch.Tensor],
+    scale_prec: bool = False,
+    return_cov: bool = False,
+) -> Union[
+    Tuple[ch.Tensor, ch.Tensor], Tuple[ch.Tensor, ch.Tensor, ch.Tensor, ch.Tensor]
+]:
     """
     Compute (p - q) (L_oL_o^T)^-1 (p - 1)^T + |LL^T - L_oL_o^T|_F^2 with p,q ~ N(y, LL^T)
     Args:
@@ -113,8 +124,12 @@ def gaussian_frobenius(policy: AbstractGaussianPolicy, p: Tuple[ch.Tensor, ch.Te
     return mean_part, cov_part
 
 
-def gaussian_wasserstein_commutative(policy: AbstractGaussianPolicy, p: Tuple[ch.Tensor, ch.Tensor],
-                                     q: Tuple[ch.Tensor, ch.Tensor], scale_prec=False) -> Tuple[ch.Tensor, ch.Tensor]:
+def gaussian_wasserstein_commutative(
+    policy: AbstractGaussianPolicy,
+    p: Tuple[ch.Tensor, ch.Tensor],
+    q: Tuple[ch.Tensor, ch.Tensor],
+    scale_prec=False,
+) -> Tuple[ch.Tensor, ch.Tensor]:
     """
     Compute mean part and cov part of W_2(p || q) with p,q ~ N(y, SS).
     This version DOES assume commutativity of both distributions, i.e. covariance matrices.
@@ -154,10 +169,15 @@ def gaussian_wasserstein_commutative(policy: AbstractGaussianPolicy, p: Tuple[ch
     return mean_part, cov_part
 
 
-def gaussian_wasserstein_non_commutative(policy: AbstractGaussianPolicy, p: Tuple[ch.Tensor, ch.Tensor],
-                                         q: Tuple[ch.Tensor, ch.Tensor], scale_prec=False,
-                                         return_eig=False) -> Union[Tuple[ch.Tensor, ch.Tensor],
-                                                                    Tuple[ch.Tensor, ch.Tensor, ch.Tensor, ch.Tensor]]:
+def gaussian_wasserstein_non_commutative(
+    policy: AbstractGaussianPolicy,
+    p: Tuple[ch.Tensor, ch.Tensor],
+    q: Tuple[ch.Tensor, ch.Tensor],
+    scale_prec=False,
+    return_eig=False,
+) -> Union[
+    Tuple[ch.Tensor, ch.Tensor], Tuple[ch.Tensor, ch.Tensor, ch.Tensor, ch.Tensor]
+]:
     """
     Compute mean part and cov part of W_2(p || q) with p,q ~ N(y, SS)
     This version DOES NOT assume commutativity of both distributions, i.e. covariance matrices.
@@ -201,7 +221,9 @@ def gaussian_wasserstein_non_commutative(policy: AbstractGaussianPolicy, p: Tupl
 
         # compute inner parenthesis of trace in W2,
         # Only consider lower triangular parts, given cov/sqrt(cov) is symmetric PSD.
-        eigvals, eigvecs = ch.symeig(cov @ cov_other, eigenvectors=return_eig, upper=False)
+        eigvals, eigvecs = ch.symeig(
+            cov @ cov_other, eigenvectors=return_eig, upper=False
+        )
         # make use of the following property to compute the trace of the root: 𝐴^2𝑥=𝐴(𝐴𝑥)=𝐴𝜆𝑥=𝜆(𝐴𝑥)=𝜆^2𝑥
         cov_part = torch_batched_trace(cov_other + cov) - 2 * eigvals.sqrt().sum(1)
 
@@ -211,8 +233,13 @@ def gaussian_wasserstein_non_commutative(policy: AbstractGaussianPolicy, p: Tupl
     return mean_part, cov_part
 
 
-def constraint_values(proj_type, policy: AbstractGaussianPolicy, p: Tuple[ch.Tensor, ch.Tensor],
-                      q: Tuple[ch.Tensor, ch.Tensor], scale_prec: bool = True):
+def constraint_values(
+    proj_type,
+    policy: AbstractGaussianPolicy,
+    p: Tuple[ch.Tensor, ch.Tensor],
+    q: Tuple[ch.Tensor, ch.Tensor],
+    scale_prec: bool = True,
+):
     """
     Computes the relevant metrics for a given batch of predictions.
     Args:
@@ -226,11 +253,15 @@ def constraint_values(proj_type, policy: AbstractGaussianPolicy, p: Tuple[ch.Ten
 
     """
     if proj_type == "w2":
-        mean_part, cov_part = gaussian_wasserstein_commutative(policy, p, q, scale_prec=scale_prec)
+        mean_part, cov_part = gaussian_wasserstein_commutative(
+            policy, p, q, scale_prec=scale_prec
+        )
 
     elif proj_type == "w2_non_com":
         # For this case only the sum is relevant, no individual projections for mean and std make sense
-        mean_part, cov_part = gaussian_wasserstein_non_commutative(policy, p, q, scale_prec=scale_prec)
+        mean_part, cov_part = gaussian_wasserstein_non_commutative(
+            policy, p, q, scale_prec=scale_prec
+        )
 
     elif proj_type == "frob":
         mean_part, cov_part = gaussian_frobenius(policy, p, q, scale_prec=scale_prec)
@@ -258,10 +289,20 @@ def get_entropy_schedule(schedule_type, total_train_steps, dim):
         f(initial_entropy, target_entropy, temperature, step)
     """
     if schedule_type == "linear":
-        return lambda initial_entropy, target_entropy, temperature, step: step * (
-                target_entropy - initial_entropy) / total_train_steps + initial_entropy
+        return (
+            lambda initial_entropy, target_entropy, temperature, step: step
+            * (target_entropy - initial_entropy)
+            / total_train_steps
+            + initial_entropy
+        )
     elif schedule_type == "exp":
-        return lambda initial_entropy, target_entropy, temperature, step: dim * target_entropy + (
-                initial_entropy - dim * target_entropy) * temperature ** (10 * step / total_train_steps)
+        return (
+            lambda initial_entropy, target_entropy, temperature, step: dim
+            * target_entropy
+            + (initial_entropy - dim * target_entropy)
+            * temperature ** (10 * step / total_train_steps)
+        )
     else:
-        return lambda initial_entropy, target_entropy, temperature, step: initial_entropy.new([-np.inf])
+        return lambda initial_entropy, target_entropy, temperature, step: initial_entropy.new(
+            [-np.inf]
+        )

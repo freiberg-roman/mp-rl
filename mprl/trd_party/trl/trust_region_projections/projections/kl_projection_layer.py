@@ -1,18 +1,32 @@
-# import cpp_projection  # trouble maker
-import numpy as np
-import torch as ch
 from typing import Any, Tuple
 
-from mprl.trd_party.trl.trust_region_projections.models.policy.abstract_gaussian_policy import AbstractGaussianPolicy
-from mprl.trd_party.trl.trust_region_projections.projections.base_projection_layer import BaseProjectionLayer, mean_projection
-from mprl.trd_party.trl.trust_region_projections.utils.projection_utils import gaussian_kl
+import cpp_projection
+import numpy as np
+import torch as ch
+
+from mprl.trd_party.trl.trust_region_projections.models.policy.abstract_gaussian_policy import (
+    AbstractGaussianPolicy,
+)
+from mprl.trd_party.trl.trust_region_projections.projections.base_projection_layer import (
+    BaseProjectionLayer,
+    mean_projection,
+)
+from mprl.trd_party.trl.trust_region_projections.utils.projection_utils import (
+    gaussian_kl,
+)
 from mprl.trd_party.trl.trust_region_projections.utils.torch_utils import get_numpy
 
 
 class KLProjectionLayer(BaseProjectionLayer):
-
-    def _trust_region_projection(self, policy: AbstractGaussianPolicy, p: Tuple[ch.Tensor, ch.Tensor],
-                                 q: Tuple[ch.Tensor, ch.Tensor], eps: ch.Tensor, eps_cov: ch.Tensor, **kwargs):
+    def _trust_region_projection(
+        self,
+        policy: AbstractGaussianPolicy,
+        p: Tuple[ch.Tensor, ch.Tensor],
+        q: Tuple[ch.Tensor, ch.Tensor],
+        eps: ch.Tensor,
+        eps_cov: ch.Tensor,
+        **kwargs
+    ):
         """
         Runs KL projection layer and constructs cholesky of covariance
         Args:
@@ -43,12 +57,16 @@ class KLProjectionLayer(BaseProjectionLayer):
         old_cov = policy.covariance(old_std)
 
         if policy.is_diag:
-            proj_cov = KLProjectionGradFunctionDiagCovOnly.apply(cov.diagonal(dim1=-2, dim2=-1),
-                                                                 old_cov.diagonal(dim1=-2, dim2=-1),
-                                                                 eps_cov)
+            proj_cov = KLProjectionGradFunctionDiagCovOnly.apply(
+                cov.diagonal(dim1=-2, dim2=-1),
+                old_cov.diagonal(dim1=-2, dim2=-1),
+                eps_cov,
+            )
             proj_std = proj_cov.sqrt().diag_embed()
         else:
-            raise NotImplementedError("The KL projection currently does not support full covariance matrices.")
+            raise NotImplementedError(
+                "The KL projection currently does not support full covariance matrices."
+            )
 
         if not policy.contextual_std:
             # scale first std back to batchsize
@@ -63,8 +81,11 @@ class KLProjectionGradFunctionDiagCovOnly(ch.autograd.Function):
     @staticmethod
     def get_projection_op(batch_shape, dim, max_eval=100):
         if not KLProjectionGradFunctionDiagCovOnly.projection_op:
-            KLProjectionGradFunctionDiagCovOnly.projection_op = \
-                cpp_projection.BatchedDiagCovOnlyProjection(batch_shape, dim, max_eval=max_eval)
+            KLProjectionGradFunctionDiagCovOnly.projection_op = (
+                cpp_projection.BatchedDiagCovOnlyProjection(
+                    batch_shape, dim, max_eval=max_eval
+                )
+            )
         return KLProjectionGradFunctionDiagCovOnly.projection_op
 
     @staticmethod
@@ -91,7 +112,7 @@ class KLProjectionGradFunctionDiagCovOnly(ch.autograd.Function):
     @staticmethod
     def backward(ctx: Any, *grad_outputs: Any) -> Any:
         projection_op = ctx.proj
-        d_std, = grad_outputs
+        (d_std,) = grad_outputs
 
         d_std_np = get_numpy(d_std)
         d_std_np = np.atleast_2d(d_std_np)

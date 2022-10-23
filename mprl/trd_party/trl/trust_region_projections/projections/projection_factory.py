@@ -14,11 +14,17 @@
 #   You should have received a copy of the GNU Affero General Public License
 #   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from trust_region_projections.projections.base_projection_layer import BaseProjectionLayer
-from trust_region_projections.projections.frob_projection_layer import FrobeniusProjectionLayer
+from trust_region_projections.projections.base_projection_layer import (
+    BaseProjectionLayer,
+)
+from trust_region_projections.projections.frob_projection_layer import (
+    FrobeniusProjectionLayer,
+)
 from trust_region_projections.projections.kl_projection_layer import KLProjectionLayer
 from trust_region_projections.projections.papi_projection import PAPIProjection
-from trust_region_projections.projections.w2_projection_layer import WassersteinProjectionLayer
+from trust_region_projections.projections.w2_projection_layer import (
+    WassersteinProjectionLayer,
+)
 
 
 def get_projection_layer(proj_type: str = "", **kwargs) -> BaseProjectionLayer:
@@ -31,7 +37,11 @@ def get_projection_layer(proj_type: str = "", **kwargs) -> BaseProjectionLayer:
     Returns:
 
     """
-    if not proj_type or proj_type.isspace() or proj_type.lower() in ["ppo", "sac", "td3", "mpo", "entropy"]:
+    if (
+        not proj_type
+        or proj_type.isspace()
+        or proj_type.lower() in ["ppo", "sac", "td3", "mpo", "entropy"]
+    ):
         return BaseProjectionLayer(proj_type, **kwargs)
 
     elif proj_type.lower() == "w2":
@@ -51,4 +61,5 @@ def get_projection_layer(proj_type: str = "", **kwargs) -> BaseProjectionLayer:
     else:
         raise ValueError(
             f"Invalid projection type {proj_type}."
-            f" Choose one of None/' ', 'ppo', 'papi', 'w2', 'w2_non_com', 'frob', 'kl', or 'entropy'.")
+            f" Choose one of None/' ', 'ppo', 'papi', 'w2', 'w2_non_com', 'frob', 'kl', or 'entropy'."
+        )

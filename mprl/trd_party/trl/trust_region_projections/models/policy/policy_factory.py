@@ -15,13 +15,20 @@
 #   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import torch as ch
+from trust_region_projections.models.policy.gaussian_policy_diag import (
+    GaussianPolicyDiag,
+)
+from trust_region_projections.models.policy.gaussian_policy_full import (
+    GaussianPolicyFull,
+)
+from trust_region_projections.models.policy.gaussian_policy_sqrt import (
+    GaussianPolicySqrt,
+)
 
-from trust_region_projections.models.policy.gaussian_policy_diag import GaussianPolicyDiag
-from trust_region_projections.models.policy.gaussian_policy_full import GaussianPolicyFull
-from trust_region_projections.models.policy.gaussian_policy_sqrt import GaussianPolicySqrt
 
-
-def get_policy_network(policy_type, proj_type, device: ch.device = "cpu", dtype=ch.float32, **kwargs):
+def get_policy_network(
+    policy_type, proj_type, device: ch.device = "cpu", dtype=ch.float32, **kwargs
+):
     """
     Policy network factory for generating the required Gaussian policy model.
     Args:
@@ -36,10 +43,16 @@ def get_policy_network(policy_type, proj_type, device: ch.device = "cpu", dtype=
     """
 
     if policy_type == "full":
-        policy = GaussianPolicySqrt(**kwargs) if "w2" in proj_type else GaussianPolicyFull(**kwargs)
+        policy = (
+            GaussianPolicySqrt(**kwargs)
+            if "w2" in proj_type
+            else GaussianPolicyFull(**kwargs)
+        )
     elif policy_type == "diag":
         policy = GaussianPolicyDiag(**kwargs)
     else:
-        raise ValueError(f"Invalid policy type {policy_type}. Select one of 'full', 'diag'.")
+        raise ValueError(
+            f"Invalid policy type {policy_type}. Select one of 'full', 'diag'."
+        )
 
     return policy.to(device, dtype)

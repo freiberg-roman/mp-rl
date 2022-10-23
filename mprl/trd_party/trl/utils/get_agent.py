@@ -14,10 +14,10 @@
 #   You should have received a copy of the GNU Affero General Public License
 #   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import git
 import os
-from cox.store import schema_from_dict
 
+import git
+from cox.store import schema_from_dict
 from trust_region_projections.algorithms.pg.pg import PolicyGradient
 from trust_region_projections.utils.custom_store import CustomStore
 
@@ -35,39 +35,44 @@ def setup_general_agent(params: dict, save_git: bool = True):
         assert v is not None, f"Value for {k} is None"
 
     # ensure when not using entropy constraint, the cov is not projected to -inf by accident
-    if not params['entropy_schedule']:
-        params['entropy_eq'] = False
+    if not params["entropy_schedule"]:
+        params["entropy_eq"] = False
 
     store = None
 
-    if params['log_interval'] <= params['train_steps']:
+    if params["log_interval"] <= params["train_steps"]:
         # Setup logging
         metadata_schema = schema_from_dict(params)
-        base_directory = params['out_dir']
-        exp_name = params.get('exp_name')
+        base_directory = params["out_dir"]
+        exp_name = params.get("exp_name")
 
         store = CustomStore(storage_folder=base_directory, exp_id=exp_name, new=True)
 
         # Store the experiment path
-        metadata_schema.update({'store_path': str})
-        metadata_table = store.add_table('metadata', metadata_schema)
+        metadata_schema.update({"store_path": str})
+        metadata_table = store.add_table("metadata", metadata_schema)
         metadata_table.update_row(params)
-        metadata_table.update_row({
-            'store_path': store.path,
-        })
+        metadata_table.update_row(
+            {
+                "store_path": store.path,
+            }
+        )
 
         if save_git:
             # the git commit for this experiment
-            metadata_schema.update({'git_commit': str})
-            repo = git.Repo(path=os.path.dirname(os.path.realpath(__file__)), search_parent_directories=True)
-            metadata_table.update_row({'git_commit': repo.head.object.hexsha})
+            metadata_schema.update({"git_commit": str})
+            repo = git.Repo(
+                path=os.path.dirname(os.path.realpath(__file__)),
+                search_parent_directories=True,
+            )
+            metadata_table.update_row({"git_commit": repo.head.object.hexsha})
 
         metadata_table.flush_row()
 
         # use 0 for saving last model only,
         # use -1 for no saving at all
-        if params['save_interval'] == 0:
-            params['save_interval'] = params['train_steps']
+        if params["save_interval"] == 0:
+            params["save_interval"] = params["train_steps"]
 
     return store
 
@@ -85,21 +90,24 @@ def get_new_ppo_agent(params, save_git=True):
 
     if store:
         # Table for checkpointing models and envs
-        if params['save_interval'] > 0:
+        if params["save_interval"] > 0:
 
             checkpoints_dict = {
-                'policy': store.PYTORCH_STATE,
-                'env_runner': store.PICKLE,
-                'optimizer': store.PYTORCH_STATE,
-                'iteration': int
+                "policy": store.PYTORCH_STATE,
+                "env_runner": store.PICKLE,
+                "optimizer": store.PYTORCH_STATE,
+                "iteration": int,
             }
 
-            if not params['share_weights'] and params["vf_coeff"] == 0:
-                checkpoints_dict.update({'vf_model': store.PYTORCH_STATE,
-                                         'optimizer_vf': store.PYTORCH_STATE
-                                         })
+            if not params["share_weights"] and params["vf_coeff"] == 0:
+                checkpoints_dict.update(
+                    {
+                        "vf_model": store.PYTORCH_STATE,
+                        "optimizer_vf": store.PYTORCH_STATE,
+                    }
+                )
 
-            store.add_table('checkpoints', checkpoints_dict)
+            store.add_table("checkpoints", checkpoints_dict)
     else:
         store = None
 

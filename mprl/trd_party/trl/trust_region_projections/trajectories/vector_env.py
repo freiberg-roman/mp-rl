@@ -22,7 +22,6 @@ import numpy as np
 
 
 class SequentialVectorEnv(gym.Env):
-
     def __init__(self, env_fns: Sequence[callable], max_episode_length=np.inf):
         """
         Sequential vector env, that used multiple gym environments and executes the actions sequentially.
@@ -75,9 +74,11 @@ class SequentialVectorEnv(gym.Env):
 
             if done:
                 # return stats after max episode length in order to evaluate the exploration policy performance
-                ep_info["done"].append((self.length_counter[i], self.total_ep_reward[i]))
-                self.length_counter[i] = 0.
-                self.total_ep_reward[i] = 0.
+                ep_info["done"].append(
+                    (self.length_counter[i], self.total_ep_reward[i])
+                )
+                self.length_counter[i] = 0.0
+                self.total_ep_reward[i] = 0.0
 
             # Aggregate
             ep_info["info"].append(info)
@@ -90,7 +91,7 @@ class SequentialVectorEnv(gym.Env):
     def reset(self):
         return np.vstack([env.reset() for env in self.envs])
 
-    def render(self, mode='human'):
+    def render(self, mode="human"):
         if mode == "human":
             return self.envs[0].render()
         else:

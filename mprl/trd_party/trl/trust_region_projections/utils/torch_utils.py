@@ -126,7 +126,7 @@ def select_batch(index, *args) -> list:
 
 def generate_minibatches(n, n_minibatches):
     """
-    Generate n_minibatches sets of indices for N data points.  
+    Generate n_minibatches sets of indices for N data points.
     Args:
         n: total number of data points
         n_minibatches: how many minibatches to generate
@@ -234,10 +234,12 @@ def fill_triangular(x, upper=False):
 
     m = np.int32(x.shape[-1])
     # Formula derived by solving for n: m = n(n+1)/2.
-    n = np.sqrt(0.25 + 2. * m) - 0.5
+    n = np.sqrt(0.25 + 2.0 * m) - 0.5
     if n != np.floor(n):
-        raise ValueError('Input right-most shape ({}) does not '
-                         'correspond to a triangular matrix.'.format(m))
+        raise ValueError(
+            "Input right-most shape ({}) does not "
+            "correspond to a triangular matrix.".format(m)
+        )
     n = np.int32(n)
     new_shape = x.shape[:-1] + (n, n)
 
@@ -306,12 +308,14 @@ def fill_triangular_inverse(x, upper=False):
         initial_elements = ch.flip(x[..., -1, :], dims=[ndims - 2])
         triangular_part = x[..., :-1, :]
 
-    rotated_triangular_portion = ch.flip(ch.flip(triangular_part, dims=[ndims - 1]), dims=[ndims - 2])
+    rotated_triangular_portion = ch.flip(
+        ch.flip(triangular_part, dims=[ndims - 1]), dims=[ndims - 2]
+    )
     consolidated_matrix = triangular_part + rotated_triangular_portion
 
     end_sequence = consolidated_matrix.reshape(x.shape[:-2] + (n * (n - 1),))
 
-    y = ch.cat([initial_elements, end_sequence[..., :m - n]], dim=-1)
+    y = ch.cat([initial_elements, end_sequence[..., : m - n]], dim=-1)
     return y
 
 
@@ -337,7 +341,7 @@ def inverse_softplus(x):
     Returns:
 
     """
-    return (x.exp() - 1.).log()
+    return (x.exp() - 1.0).log()
 
 
 def torch_atleast_2d(x, reverse=False):

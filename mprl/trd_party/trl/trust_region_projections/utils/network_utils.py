@@ -14,15 +14,18 @@
 #   You should have received a copy of the GNU Affero General Public License
 #   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from typing import Iterable, Sequence, Union
+
 import numpy as np
 import torch as ch
 import torch.nn as nn
 import torch.optim as optim
 from torch.optim.optimizer import Optimizer
-from typing import Iterable, Sequence, Union
 
 
-def initialize_weights(model: nn.Module, initialization_type: str, scale: float = 2 ** 0.5, init_w=3e-3):
+def initialize_weights(
+    model: nn.Module, initialization_type: str, scale: float = 2**0.5, init_w=3e-3
+):
     """
     Weight initializer for the layer or model.
     Args:
@@ -30,7 +33,7 @@ def initialize_weights(model: nn.Module, initialization_type: str, scale: float 
         initialization_type: type of inialization
         scale: gain value for orthogonal init
         init_w: init weight for normal and uniform init
-    Returns: 
+    Returns:
     """
 
     for p in model.parameters():
@@ -56,10 +59,13 @@ def initialize_weights(model: nn.Module, initialization_type: str, scale: float 
                 p.data.zero_()
         else:
             raise ValueError(
-                "Not a valid initialization type. Choose one of 'normal', 'uniform', 'xavier', and 'orthogonal'")
+                "Not a valid initialization type. Choose one of 'normal', 'uniform', 'xavier', and 'orthogonal'"
+            )
 
 
-def get_mlp(input_dim: int, hidden_sizes: Sequence[int], kernel_init: str, use_bias: bool = True):
+def get_mlp(
+    input_dim: int, hidden_sizes: Sequence[int], kernel_init: str, use_bias: bool = True
+):
     """
     create the hidden part of an MLP
     Args:
@@ -107,8 +113,12 @@ def get_activation(activation_type: str, **kwargs):
         ValueError(f"Optimizer {activation_type} is not supported.")
 
 
-def get_optimizer(optimizer_type: str, model_parameters: Union[Iterable[ch.Tensor], Iterable[dict]],
-                  learning_rate: float, **kwargs):
+def get_optimizer(
+    optimizer_type: str,
+    model_parameters: Union[Iterable[ch.Tensor], Iterable[dict]],
+    learning_rate: float,
+    **kwargs,
+):
     """
     Get optimizer instance for given model parameters
     Args:
@@ -132,8 +142,9 @@ def get_optimizer(optimizer_type: str, model_parameters: Union[Iterable[ch.Tenso
         ValueError(f"Optimizer {optimizer_type} is not supported.")
 
 
-def get_lr_schedule(schedule_type: str, optimizer: Optimizer, total_iters: int) -> Union[
-    None, optim.lr_scheduler.LambdaLR]:
+def get_lr_schedule(
+    schedule_type: str, optimizer: Optimizer, total_iters: int
+) -> Union[None, optim.lr_scheduler.LambdaLR]:
     """
     Generate lr schedule instance
         schedule_type: What type of schedule to generate
@@ -152,9 +163,10 @@ def get_lr_schedule(schedule_type: str, optimizer: Optimizer, total_iters: int) 
 
     elif schedule_type.lower() == "papi":
         # Multiply learning rate with 0.8 every time the backtracking fails
-        lam = lambda n_calls: 0.8 ** n_calls
+        lam = lambda n_calls: 0.8**n_calls
         return optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lam)
 
     else:
         raise ValueError(
-            f"Learning rate schedule {schedule_type} is not supported. Select one of [None, linear, papi].")
+            f"Learning rate schedule {schedule_type} is not supported. Select one of [None, linear, papi]."
+        )
