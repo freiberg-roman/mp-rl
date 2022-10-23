@@ -14,15 +14,19 @@
 #   You should have received a copy of the GNU Affero General Public License
 #   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from trust_region_projections.projections.base_projection_layer import (
+from mprl.trd_party.trl.trust_region_projections.projections.base_projection_layer import (
     BaseProjectionLayer,
 )
-from trust_region_projections.projections.frob_projection_layer import (
+from mprl.trd_party.trl.trust_region_projections.projections.frob_projection_layer import (
     FrobeniusProjectionLayer,
 )
-from trust_region_projections.projections.kl_projection_layer import KLProjectionLayer
-from trust_region_projections.projections.papi_projection import PAPIProjection
-from trust_region_projections.projections.w2_projection_layer import (
+from mprl.trd_party.trl.trust_region_projections.projections.kl_projection_layer import (
+    KLProjectionLayer,
+)
+from mprl.trd_party.trl.trust_region_projections.projections.papi_projection import (
+    PAPIProjection,
+)
+from mprl.trd_party.trl.trust_region_projections.projections.w2_projection_layer import (
     WassersteinProjectionLayer,
 )
 

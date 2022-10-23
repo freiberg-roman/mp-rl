@@ -16,10 +16,11 @@
 
 import torch as ch
 import torch.nn as nn
-from trust_region_projections.models.policy.gaussian_policy_full import (
+
+from mprl.trd_party.trl.trust_region_projections.models.policy.gaussian_policy_full import (
     GaussianPolicyFull,
 )
-from trust_region_projections.models.value.vf_net import VFNet
+from mprl.trd_party.trl.trust_region_projections.models.value.vf_net import VFNet
 
 
 class GaussianPolicySqrt(GaussianPolicyFull):

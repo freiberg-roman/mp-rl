@@ -17,11 +17,14 @@
 from typing import Union
 
 import gym
-from trust_region_projections.trajectories.env_normalizer import (
+
+from mprl.trd_party.trl.trust_region_projections.trajectories.env_normalizer import (
     BaseNormalizer,
     MovingAvgNormalizer,
 )
-from trust_region_projections.trajectories.vector_env import SequentialVectorEnv
+from mprl.trd_party.trl.trust_region_projections.trajectories.vector_env import (
+    SequentialVectorEnv,
+)
 
 
 def make_env(env_id: str, seed: int, rank: int) -> callable:

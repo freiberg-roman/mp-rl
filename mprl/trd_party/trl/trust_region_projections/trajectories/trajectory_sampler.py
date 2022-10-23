@@ -20,15 +20,22 @@ from typing import Union
 
 import numpy as np
 import torch as ch
-from trust_region_projections.models.policy.abstract_gaussian_policy import (
+
+from mprl.trd_party.trl.trust_region_projections.models.policy.abstract_gaussian_policy import (
     AbstractGaussianPolicy,
 )
-from trust_region_projections.models.value.vf_net import VFNet
-from trust_region_projections.trajectories.dataclass import TrajectoryOnPolicyRaw
-from trust_region_projections.trajectories.normalized_env_wrapper import (
+from mprl.trd_party.trl.trust_region_projections.models.value.vf_net import VFNet
+from mprl.trd_party.trl.trust_region_projections.trajectories.dataclass import (
+    TrajectoryOnPolicyRaw,
+)
+from mprl.trd_party.trl.trust_region_projections.trajectories.normalized_env_wrapper import (
     NormalizedEnvWrapper,
 )
-from trust_region_projections.utils.torch_utils import get_numpy, tensorize, to_gpu
+from mprl.trd_party.trl.trust_region_projections.utils.torch_utils import (
+    get_numpy,
+    tensorize,
+    to_gpu,
+)
 
 logger = logging.getLogger("env_runner")
 

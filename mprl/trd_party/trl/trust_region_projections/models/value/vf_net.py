@@ -17,7 +17,8 @@
 from typing import Sequence
 
 import torch.nn as nn
-from trust_region_projections.utils.network_utils import (
+
+from mprl.trd_party.trl.trust_region_projections.utils.network_utils import (
     get_activation,
     get_mlp,
     initialize_weights,

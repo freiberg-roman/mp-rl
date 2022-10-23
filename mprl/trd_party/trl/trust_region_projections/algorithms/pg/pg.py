@@ -23,21 +23,35 @@ from typing import Union
 import gym
 import numpy as np
 import torch as ch
-from trust_region_projections.algorithms.abstract_algo import AbstractAlgorithm
-from trust_region_projections.models.policy.abstract_gaussian_policy import (
+
+from mprl.trd_party.trl.trust_region_projections.algorithms.abstract_algo import (
+    AbstractAlgorithm,
+)
+from mprl.trd_party.trl.trust_region_projections.models.policy.abstract_gaussian_policy import (
     AbstractGaussianPolicy,
 )
-from trust_region_projections.models.policy.policy_factory import get_policy_network
-from trust_region_projections.models.value.vf_net import VFNet
-from trust_region_projections.projections.base_projection_layer import (
+from mprl.trd_party.trl.trust_region_projections.models.policy.policy_factory import (
+    get_policy_network,
+)
+from mprl.trd_party.trl.trust_region_projections.models.value.vf_net import VFNet
+from mprl.trd_party.trl.trust_region_projections.projections.base_projection_layer import (
     BaseProjectionLayer,
 )
-from trust_region_projections.projections.projection_factory import get_projection_layer
-from trust_region_projections.trajectories.dataclass import TrajectoryOnPolicy
-from trust_region_projections.trajectories.trajectory_sampler import TrajectorySampler
-from trust_region_projections.utils.custom_store import CustomStore
-from trust_region_projections.utils.network_utils import get_lr_schedule, get_optimizer
-from trust_region_projections.utils.torch_utils import (
+from mprl.trd_party.trl.trust_region_projections.projections.projection_factory import (
+    get_projection_layer,
+)
+from mprl.trd_party.trl.trust_region_projections.trajectories.dataclass import (
+    TrajectoryOnPolicy,
+)
+from mprl.trd_party.trl.trust_region_projections.trajectories.trajectory_sampler import (
+    TrajectorySampler,
+)
+from mprl.trd_party.trl.trust_region_projections.utils.custom_store import CustomStore
+from mprl.trd_party.trl.trust_region_projections.utils.network_utils import (
+    get_lr_schedule,
+    get_optimizer,
+)
+from mprl.trd_party.trl.trust_region_projections.utils.torch_utils import (
     flatten_batch,
     generate_minibatches,
     get_numpy,

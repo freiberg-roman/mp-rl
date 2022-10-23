@@ -15,13 +15,14 @@
 #   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import torch as ch
-from trust_region_projections.models.policy.gaussian_policy_diag import (
+
+from mprl.trd_party.trl.trust_region_projections.models.policy.gaussian_policy_diag import (
     GaussianPolicyDiag,
 )
-from trust_region_projections.models.policy.gaussian_policy_full import (
+from mprl.trd_party.trl.trust_region_projections.models.policy.gaussian_policy_full import (
     GaussianPolicyFull,
 )
-from trust_region_projections.models.policy.gaussian_policy_sqrt import (
+from mprl.trd_party.trl.trust_region_projections.models.policy.gaussian_policy_sqrt import (
     GaussianPolicySqrt,
 )
 

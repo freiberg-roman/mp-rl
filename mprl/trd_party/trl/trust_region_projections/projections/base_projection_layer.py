@@ -19,15 +19,18 @@ import math
 from typing import Tuple, Union
 
 import torch as ch
-from trust_region_projections.models.policy.abstract_gaussian_policy import (
+
+from mprl.trd_party.trl.trust_region_projections.models.policy.abstract_gaussian_policy import (
     AbstractGaussianPolicy,
 )
-from trust_region_projections.utils.network_utils import get_optimizer
-from trust_region_projections.utils.projection_utils import (
+from mprl.trd_party.trl.trust_region_projections.utils.network_utils import (
+    get_optimizer,
+)
+from mprl.trd_party.trl.trust_region_projections.utils.projection_utils import (
     gaussian_kl,
     get_entropy_schedule,
 )
-from trust_region_projections.utils.torch_utils import (
+from mprl.trd_party.trl.trust_region_projections.utils.torch_utils import (
     generate_minibatches,
     select_batch,
     tensorize,

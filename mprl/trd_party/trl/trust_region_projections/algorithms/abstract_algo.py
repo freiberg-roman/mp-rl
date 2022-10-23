@@ -19,14 +19,17 @@ import logging
 from typing import Tuple, Union
 
 import torch as ch
-from trust_region_projections.models.policy.abstract_gaussian_policy import (
+
+from mprl.trd_party.trl.trust_region_projections.models.policy.abstract_gaussian_policy import (
     AbstractGaussianPolicy,
 )
-from trust_region_projections.projections.base_projection_layer import (
+from mprl.trd_party.trl.trust_region_projections.projections.base_projection_layer import (
     BaseProjectionLayer,
 )
-from trust_region_projections.trajectories.trajectory_sampler import TrajectorySampler
-from trust_region_projections.utils.custom_store import CustomStore
+from mprl.trd_party.trl.trust_region_projections.trajectories.trajectory_sampler import (
+    TrajectorySampler,
+)
+from mprl.trd_party.trl.trust_region_projections.utils.custom_store import CustomStore
 
 
 class AbstractAlgorithm(abc.ABC):

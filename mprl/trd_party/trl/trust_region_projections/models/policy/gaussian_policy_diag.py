@@ -19,10 +19,13 @@ from typing import Tuple
 import numpy as np
 import torch as ch
 import torch.nn as nn
-from trust_region_projections.models.policy.abstract_gaussian_policy import (
+
+from mprl.trd_party.trl.trust_region_projections.models.policy.abstract_gaussian_policy import (
     AbstractGaussianPolicy,
 )
-from trust_region_projections.utils.network_utils import initialize_weights
+from mprl.trd_party.trl.trust_region_projections.utils.network_utils import (
+    initialize_weights,
+)
 
 
 class GaussianPolicyDiag(AbstractGaussianPolicy):

@@ -20,14 +20,19 @@ from typing import Tuple, Union
 
 import numpy as np
 import torch as ch
-from trust_region_projections.models.policy.abstract_gaussian_policy import (
+
+from mprl.trd_party.trl.trust_region_projections.models.policy.abstract_gaussian_policy import (
     AbstractGaussianPolicy,
 )
-from trust_region_projections.projections.base_projection_layer import (
+from mprl.trd_party.trl.trust_region_projections.projections.base_projection_layer import (
     BaseProjectionLayer,
 )
-from trust_region_projections.utils.projection_utils import gaussian_kl
-from trust_region_projections.utils.torch_utils import torch_batched_trace
+from mprl.trd_party.trl.trust_region_projections.utils.projection_utils import (
+    gaussian_kl,
+)
+from mprl.trd_party.trl.trust_region_projections.utils.torch_utils import (
+    torch_batched_trace,
+)
 
 logger = logging.getLogger("papi_projection")
 

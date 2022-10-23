@@ -19,12 +19,14 @@ from typing import Tuple
 import numpy as np
 import torch as ch
 import torch.nn as nn
-from trust_region_projections.models.policy.abstract_gaussian_policy import (
+
+from mprl.trd_party.trl.trust_region_projections.models.policy.abstract_gaussian_policy import (
     AbstractGaussianPolicy,
 )
-from trust_region_projections.models.value.vf_net import VFNet
-from trust_region_projections.utils.network_utils import initialize_weights
-from trust_region_projections.utils.torch_utils import (
+from mprl.trd_party.trl.trust_region_projections.utils.network_utils import (
+    initialize_weights,
+)
+from mprl.trd_party.trl.trust_region_projections.utils.torch_utils import (
     diag_bijector,
     fill_triangular,
     fill_triangular_inverse,

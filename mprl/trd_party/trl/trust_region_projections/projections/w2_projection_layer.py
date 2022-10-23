@@ -17,14 +17,15 @@
 from typing import Tuple
 
 import torch as ch
-from trust_region_projections.models.policy.abstract_gaussian_policy import (
+
+from mprl.trd_party.trl.trust_region_projections.models.policy.abstract_gaussian_policy import (
     AbstractGaussianPolicy,
 )
-from trust_region_projections.projections.base_projection_layer import (
+from mprl.trd_party.trl.trust_region_projections.projections.base_projection_layer import (
     BaseProjectionLayer,
     mean_projection,
 )
-from trust_region_projections.utils.projection_utils import (
+from mprl.trd_party.trl.trust_region_projections.utils.projection_utils import (
     gaussian_wasserstein_commutative,
 )
 
