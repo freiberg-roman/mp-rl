@@ -16,7 +16,7 @@ from ..physics.ground_truth import GroundTruthPrediction, GroundTruthPredictionM
 from .agent import SACTRL
 
 
-class SACMixedMPFactory:
+class SACTRFactory:
     def __init__(
         self, config_gateway: ModelConfigGateway, env_config_gateway: EnvConfigGateway
     ):

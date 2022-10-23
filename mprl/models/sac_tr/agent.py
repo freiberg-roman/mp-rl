@@ -111,7 +111,7 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
         try:
             q, v = next(self.planner_act)
         except StopIteration:
-            weights, _, _ = self.policy.sample(state)
+            weights, _, _, _, _ = self.policy.sample(state)
             self.planner_act.init(weights, bc_pos=b_q, bc_vel=b_v, num_t=self.num_steps)
             q, v = next(self.planner_act)
         action = self.ctrl.get_action(q, v, b_q, b_v)
@@ -148,7 +148,7 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
         try:
             q, v = next(self.planner_eval)
         except StopIteration:
-            _, _, weights = self.policy.sample(state)
+            _, _, weights, _, _ = self.policy.sample(state)
             self.planner_eval.init(
                 weights, bc_pos=b_q, bc_vel=b_v, num_t=self.num_steps
             )
@@ -170,7 +170,7 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
 
     def sample(self, states, sim_states):
         self.planner_update.reset_planner()
-        weights, logp, mean = self.policy.sample(states)
+        weights, logp, mean, _, _ = self.policy.sample(states)
         b_q, b_v = self.decompose_fn(states, sim_states)
         self.planner_update.init(weights, bc_pos=b_q, bc_vel=b_v, num_t=self.num_steps)
         q, v = next(self.planner_update)
@@ -285,6 +285,7 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
             loggable["alpha_loss"] = alpha_loss.item()
 
         soft_update(self.critic_target, self.critic, self.tau)
+        self.policy.soft_update(self.tau)
         return {
             **{
                 "critic_loss": qf_loss.item(),
@@ -308,7 +309,7 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
             sim_states,
         ) = batch.to_torch_batch()
         # dimension (batch_size, sequence_len, weight_dimension)
-        weights, log_pi, _ = self.policy.sample(states[:, 0, :])
+        weights, log_pi, _, p, proj_p = self.policy.sample(states[:, 0, :])
         b_q, b_v = self.decompose_fn(states, sim_states)
         self.planner_update.init(
             weights,
@@ -335,7 +336,8 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
                 sim_states[1][:, i + 1, :],
             )
         min_qf /= self.num_steps
-        policy_loss = (-min_qf).mean()
+        kl_loss = self.policy.kl_regularization_loss(p, proj_p)
+        policy_loss = (-min_qf).mean() + kl_loss
         return policy_loss, {
             "entropy": (-log_pi).detach().cpu().mean().item(),
             "weight_mean": weights[..., :-1].detach().cpu().mean().item(),

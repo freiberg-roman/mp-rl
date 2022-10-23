@@ -82,7 +82,7 @@ def gaussian_kl(
 
     maha_part = 0.5 * policy.maha(mean, mean_other, std_other)
     # trace_part = (var * precision_other).sum([-1, -2])
-    trace_part = torch_batched_trace(prec_other @ cov)
+    trace_part = (prec_other * cov).sum(-1, keepdim=True)
     cov_part = 0.5 * (trace_part - k + det_term_other - det_term)
 
     return maha_part, cov_part

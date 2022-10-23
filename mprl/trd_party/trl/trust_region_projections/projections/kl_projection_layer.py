@@ -43,35 +43,18 @@ class KLProjectionLayer(BaseProjectionLayer):
         mean, std = p
         old_mean, old_std = q
 
-        if not policy.contextual_std:
-            # only project first one to reduce number of numerical optimizations
-            std = std[:1]
-            old_std = old_std[:1]
-
-        ################################################################################################################
         # project mean with closed form
         mean_part, _ = gaussian_kl(policy, p, q)
         proj_mean = mean_projection(mean, old_mean, mean_part, eps)
 
         cov = policy.covariance(std)
         old_cov = policy.covariance(old_std)
-
-        if policy.is_diag:
-            proj_cov = KLProjectionGradFunctionDiagCovOnly.apply(
-                cov.diagonal(dim1=-2, dim2=-1),
-                old_cov.diagonal(dim1=-2, dim2=-1),
-                eps_cov,
-            )
-            proj_std = proj_cov.sqrt().diag_embed()
-        else:
-            raise NotImplementedError(
-                "The KL projection currently does not support full covariance matrices."
-            )
-
-        if not policy.contextual_std:
-            # scale first std back to batchsize
-            proj_std = proj_std.expand(mean.shape[0], -1, -1)
-
+        proj_cov = KLProjectionGradFunctionDiagCovOnly.apply(
+            cov,
+            old_cov,
+            eps_cov,
+        )
+        proj_std = proj_cov.sqrt()
         return proj_mean, proj_std
 
 
@@ -99,12 +82,8 @@ class KLProjectionGradFunctionDiagCovOnly(ch.autograd.Function):
         old_std = get_numpy(old_std)
         eps = get_numpy(eps_cov) * np.ones(batch_shape)
 
-        # p_op = cpp_projection.BatchedDiagCovOnlyProjection(batch_shape, dim)
-        # ctx.proj = projection_op
-
-        p_op = KLProjectionGradFunctionDiagCovOnly.get_projection_op(batch_shape, dim)
+        p_op = cpp_projection.BatchedDiagCovOnlyProjection(batch_shape, dim)
         ctx.proj = p_op
-
         proj_std = p_op.forward(eps, old_std, cov_np)
 
         return std.new(proj_std)
