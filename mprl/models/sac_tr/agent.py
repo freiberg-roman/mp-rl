@@ -270,6 +270,7 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
                 raise ValueError("Invalid mode")
 
         # Update policy
+        self.policy.hard_update()
         self.optimizer_policy.zero_grad()
         loss.backward()
         self.optimizer_policy.step()
@@ -285,7 +286,6 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
             loggable["alpha_loss"] = alpha_loss.item()
 
         soft_update(self.critic_target, self.critic, self.tau)
-        self.policy.soft_update(self.tau)
         return {
             **{
                 "critic_loss": qf_loss.item(),
@@ -409,7 +409,7 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
             sim_states,
         ) = batch.to_torch_batch()
         # dimension (batch_size, sequence_len, weight_dimension)
-        weights, log_pi, _ = self.policy.sample(states[:, 0, :])
+        weights, log_pi, _, p, proj_p = self.policy.sample(states[:, 0, :])
         b_q, b_v = self.decompose_fn(states, sim_states)
         self.planner_update.init(
             weights,
@@ -426,7 +426,8 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
         a = self.ctrl.get_action(q, v, b_q, b_v)
         qf1_pi, qf2_pi = self.critic(s, a)
         min_qf = torch.min(qf1_pi, qf2_pi)
-        policy_loss = (-min_qf).mean()
+        kl_loss = self.policy.kl_regularization_loss(p, proj_p)
+        policy_loss = (-min_qf).mean() + kl_loss + self.alpha * log_pi.mean()
         return policy_loss, {
             "entropy": (-log_pi).detach().cpu().mean().item(),
             "weight_mean": weights[..., :-1].detach().cpu().mean().item(),
