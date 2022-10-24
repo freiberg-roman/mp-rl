@@ -18,6 +18,7 @@ from typing import Union
 
 import gym
 
+from mprl.env import MujocoFactory
 from mprl.trd_party.trl.trust_region_projections.trajectories.env_normalizer import (
     BaseNormalizer,
     MovingAvgNormalizer,
@@ -81,13 +82,13 @@ class NormalizedEnvWrapper(object):
         self.max_episode_length = max_episode_length
 
         self.envs = SequentialVectorEnv(
-            [make_env(env_id, seed, i) for i in range(n_envs)],
+            [MujocoFactory.get_test_env() for i in range(n_envs)],
             max_episode_length=max_episode_length,
         )
         if n_test_envs:
             # Create test envs here to leverage the moving average normalization for testing envs.
             self.envs_test = SequentialVectorEnv(
-                [make_env(env_id, seed + n_envs, i) for i in range(n_test_envs)],
+                [MujocoFactory.get_test_env() for i in range(n_test_envs)],
                 max_episode_length=max_episode_length,
             )
 
@@ -104,7 +105,7 @@ class NormalizedEnvWrapper(object):
             # set gamma to 0 because we do not want to normalize based on return trajectory
             self.state_normalizer = MovingAvgNormalizer(
                 self.state_normalizer,
-                shape=self.observation_space.shape,
+                shape=(17,),
                 center=True,
                 scale=True,
                 gamma=0.0,

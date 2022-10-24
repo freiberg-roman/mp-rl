@@ -187,6 +187,7 @@ class BaseProjectionLayer(object):
         self.entropy_proj = (
             entropy_equality_projection if entropy_eq else entropy_inequality_projection
         )
+        print(entropy_schedule)
         self.entropy_schedule = get_entropy_schedule(
             entropy_schedule, total_train_steps, dim=action_dim
         )

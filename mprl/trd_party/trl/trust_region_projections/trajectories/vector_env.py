@@ -31,12 +31,12 @@ class SequentialVectorEnv(gym.Env):
                                 a time limit).
         """
 
-        self.envs = [f() for f in env_fns]
+        self.envs = env_fns
         self.num_envs = len(env_fns)
-        self.observation_space = self.envs[0].observation_space
-        self.action_space = self.envs[0].action_space
+        self.observation_space = 17
+        self.action_space = 6
 
-        self.max_episode_length = max_episode_length
+        self.max_episode_length = 1000
         self.length_counter = np.zeros((self.num_envs,))
         self.total_ep_reward = np.zeros((self.num_envs,))
 
@@ -55,11 +55,11 @@ class SequentialVectorEnv(gym.Env):
         - dones, an actors-length tensor with 1 if terminal, 0 otw
         """
         rewards, dones = np.zeros(self.num_envs), np.zeros(self.num_envs, np.bool)
-        states = np.zeros((self.num_envs,) + self.observation_space.shape)
+        states = np.zeros((self.num_envs,) + (17,))
         ep_info = defaultdict(list)
 
         for i, (action, env) in enumerate(zip(actions, self.envs)):
-            obs, rew, done, info = env.step(action)
+            obs, rew, done, _, _, info = env.step(action)
 
             self.length_counter[i] += 1
             self.total_ep_reward[i] += rew
@@ -70,7 +70,7 @@ class SequentialVectorEnv(gym.Env):
             ep_info["horizon"].append(max_horizon)
 
             if done:
-                obs = env.reset()
+                obs = env.reset(time_out_after=1000)[0]
 
             if done:
                 # return stats after max episode length in order to evaluate the exploration policy performance
@@ -82,14 +82,14 @@ class SequentialVectorEnv(gym.Env):
 
             # Aggregate
             ep_info["info"].append(info)
-            states[i] = obs
+            states[i] = obs[None]
             rewards[i] = rew
             dones[i] = done
 
         return np.vstack(states), np.array(rewards), np.array(dones), ep_info
 
     def reset(self):
-        return np.vstack([env.reset() for env in self.envs])
+        return np.vstack([env.reset(time_out_after=1000)[0] for env in self.envs])
 
     def render(self, mode="human"):
         if mode == "human":

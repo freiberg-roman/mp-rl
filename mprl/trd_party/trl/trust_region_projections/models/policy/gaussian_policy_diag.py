@@ -101,7 +101,7 @@ class GaussianPolicyDiag(AbstractGaussianPolicy):
         return (diff / std).pow(2).sum(-1)
 
     def precision(self, std: ch.Tensor):
-        return (1 / self.covariance(std).diagonal(dim1=-2, dim2=-1)).diag_embed()
+        return 1 / self.covariance(std)
 
     def covariance(self, std: ch.Tensor):
         return std.pow(2)

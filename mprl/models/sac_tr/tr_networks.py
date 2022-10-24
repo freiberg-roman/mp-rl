@@ -11,6 +11,9 @@ from mprl.trd_party.trl.trust_region_projections.models.policy.abstract_gaussian
 from mprl.trd_party.trl.trust_region_projections.projections.kl_projection_layer import (
     KLProjectionLayer,
 )
+from mprl.trd_party.trl.trust_region_projections.projections.w2_projection_layer import (
+    WassersteinProjectionLayer,
+)
 
 from ...utils.math_helper import hard_update, soft_update
 from ..sac.networks import GaussianPolicy
@@ -89,7 +92,7 @@ class TrustRegionPolicy:
             input_dim, network_width, network_depth, action_scale
         )
         self.hard_update()
-        self.trl = KLProjectionLayer("kl", mean_bound=eps, cov_bound=eps_cov)
+        self.trl = WassersteinProjectionLayer("w2", mean_bound=eps, cov_bound=eps_cov)
         self.policy_stub = GaussianPolicyStub()
 
     def sample(
@@ -103,9 +106,12 @@ class TrustRegionPolicy:
             self.trl.initial_entropy = self.policy_stub.entropy((mean, std)).mean()
 
         (mean_proj, std_proj) = self.trl(
-            self.policy_stub, (mean, std), (old_mean, old_std), 0
+            self.policy_stub,
+            (mean, std.diag_embed()),
+            (old_mean, old_std.diag_embed()),
+            0,
         )
-
+        std_proj = std_proj.diagonal(dim1=-2, dim2=-1)
         normal = Normal(mean_proj, std_proj)
         x_t = normal.rsample()  # for re-parameterization trick (mean + std * N(0,1))
         y_t = torch.tanh(x_t)
@@ -127,7 +133,13 @@ class TrustRegionPolicy:
         soft_update(self.old_policy, self.policy, tau)
 
     def kl_regularization_loss(self, p, proj_p):
-        return self.trl.get_trust_region_loss(self.policy_stub, p, proj_p)
+        p_mean, p_std = p
+        p_proj_mean, p_proj_std = proj_p
+        return self.trl.get_trust_region_loss(
+            self.policy_stub,
+            (p_mean, p_std.diag_embed()),
+            (p_proj_mean, p_proj_std.diag_embed()),
+        )
 
     def to(self, device: torch.device) -> "TrustRegionPolicy":
         self.policy.to(device)

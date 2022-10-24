@@ -20,10 +20,10 @@ import math
 from collections import deque
 from typing import Union
 
-import gym
 import numpy as np
 import torch as ch
 
+from mprl.env.mj_factory import MujocoFactory
 from mprl.trd_party.trl.trust_region_projections.algorithms.abstract_algo import (
     AbstractAlgorithm,
 )
@@ -402,9 +402,10 @@ class PolicyGradient(AbstractAlgorithm):
                     b_old_mean,
                     b_old_std,
                 ) = batch
-                b_q = (b_old_mean, b_old_std)
+                b_q = (b_old_mean, b_old_std.diagonal(dim1=-2, dim2=-1))
 
                 p = self.policy(b_obs)
+                p = (p[0], p[1].diagonal(dim1=-2, dim2=-1))
                 proj_p = self.projection(self.policy, p, b_q, self._global_steps)
 
                 new_logpacs = self.policy.log_probability(proj_p, b_actions)
@@ -457,14 +458,6 @@ class PolicyGradient(AbstractAlgorithm):
 
         if not self.vf_model:
             loss_dict.update({"vf_loss": (vf_losses / steps).detach()})
-
-        if not self.policy.contextual_std and self.projection.proj_type not in [
-            "ppo",
-            "papi",
-        ]:
-            # set policy with projection value without doing regression.
-            # In non-contextual cases we have only one cov, so the projection is the same for all samples.
-            self.policy.set_std(proj_p[1][0].detach())
 
         return loss_dict
 
@@ -779,23 +772,22 @@ class PolicyGradient(AbstractAlgorithm):
 
         print(params)
 
-        env = gym.make(params["game"])
-        obs_dim = env.observation_space.shape[0]
-        action_dim = env.action_space.shape[0]
+        obs_dim = 17
+        action_dim = 6
 
         init = params["initialization"]
         activation = params["activation"]
         share_weights = params["share_weights"]
         policy_type = params["policy_type"]
 
-        use_gpu = not params["cpu"]
-        device = ch.device("cuda:0" if use_gpu else "cpu")
+        use_gpu = False
+        device = ch.device("cpu")
         seed = params["seed"]
 
         np.random.seed(seed)
         ch.manual_seed(seed)
 
-        dtype = ch.float64 if params["dtype"] == "float64" else ch.float32
+        dtype = ch.float32
 
         # vf network
         vf_model = None

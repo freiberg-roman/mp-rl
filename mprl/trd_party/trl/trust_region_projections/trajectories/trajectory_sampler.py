@@ -36,6 +36,7 @@ from mprl.trd_party.trl.trust_region_projections.utils.torch_utils import (
     tensorize,
     to_gpu,
 )
+from mprl.utils.ds_helper import to_ts
 
 logger = logging.getLogger("env_runner")
 
@@ -124,11 +125,9 @@ class TrajectorySampler(object):
 
         base_shape = (rollout_steps, num_envs)
         base_shape_p1 = (rollout_steps + 1, num_envs)
-        base_action_shape = base_shape + self.envs.action_space.shape
+        base_action_shape = base_shape + (6,)
 
-        mb_obs = ch.zeros(
-            base_shape_p1 + self.envs.observation_space.shape, dtype=self.dtype
-        )
+        mb_obs = ch.zeros(base_shape_p1 + (17,), dtype=self.dtype)
         mb_actions = ch.zeros(base_action_shape, dtype=self.dtype)
         mb_rewards = ch.zeros(base_shape, dtype=self.dtype)
         mb_dones = ch.zeros(base_shape, dtype=ch.bool)
@@ -136,14 +135,12 @@ class TrajectorySampler(object):
 
         mb_time_limit_dones = ch.zeros(base_shape, dtype=ch.bool)
         mb_means = ch.zeros(base_action_shape, dtype=self.dtype)
-        mb_stds = ch.zeros(
-            base_action_shape + self.envs.action_space.shape, dtype=self.dtype
-        )
+        mb_stds = ch.zeros(base_action_shape + (6,), dtype=self.dtype)
 
         # continue from last state
         # Before first step we already have self.obs because env calls self.obs = env.reset() on init
         obs = self.envs.reset() if reset_envs else self.envs.last_obs
-        obs = tensorize(obs, self.cpu, self.dtype)
+        obs = to_ts(obs)
 
         # For n in range number of steps
         for i in range(rollout_steps):
