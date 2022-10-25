@@ -187,7 +187,6 @@ class BaseProjectionLayer(object):
         self.entropy_proj = (
             entropy_equality_projection if entropy_eq else entropy_inequality_projection
         )
-        print(entropy_schedule)
         self.entropy_schedule = get_entropy_schedule(
             entropy_schedule, total_train_steps, dim=action_dim
         )
@@ -328,7 +327,7 @@ class BaseProjectionLayer(object):
             mean_diff + cov_diff if policy.contextual_std else mean_diff
         ).mean()
 
-        return delta_loss * self.trust_region_coeff
+        return delta_loss
 
     def compute_metrics(self, policy, p, q) -> dict:
         """

@@ -101,6 +101,7 @@ class SACTRFactory:
             network_width=cfg_net.network_width,
             network_depth=cfg_net.network_depth,
             action_scale=cfg_net.action_scale,
+            kl_loss_scale=0.1,
             lr=cfg_hyper.lr,
             gamma=cfg_hyper.gamma,
             tau=cfg_hyper.tau,

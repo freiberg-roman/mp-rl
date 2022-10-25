@@ -43,6 +43,7 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
         network_width: int,
         network_depth: int,
         action_scale: float,
+        kl_loss_scale: float,
         planner_act: MPTrajectory,
         planner_eval: MPTrajectory,
         planner_update: MPTrajectory,
@@ -72,6 +73,7 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
         self.mode: str = policy_loss_type
         self.model = model
         self.num_dof = num_dof
+        self.kl_loss_scaler = kl_loss_scale
 
         # Networks
         self.critic: QNetwork = QNetwork(
@@ -270,7 +272,6 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
                 raise ValueError("Invalid mode")
 
         # Update policy
-        self.policy.hard_update()
         self.optimizer_policy.zero_grad()
         loss.backward()
         self.optimizer_policy.step()
@@ -286,6 +287,7 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
             loggable["alpha_loss"] = alpha_loss.item()
 
         soft_update(self.critic_target, self.critic, self.tau)
+        self.policy.soft_update(tau=self.tau)
         return {
             **{
                 "critic_loss": qf_loss.item(),
@@ -427,7 +429,11 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
         qf1_pi, qf2_pi = self.critic(s, a)
         min_qf = torch.min(qf1_pi, qf2_pi)
         kl_loss = self.policy.kl_regularization_loss(p, proj_p)
-        policy_loss = (-min_qf).mean() + kl_loss + self.alpha * log_pi.mean()
+        policy_loss = (
+            (-min_qf).mean()
+            + self.kl_loss_scaler * kl_loss
+            + self.alpha * log_pi.mean()
+        )
         return policy_loss, {
             "entropy": (-log_pi).detach().cpu().mean().item(),
             "kl_loss": kl_loss.detach().cpu().mean().item(),
