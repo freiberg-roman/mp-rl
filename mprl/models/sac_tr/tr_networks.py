@@ -44,15 +44,22 @@ class GaussianPolicyStub(AbstractGaussianPolicy):
     ) -> ch.Tensor:
         raise NotImplemented
 
-    def entropy(self, p: Tuple[ch.Tensor, ch.Tensor]) -> ch.Tensor:
+    def entropy(self, p: Tuple[ch.Tensor, ch.Tensor]):
         _, std = p
-        logdet = self.log_determinant(std)
         k = std.shape[-1]
+
+        logdet = self.log_determinant(std)
         return 0.5 * (k * np.log(2 * np.e * np.pi) + logdet)
 
-    def log_determinant(self, std: ch.Tensor) -> ch.Tensor:
-        std = std.diagonal(dim1=-2, dim2=-1)
-        return 2 * std.log().sum(-1)
+    def log_determinant(self, std: ch.Tensor):
+        """
+        Returns the log determinant of a cholesky matrix
+        Args:
+             std: a cholesky matrix
+        Returns:
+            The determinant of mat, aka product of the diagonal
+        """
+        return 2 * std.diagonal(dim1=-2, dim2=-1).log().sum(-1)
 
     def maha(self, mean, mean_other, std) -> ch.Tensor:
         std = std.diagonal(dim1=-2, dim2=-1)
@@ -60,7 +67,8 @@ class GaussianPolicyStub(AbstractGaussianPolicy):
         return (diff / std).pow(2).sum(-1)
 
     def precision(self, std: ch.Tensor) -> ch.Tensor:
-        return 1 / self.covariance(std)
+        cov = self.covariance(std).diagonal(dim1=-2, dim2=-1)
+        return (1.0 / cov).diag_embed()
 
     def covariance(self, std) -> ch.Tensor:
         return std.pow(2)
@@ -92,7 +100,7 @@ class TrustRegionPolicy:
             input_dim, network_width, network_depth, action_scale
         )
         self.hard_update()
-        self.trl = WassersteinProjectionLayer("w2", mean_bound=eps, cov_bound=eps_cov)
+        self.trl = KLProjectionLayer(mean_bound=eps, cov_bound=eps_cov)
         self.policy_stub = GaussianPolicyStub()
 
     def sample(

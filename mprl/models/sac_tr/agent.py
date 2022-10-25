@@ -430,6 +430,7 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
         policy_loss = (-min_qf).mean() + kl_loss + self.alpha * log_pi.mean()
         return policy_loss, {
             "entropy": (-log_pi).detach().cpu().mean().item(),
+            "kl_loss": kl_loss.detach().cpu().mean().item(),
             "weight_mean": weights[..., :-1].detach().cpu().mean().item(),
             "weight_std": weights[..., :-1].detach().cpu().std().item(),
             "weight_goal_mean": weights[..., -1].detach().cpu().mean().item(),

@@ -36,7 +36,6 @@ def mean_distance(policy, mean, mean_other, std_other=None, scale_prec=False):
         mean_other: old mean vectors
         std_other: scaling covariance matrix
         scale_prec: True computes the mahalanobis distance based on std_other for scaling. False the Euclidean distance.
-
     Returns:
         Mahalanobis distance or Euclidean distance between mean vectors
     """
@@ -60,14 +59,11 @@ def gaussian_kl(
     """
     Get the expected KL divergence between two sets of Gaussians over states -
     Calculates E KL(p||q): E[sum p(x) log(p(x)/q(x))] in closed form for Gaussians.
-
     Args:
         policy: policy instance
         p: first distribution tuple (mean, var)
         q: second distribution tuple (mean, var)
-
     Returns:
-
     """
 
     mean, std = p
@@ -82,7 +78,7 @@ def gaussian_kl(
 
     maha_part = 0.5 * policy.maha(mean, mean_other, std_other)
     # trace_part = (var * precision_other).sum([-1, -2])
-    trace_part = (prec_other * cov).sum(-1, keepdim=True)
+    trace_part = torch_batched_trace(prec_other @ cov)
     cov_part = 0.5 * (trace_part - k + det_term_other - det_term)
 
     return maha_part, cov_part
@@ -105,9 +101,7 @@ def gaussian_frobenius(
         q: mean and chol of gaussian q
         return_cov: return cov matrices for further computations
         scale_prec: scale objective with precision matrix
-
     Returns: mahalanobis distance, squared frobenius norm
-
     """
     mean, chol = p
     mean_other, chol_other = q
@@ -144,9 +138,7 @@ def gaussian_wasserstein_commutative(
         q: mean and sqrt of gaussian q
         scale_prec: scale objective by old precision matrix.
                     This penalizes directions based on old uncertainty/covariance.
-
     Returns: mean part of W2, cov part of W2
-
     """
     mean, sqrt = p
     mean_other, sqrt_other = q
@@ -193,9 +185,7 @@ def gaussian_wasserstein_non_commutative(
         scale_prec: scale objective by old precision matrix.
                     This penalizes directions based on old uncertainty/covariance.
         return_eig: return eigen decomp for further computation
-
     Returns: mean part of W2, cov part of W2
-
     """
     mean, sqrt = p
     mean_other, sqrt_other = q
@@ -251,9 +241,7 @@ def constraint_values(
         p: mean and std of gaussian p
         q: mean and std of gaussian q
         scale_prec: for W2 projection, use version scaled with precision matrix
-
     Returns: entropy, mean_part, cov_part, kl
-
     """
     if proj_type == "w2":
         mean_part, cov_part = gaussian_wasserstein_commutative(
@@ -287,7 +275,6 @@ def get_entropy_schedule(schedule_type, total_train_steps, dim):
         schedule_type: which type of entropy schedule to use, one of [None, 'linear', or 'exp'].
         total_train_steps: total number of training steps to compute appropriate decay over time.
         dim: number of action dimensions to scale exp decay correctly.
-
     Returns:
         f(initial_entropy, target_entropy, temperature, step)
     """
