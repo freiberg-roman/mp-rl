@@ -121,4 +121,5 @@ class SACTRFactory:
             planner_update=deepcopy(planner),
             planner_eval=deepcopy(planner),
             ctrl=ctrl,
+            layer_type=cfg_hyper.layer_type,
         )
