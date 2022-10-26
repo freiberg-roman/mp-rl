@@ -97,6 +97,8 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
             self.log_alpha = torch.zeros(1, requires_grad=True, device=self.device)
             self.optimizer_alpha = Adam([self.log_alpha], lr=lr)
         self.weights_log = []
+        self.traj_log = []
+        self.traj_des_log = []
 
     def sequence_reset(self):
         if len(self.buffer) > 0:
@@ -122,8 +124,14 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
     def eval_reset(self) -> np.ndarray:
         self.planner_eval.reset_planner()
         self.weights_log = []
+        self.traj_log = []
+        self.traj_des_log = []
 
     def eval_log(self) -> Dict:
+        times_full_traj = tensor_linspace(
+            0.0, self.planner_eval.dt * len(self.traj_log), len(self.traj_log)
+        )
+        # just last planned trajectory
         times = tensor_linspace(
             0,
             self.planner_eval.dt * self.planner_eval.num_t,
@@ -132,11 +140,30 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
         pos = self.planner_eval.current_traj
         if pos is None:
             return {}
-        plt.close()
+        plt.close("all")
+        figs = {}
+
         for dim in range(self.num_dof):
-            plt.plot(times, pos[:, dim])
+            figs["last_desired_traj"] = plt.figure()
+            ax = figs["last_desired_traj"].add_subplot(111)
+            ax.plot(times, pos[:, dim])
+
+        pos_real = np.array(self.traj_log)
+        pos_des = np.array(self.traj_des_log)
+        for dim in range(self.num_dof):
+            figs["traj_" + str(dim)] = plt.figure()
+            ax = figs["traj_" + str(dim)].add_subplot(111)
+            ax.plot(times_full_traj, pos_real[:, dim])
+            ax.plot(times_full_traj, pos_des[:, dim])
+
+        pos_delta = np.abs(pos_real - pos_des)
+        plt.figure()
+        for dim in range(self.num_dof):
+            figs["abs_delta_traj_" + str(dim)] = plt.figure()
+            ax = figs["abs_delta_traj_" + str(dim)].add_subplot(111)
+            ax.plot(times_full_traj, pos_delta[:, dim])
         return {
-            "traj": plt,
+            **figs,
             "weights_histogram": wandb.Histogram(np.array(self.weights_log).flatten()),
         }
 
@@ -156,7 +183,11 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
             )
             q, v = next(self.planner_eval)
             self.weights_log.append(to_np(weights.squeeze()).flatten())
+        self.planner_eval.get_current()
         action = self.ctrl.get_action(q, v, b_q, b_v)
+        q_curr = self.planner_eval.get_current()
+        self.traj_des_log.append(to_np((q_curr)))
+        self.traj_log.append(to_np(b_q[0]))
         return to_np(action.squeeze())
 
     def add_step(
