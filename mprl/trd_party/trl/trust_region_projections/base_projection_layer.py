@@ -23,9 +23,6 @@ import torch as ch
 from mprl.trd_party.trl.trust_region_projections.models.policy.abstract_gaussian_policy import (
     AbstractGaussianPolicy,
 )
-from mprl.trd_party.trl.trust_region_projections.utils.network_utils import (
-    get_optimizer,
-)
 from mprl.trd_party.trl.trust_region_projections.utils.projection_utils import (
     gaussian_kl,
     get_entropy_schedule,
@@ -365,73 +362,3 @@ class BaseProjectionLayer(object):
             "entropy_max": entropy.max(),
             "entropy_diff_max": entropy_diff.max(),
         }
-
-    def trust_region_regression(
-        self,
-        policy: AbstractGaussianPolicy,
-        obs: ch.Tensor,
-        q: Tuple[ch.Tensor, ch.Tensor],
-        n_minibatches: int,
-        global_steps: int,
-    ):
-        """
-        Take additional regression steps to match projection output and policy output.
-        The policy parameters are updated in-place.
-        Args:
-            policy: policy instance
-            obs: collected observations from trajectories
-            q: old distributions
-            n_minibatches: split the rollouts into n_minibatches.
-            global_steps: current number of steps, required for projection
-        Returns:
-            dict with mean of regession loss
-        """
-
-        if not self.do_regression:
-            return {}
-
-        policy_unprojected = copy.deepcopy(policy)
-        optim_reg = get_optimizer(
-            self.optimizer_type_reg,
-            policy_unprojected.parameters(),
-            learning_rate=self.lr_reg,
-        )
-        optim_reg.reset()
-
-        reg_losses = obs.new_tensor(0.0)
-
-        # get current projected values --> targets for regression
-        p_flat = policy(obs)
-        p_target = self(policy, p_flat, q, global_steps)
-
-        for _ in range(self.regression_iters):
-            batch_indices = generate_minibatches(obs.shape[0], n_minibatches)
-
-            # Minibatches SGD
-            for indices in batch_indices:
-                batch = select_batch(indices, obs, p_target[0], p_target[1])
-                b_obs, b_target_mean, b_target_std = batch
-                proj_p = (b_target_mean.detach(), b_target_std.detach())
-
-                p = policy_unprojected(b_obs)
-
-                # invert scaling with coeff here as we do not have to balance with other losses
-                loss = (
-                    self.get_trust_region_loss(policy, p, proj_p)
-                    / self.trust_region_coeff
-                )
-
-                optim_reg.zero_grad()
-                loss.backward()
-                optim_reg.step()
-                reg_losses += loss.detach()
-
-        policy.load_state_dict(policy_unprojected.state_dict())
-
-        if not policy.contextual_std:
-            # set policy with projection value.
-            # In non-contextual cases we have only one cov, so the projection is the same.
-            policy.set_std(p_target[1][0])
-
-        steps = self.regression_iters * (math.ceil(obs.shape[0] / n_minibatches))
-        return {"regression_loss": (reg_losses / steps).detach()}

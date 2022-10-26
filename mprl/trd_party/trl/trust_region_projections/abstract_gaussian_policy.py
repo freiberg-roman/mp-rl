@@ -20,12 +20,6 @@ from typing import Sequence, Tuple
 import torch as ch
 import torch.nn as nn
 
-from mprl.trd_party.trl.trust_region_projections.models.value.vf_net import VFNet
-from mprl.trd_party.trl.trust_region_projections.utils.network_utils import (
-    get_activation,
-    get_mlp,
-    initialize_weights,
-)
 from mprl.trd_party.trl.trust_region_projections.utils.torch_utils import (
     inverse_softplus,
 )
@@ -43,7 +37,6 @@ class AbstractGaussianPolicy(nn.Module, ABC):
         init_std: float = 1.0,
         minimal_std: float = 1e-5,
         share_weights: bool = False,
-        vf_model: VFNet = None,
     ):
         """
         Abstract Method defining a Gaussian policy structure.
@@ -64,14 +57,11 @@ class AbstractGaussianPolicy(nn.Module, ABC):
         """
         super().__init__()
 
-        self.activation = get_activation(activation)
         self.action_dim = action_dim
         self.contextual_std = contextual_std
         self.share_weights = share_weights
         self.minimal_std = minimal_std
         self.init_std = ch.tensor(init_std)
-
-        self._affine_layers = get_mlp(obs_dim, hidden_sizes, init, True)
 
         prev_size = hidden_sizes[-1]
 
@@ -85,12 +75,6 @@ class AbstractGaussianPolicy(nn.Module, ABC):
         )
         self._mean = self._get_mean(action_dim, prev_size, init)
         self._pre_std = self._get_std(contextual_std, action_dim, prev_size, init)
-
-        self.vf_model = vf_model
-
-        if share_weights:
-            self.final_value = nn.Linear(prev_size, 1)
-            initialize_weights(self.final_value, init, scale=1.0)
 
     @abstractmethod
     def forward(self, x, train=True):
@@ -134,7 +118,6 @@ class AbstractGaussianPolicy(nn.Module, ABC):
             Mean parametrization.
         """
         mean = nn.Linear(prev_size, action_dim)
-        initialize_weights(mean, init, scale=scale)
         return mean
 
     # @final

@@ -19,10 +19,10 @@ from typing import Tuple, Union
 import numpy as np
 import torch as ch
 
-from mprl.trd_party.trl.trust_region_projections.models.policy.abstract_gaussian_policy import (
+from mprl.trd_party.trl.trust_region_projections.abstract_gaussian_policy import (
     AbstractGaussianPolicy,
 )
-from mprl.trd_party.trl.trust_region_projections.utils.torch_utils import (
+from mprl.trd_party.trl.trust_region_projections.torch_utils import (
     torch_batched_trace,
 )
 
