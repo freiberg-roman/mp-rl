@@ -3,8 +3,9 @@ This library is under active development! Benchmarks will be added soon.
 # Motion Primitive - Reinforcement Learning (MP-RL)
 Pytorch implementation of sequenced based RL algorithms. This library contains the following algorithms:
 * Soft Actor-Critic (SAC) [*adaptation of [praz24](https://github.com/pranz24/pytorch-soft-actor-critic) pytorch implementation*]
-* Mition Primitive SAC (MP-SAC)  [*currently under revision*]
-* Mixed Motion Primitive SAC (MMP-SAC)
+* Motion Primitive SAC (SAC-MP)  [*currently under revision*]
+* Mixed Motion Primitive SAC (SAC-Mixed-MP)
+* Mixed Motion Primitive SAC with Trust Region Layers (SAC-TR)
 
 Furthermore, the library contains the following ``gym`` and ``meta_world`` environments:
 * HalfCheetah
@@ -12,11 +13,8 @@ Furthermore, the library contains the following ``gym`` and ``meta_world`` envir
 * Hopper
 * Reacher
 * MetaWorld Positional Reacher
-* MetaWorld PD controlled Reacher [*minor modification for PD controller*]
 * MetaWorld Positional WindowOpen
-* MetaWorld PD controlled WindowOpen [*minor modification for PD controller*]
 * MetaWorld Positional ButtonPress
-* MetaWorld PD controlled ButtonPress [*minor modification for PD controller*]
 
 In addition you can find the following prediction models:
 * Ground Truth [*prediction done by using MuJoCo Simulator*]
@@ -42,7 +40,7 @@ Afterwards, just clone the repository and run ``pip`` with the needed requiremen
 ### Run experiments
 To run experiments, use the following command:
 
-    python -m mprl.ui.run algorithm={sac, sac_mixed_mp, ..} env={half_cheetah, meta_pos_reacher, ..}
+    python -m mprl.ui.run algorithm={sac, sac_mixed_mp, sac_tr, sac_mp} env={half_cheetah, meta_pos_reacher, ..}
 For more settings, please refer to the ``mprl/config`` folder or use the following command:
 
     python -m mprl.ui.run --help
