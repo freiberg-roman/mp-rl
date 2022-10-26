@@ -63,6 +63,7 @@ class ConfigRepository(ModelConfigGateway, EnvConfigGateway, TrainConfigGateway)
         cfg.num_basis = self._config.alg.hyper.num_basis
         cfg.num_dof = self._config.alg.hyper.num_dof
         cfg.basis_bandwidth_factor = self._config.alg.hyper.basis_bandwidth_factor
+        cfg.layer_type = self._config.alg.hyper.get("layer_type", "kl")
         return cfg
 
     def get_buffer_config(self) -> DictConfig:

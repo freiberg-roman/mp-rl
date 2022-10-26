@@ -63,6 +63,9 @@ class MPTrajectory:
         )
         return q, v
 
+    def get_current(self):
+        return self.current_traj[..., self.current_t - 1, :]
+
     def reset_planner(self):
         self.current_traj = None
         self.current_traj_v = None

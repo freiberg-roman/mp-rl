@@ -51,3 +51,8 @@ class MujocoFactory:
             from .mujoco.meta.adapters import OriginalMetaWorld
 
             return OriginalMetaWorld("button-press-v2")
+
+    @staticmethod
+    def get_test_env():
+        """Quick access for testing implementations"""
+        return HalfCheetahEnv(base=BASE)
