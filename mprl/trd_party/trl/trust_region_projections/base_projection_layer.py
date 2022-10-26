@@ -14,7 +14,7 @@
 #   You should have received a copy of the GNU Affero General Public License
 #   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from typing import Tuple, Union
+from typing import Optional, Tuple, Union
 
 import torch as ch
 
@@ -85,7 +85,7 @@ def mean_projection(
     return proj_mean
 
 
-class BaseProjectionLayer(object):
+class BaseProjectionLayer:
     def __init__(
         self,
         proj_type: str = "",
@@ -93,9 +93,9 @@ class BaseProjectionLayer(object):
         cov_bound: float = 1e-3,
         trust_region_coeff: float = 0.0,
         scale_prec: bool = True,
-        entropy_schedule: Union[None, str] = None,
-        action_dim: Union[None, int] = None,
-        total_train_steps: Union[None, int] = None,
+        entropy_schedule: Optional[str] = None,
+        action_dim: Optional[int] = None,
+        total_train_steps: Optional[int] = None,
         target_entropy: float = 0.0,
         temperature: float = 0.5,
         entropy_eq: bool = False,

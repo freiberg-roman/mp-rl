@@ -115,9 +115,7 @@ def gaussian_wasserstein_non_commutative(
         c = sqrt_inv_other @ cov @ sqrt_inv_other
 
         # compute inner parenthesis of trace in W2,
-        # Only consider lower triangular parts, given cov/sqrt(cov) is symmetric PSD.
         eigvals, eigvecs = ch.symeig(c, eigenvectors=return_eig, upper=False)
-        # make use of the following property to compute the trace of the root: 𝐴^2𝑥=𝐴(𝐴𝑥)=𝐴𝜆𝑥=𝜆(𝐴𝑥)=𝜆^2𝑥
         cov_part = torch_batched_trace(identity + c) - 2 * eigvals.sqrt().sum(1)
 
     else:
@@ -125,11 +123,9 @@ def gaussian_wasserstein_non_commutative(
         cov_other = policy.covariance(sqrt_other)
 
         # compute inner parenthesis of trace in W2,
-        # Only consider lower triangular parts, given cov/sqrt(cov) is symmetric PSD.
         eigvals, eigvecs = ch.symeig(
             cov @ cov_other, eigenvectors=return_eig, upper=False
         )
-        # make use of the following property to compute the trace of the root: 𝐴^2𝑥=𝐴(𝐴𝑥)=𝐴𝜆𝑥=𝜆(𝐴𝑥)=𝜆^2𝑥
         cov_part = torch_batched_trace(cov_other + cov) - 2 * eigvals.sqrt().sum(1)
 
     if return_eig:
