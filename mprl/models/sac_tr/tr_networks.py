@@ -91,8 +91,8 @@ class TrustRegionPolicy:
         network_depth: int,
         action_scale: float = 1.0,
         layer_type: str = "kl",
-        eps: float = 0.03,
-        eps_cov: float = 0.001,
+        mean_bound: float = 0.03,
+        cov_bound: float = 0.001,
     ):
         self.policy = GaussianPolicy(
             input_dim, network_width, network_depth, action_scale
@@ -102,9 +102,11 @@ class TrustRegionPolicy:
         )
         self.hard_update()
         if layer_type == "kl":
-            self.trl = KLProjectionLayer(mean_bound=eps, cov_bound=eps_cov)
+            self.trl = KLProjectionLayer(mean_bound=mean_bound, cov_bound=cov_bound)
         elif layer_type == "w2":
-            self.trl = WassersteinProjectionLayer(mean_bound=eps, cov_bound=eps_cov)
+            self.trl = WassersteinProjectionLayer(
+                mean_bound=mean_bound, cov_bound=cov_bound
+            )
         else:
             raise ValueError("No such layer known")
         self.policy_stub = GaussianPolicyStub()

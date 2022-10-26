@@ -122,4 +122,6 @@ class SACTRFactory:
             planner_eval=deepcopy(planner),
             ctrl=ctrl,
             layer_type=cfg_hyper.layer_type,
+            mean_bound=cfg_hyper.mean_bound,
+            cov_bound=cfg_hyper.cov_bound,
         )

@@ -54,6 +54,8 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
         policy_loss_type: str = "mean",  # other is "weighted"
         target_entropy: Optional[float] = None,
         layer_type: Optional[str] = "kl",
+        mean_bound: Optional[float] = 1.0,
+        cov_bound: Optional[float] = 1.0,
     ):
         # Parameters
         self.gamma: float = gamma
@@ -89,6 +91,8 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
             network_width,
             network_depth,
             layer_type=layer_type,
+            mean_bound=mean_bound,
+            cov_bound=cov_bound,
         ).to(self.device)
 
         self.optimizer_policy = Adam(self.policy.parameters(), lr=lr)
