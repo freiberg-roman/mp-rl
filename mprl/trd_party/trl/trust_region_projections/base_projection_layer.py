@@ -14,23 +14,17 @@
 #   You should have received a copy of the GNU Affero General Public License
 #   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import copy
-import math
 from typing import Tuple, Union
 
 import torch as ch
 
-from mprl.trd_party.trl.trust_region_projections.models.policy.abstract_gaussian_policy import (
+from mprl.trd_party.trl.trust_region_projections.abstract_gaussian_policy import (
     AbstractGaussianPolicy,
 )
-from mprl.trd_party.trl.trust_region_projections.utils.projection_utils import (
+from mprl.trd_party.trl.trust_region_projections.utils.lib import tensorize
+from mprl.trd_party.trl.trust_region_projections.utils.projection import (
     gaussian_kl,
     get_entropy_schedule,
-)
-from mprl.trd_party.trl.trust_region_projections.utils.torch_utils import (
-    generate_minibatches,
-    select_batch,
-    tensorize,
 )
 
 
@@ -39,16 +33,6 @@ def entropy_inequality_projection(
     p: Tuple[ch.Tensor, ch.Tensor],
     beta: Union[float, ch.Tensor],
 ):
-    """
-    Projects std to satisfy an entropy INEQUALITY constraint.
-    Args:
-        policy: policy instance
-        p: current distribution
-        beta: target entropy for EACH std or general bound for all stds
-
-    Returns:
-        projected std that satisfies the entropy bound
-    """
     mean, std = p
     k = std.shape[-1]
     batch_shape = std.shape[:-2]
@@ -72,16 +56,6 @@ def entropy_equality_projection(
     p: Tuple[ch.Tensor, ch.Tensor],
     beta: Union[float, ch.Tensor],
 ):
-    """
-    Projects std to satisfy an entropy EQUALITY constraint.
-    Args:
-        policy: policy instance
-        p: current distribution
-        beta: target entropy for EACH std or general bound for all stds
-
-    Returns:
-        projected std that satisfies the entropy bound
-    """
     mean, std = p
     k = std.shape[-1]
 
@@ -94,22 +68,8 @@ def entropy_equality_projection(
 def mean_projection(
     mean: ch.Tensor, old_mean: ch.Tensor, maha: ch.Tensor, eps: ch.Tensor
 ):
-    """
-    Projects the mean based on the Mahalanobis objective and trust region.
-    Args:
-        mean: current mean vectors
-        old_mean: old mean vectors
-        maha: Mahalanobis distance between the two mean vectors
-        eps: trust region bound
-
-    Returns:
-        projected mean that satisfies the trust region
-    """
     batch_shape = mean.shape[:-1]
     mask = maha > eps
-
-    ################################################################################################################
-    # mean projection maha
 
     # if nothing has to be projected skip computation
     if mask.any():
@@ -147,31 +107,6 @@ class BaseProjectionLayer(object):
         cpu: bool = True,
         dtype: ch.dtype = ch.float32,
     ):
-
-        """
-        Base projection layer, which can be used to compute metrics for non-projection approaches.
-        Args:
-           proj_type: Which type of projection to use. None specifies no projection and uses the TRPO objective.
-           mean_bound: projection bound for the step size w.r.t. mean
-           cov_bound: projection bound for the step size w.r.t. covariance matrix
-           trust_region_coeff: Coefficient for projection regularization loss term.
-           scale_prec: If true used mahalanobis distance for projections instead of euclidean with Sigma_old^-1.
-           entropy_schedule: Schedule type for entropy projection, one of 'linear', 'exp', None.
-           action_dim: number of action dimensions to scale exp decay correctly.
-           total_train_steps: total number of training steps to compute appropriate decay over time.
-           target_entropy: projection bound for the entropy of the covariance matrix
-           temperature: temperature decay for exponential entropy bound
-           entropy_eq: Use entropy equality constraints.
-           entropy_first: Project entropy before trust region.
-           do_regression: Conduct additional regression steps after the the policy steps to match projection and policy.
-           regression_iters: Number of regression steps.
-           regression_lr: Regression learning rate.
-           optimizer_type_reg: Optimizer for regression.
-           cpu: Compute on CPU only.
-           dtype: Data type to use, either of float32 or float64. The later might be necessary for higher
-                   dimensions in order to learn the full covariance.
-        """
-
         # projection and bounds
         self.proj_type = proj_type
         self.mean_bound = tensorize(mean_bound, cpu=cpu, dtype=dtype)
@@ -219,19 +154,6 @@ class BaseProjectionLayer(object):
         eps_cov: ch.Tensor,
         **kwargs
     ):
-        """
-        Hook for implementing the specific trust region projection
-        Args:
-            policy: policy instance
-            p: current distribution
-            q: old distribution
-            eps: mean trust region bound
-            eps_cov: covariance trust region bound
-            **kwargs:
-
-        Returns:
-            projected
-        """
         return p
 
     # @final
@@ -245,35 +167,13 @@ class BaseProjectionLayer(object):
         beta: ch.Tensor,
         **kwargs
     ):
-        """
-        Template method with hook _trust_region_projection() to encode specific functionality.
-        (Optional) entropy projection is executed before or after as specified by entropy_first.
-        Do not override this. For Python >= 3.8 you can use the @final decorator to enforce not overwriting.
-        Args:
-            policy: policy instance
-            p: current distribution
-            q: old distribution
-            eps: mean trust region bound
-            eps_cov: covariance trust region bound
-            beta: entropy bound
-            **kwargs:
-
-        Returns:
-            projected mean, projected std
-        """
-
-        ####################################################################################################################
         # entropy projection in the beginning
         if self.entropy_first:
             p = self.entropy_proj(policy, p, beta)
-
-        ####################################################################################################################
         # trust region projection for mean and cov bounds
         proj_mean, proj_std = self._trust_region_projection(
             policy, p, q, eps, eps_cov, **kwargs
         )
-
-        ####################################################################################################################
         # entropy projection in the end
         if self.entropy_first:
             return proj_mean, proj_std
@@ -290,15 +190,6 @@ class BaseProjectionLayer(object):
             self._initial_entropy = entropy
 
     def trust_region_value(self, policy, p, q):
-        """
-        Computes the KL divergence between two Gaussian distributions p and q.
-        Args:
-            policy: policy instance
-            p: current distribution
-            q: old distribution
-        Returns:
-            Mean and covariance part of the trust region metric.
-        """
         return gaussian_kl(policy, p, q)
 
     def get_trust_region_loss(

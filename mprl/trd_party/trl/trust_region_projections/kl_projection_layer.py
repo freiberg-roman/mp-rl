@@ -4,17 +4,15 @@ import cpp_projection
 import numpy as np
 import torch as ch
 
-from mprl.trd_party.trl.trust_region_projections.models.policy.abstract_gaussian_policy import (
+from mprl.trd_party.trl.trust_region_projections.abstract_gaussian_policy import (
     AbstractGaussianPolicy,
 )
-from mprl.trd_party.trl.trust_region_projections.projections.base_projection_layer import (
+from mprl.trd_party.trl.trust_region_projections.base_projection_layer import (
     BaseProjectionLayer,
     mean_projection,
 )
-from mprl.trd_party.trl.trust_region_projections.utils.projection_utils import (
-    gaussian_kl,
-)
-from mprl.trd_party.trl.trust_region_projections.utils.torch_utils import get_numpy
+from mprl.trd_party.trl.trust_region_projections.utils.lib import get_numpy
+from mprl.trd_party.trl.trust_region_projections.utils.projection import gaussian_kl
 
 MAX_EVAL = 1000
 
@@ -29,29 +27,13 @@ class KLProjectionLayer(BaseProjectionLayer):
         eps_cov: ch.Tensor,
         **kwargs
     ):
-        """
-        runs wasserstein projection layer and constructs sqrt of covariance
-        Args:
-            **kwargs:
-            policy: policy instance
-            p: current distribution
-            q: old distribution
-            eps: (modified) kl bound/ kl bound for mean part
-            eps_cov: (modified) kl bound for cov part
-
-        Returns:
-            mean, cov sqrt
-        """
         mean, std = p
         old_mean, old_std = q
 
         if not policy.contextual_std:
-            # only project first one to reduce number of numerical optimizations
             std = std[:1]
             old_std = old_std[:1]
 
-        ################################################################################################################
-        # project mean with closed form
         mean_part, _ = gaussian_kl(policy, p, q)
         proj_mean = mean_projection(mean, old_mean, mean_part, eps)
 
@@ -64,9 +46,6 @@ class KLProjectionLayer(BaseProjectionLayer):
                 old_cov.diagonal(dim1=-2, dim2=-1),
                 eps_cov,
             )
-            # proj_mean, proj_std = KLProjectionGradFunctionDiagSplit.apply(mean, std.diagonal(dim1=-2, dim2=-1),
-            #                                                               old_mean, old_std.diagonal(dim1=-2, dim2=-1),
-            #                                                               eps, eps_cov)
             proj_std = proj_cov.sqrt().diag_embed()
         else:
             proj_cov = KLProjectionGradFunctionCovOnly.apply(cov, old_cov, eps_cov)

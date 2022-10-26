@@ -20,9 +20,7 @@ from typing import Sequence, Tuple
 import torch as ch
 import torch.nn as nn
 
-from mprl.trd_party.trl.trust_region_projections.utils.torch_utils import (
-    inverse_softplus,
-)
+from mprl.trd_party.trl.trust_region_projections.utils.lib import inverse_softplus
 
 
 class AbstractGaussianPolicy(nn.Module, ABC):
@@ -38,23 +36,6 @@ class AbstractGaussianPolicy(nn.Module, ABC):
         minimal_std: float = 1e-5,
         share_weights: bool = False,
     ):
-        """
-        Abstract Method defining a Gaussian policy structure.
-        Args:
-            obs_dim: Observation dimensionality aka input dimensionality
-            action_dim: Action dimensionality aka output dimensionality
-            init: Initialization type for the layers
-            hidden_sizes: Sequence of hidden layer sizes for each hidden layer in the neural network.
-            activation: Type of ctivation for hidden layers
-            contextual_std: Whether to use a contextual standard deviation or not
-            init_std: initial value of the standard deviation matrix
-            minimal_std: minimal standard deviation
-            share_weights: Use joint value and policy network
-            vf_model: Optional model when training value and policy model jointly.
-
-        Returns:
-
-        """
         super().__init__()
 
         self.action_dim = action_dim
@@ -96,242 +77,79 @@ class AbstractGaussianPolicy(nn.Module, ABC):
         return value
 
     def squash(self, x):
-        """
-        Post sampling transformation
-        Args:
-            x: values to transform
-        Returns:
-            transformed value
-        """
         return x
 
     def _get_mean(self, action_dim, prev_size=None, init=None, scale=0.01):
-        """
-        Constructor method for mean prediction.
-        Args:
-            action_dim: action dimension for output shape
-            prev_size: previous layer's output size
-            init: initialization type of layer.
-            scale
-
-        Returns:
-            Mean parametrization.
-        """
         mean = nn.Linear(prev_size, action_dim)
         return mean
 
     # @final
     def _get_std(self, contextual_std: bool, action_dim, prev_size=None, init=None):
-        """
-        Constructor method for std prediction. Do not overwrite.
-        Args:
-            contextual_std: whether to make the std context dependent or not
-            action_dim: action dimension for output shape
-            prev_size: previous layer's output size
-            init: initialization type of layer.
-
-        Returns:
-            Standard deviation parametrization.
-        """
         if contextual_std:
             return self._get_std_layer(prev_size, action_dim, init)
         else:
             return self._get_std_parameter(action_dim)
 
     def _get_preactivation_shift(self, init_std, minimal_std):
-        """
-        Compute the prediction shift to enforce an initial covariance value for contextual and non contextual policies.
-        Args:
-            init_std: value to initialize the covariance output with.
-            minimal_std: lower bound on the covariance.
-
-        Returns:
-            Preactivation shift to enforce minimal and initial covariance.
-        """
         return self.diag_activation_inv(init_std - minimal_std)
 
     @abstractmethod
     def _get_std_parameter(self, action_dim):
-        """
-        Creates a trainable variable for predicting the std for a non contextual policy.
-        Args:
-            action_dim: Action dimension for output shape
-
-        Returns:
-            Torch trainable variable for covariance prediction.
-        """
         pass
 
     @abstractmethod
     def _get_std_layer(self, prev_size, action_dim, init):
-        """
-        Creates a layer for predicting the std for a contextual policy.
-        Args:
-            prev_size: Previous layer's output size
-            action_dim: Action dimension for output shape
-            init: Initialization type of layer.
-
-        Returns:
-            Torch layer for covariance prediction.
-        """
         pass
 
     @abstractmethod
     def sample(self, p: Tuple[ch.Tensor, ch.Tensor], n=1) -> ch.Tensor:
-        """
-        Given prob dist p=(mean, var), generate samples WITHOUT reparametrization trick
-         Args:
-            p: Tuple (means, var). means (batch_size, action_space), var (action_space,).
-                p are batched probability distributions you're sampling from
-            n: Number of samples
-
-        Returns:
-            Actions sampled from p_i (batch_size, action_dim)
-        """
         pass
 
     @abstractmethod
     def rsample(self, p: Tuple[ch.Tensor, ch.Tensor], n=1) -> ch.Tensor:
-        """
-        Given prob dist p=(mean, var), generate samples WITH reparametrization trick.
-        This version applies the reparametrization trick to allow for backpropagate through it.
-         Args:
-            p: Tuple (means, var). means (batch_size, action_space), var (action_space,).
-                p are batched probability distributions you're sampling from
-            n: Number of samples
-        Returns:
-            Actions sampled from p_i (batch_size, action_dim)
-        """
         pass
 
     @abstractmethod
     def log_probability(
         self, p: Tuple[ch.Tensor, ch.Tensor], x: ch.Tensor, **kwargs
     ) -> ch.Tensor:
-        """
-        Computes the log probability of x given a batched distributions p (mean, std)
-        Args:
-            p: Tuple (means, var). means (batch_size, action_space), var (action_space,).
-            x: Values to compute logpacs for
-            **kwargs:
-
-        Returns:
-            Log probabilities of x.
-        """
         pass
 
     @abstractmethod
     def entropy(self, p: Tuple[ch.Tensor, ch.Tensor]) -> ch.Tensor:
-        """
-        Get entropies over the probability distributions given by p = (mean, var).
-        mean shape (batch_size, action_space), var shape (action_space,)
-        Args:
-            p: Tuple (means, var). means (batch_size, action_space), var (action_space,).
-
-        Returns:
-            Policy entropy based on sampled distributions p.
-        """
         pass
 
     @abstractmethod
     def log_determinant(self, std: ch.Tensor) -> ch.Tensor:
-        """
-        Returns the log determinant of the std matrix
-        Args:
-            std: either a diagonal, cholesky, or sqrt matrix depending on the policy
-        Returns:
-            The log determinant of std, aka log sum the diagonal
-        """
         pass
 
     @abstractmethod
     def maha(self, mean, mean_other, std) -> ch.Tensor:
-        """
-        Compute the mahalanbis distance between two means. std is the scaling matrix.
-        Args:
-            mean: left mean
-            mean_other: right mean
-            std: scaling matrix
-
-        Returns:
-            Mahalanobis distance between mean and mean_other
-        """
         pass
 
     @abstractmethod
     def precision(self, std: ch.Tensor) -> ch.Tensor:
-        """
-        Compute precision matrix given the std.
-        Args:
-            std: std matrix
-
-        Returns:
-            Precision matrix
-        """
         pass
 
     @abstractmethod
     def covariance(self, std) -> ch.Tensor:
-        """
-        Compute the full covariance matrix given the std.
-        Args:
-            std: std matrix
-
-        Returns:
-
-        """
         pass
 
     @abstractmethod
     def set_std(self, std: ch.Tensor) -> None:
-        """
-        For the NON-contextual case we do not need to regress the std, we can simply set it.
-        This is a helper method to achieve this.
-        Args:
-            std: projected std
-
-        Returns:
-
-        """
         pass
 
     def get_last_layer(self):
-        """
-        Returns last layer of network. Only required for the PAPI projection.
-
-        Returns:
-            Last layer weights for PAPI prpojection.
-
-        """
         return self._affine_layers[-1].weight.data
 
     def papi_weight_update(self, eta: ch.Tensor, A: ch.Tensor):
-        """
-        Update the last layer alpha according to papi paper [Akrour et al., 2019]
-        Args:
-            eta: Multiplier alpha from [Akrour et al., 2019]
-            A: Projected intermediate policy matrix
-
-        Returns:
-
-        """
         self._affine_layers[-1].weight.data *= eta
         self._affine_layers[-1].weight.data += (1 - eta) * A
 
     @property
     def is_root(self):
-        """
-        Whether policy is returning a full sqrt matrix as std.
-        Returns:
-
-        """
         return False
 
     @property
     def is_diag(self):
-        """
-        Whether the policy is returning a diagonal matrix as std.
-        Returns:
-
-        """
         return False

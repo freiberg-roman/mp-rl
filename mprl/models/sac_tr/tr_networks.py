@@ -5,13 +5,13 @@ import torch
 import torch as ch
 from torch.distributions import Normal
 
-from mprl.trd_party.trl.trust_region_projections.models.policy.abstract_gaussian_policy import (
+from mprl.trd_party.trl.trust_region_projections.abstract_gaussian_policy import (
     AbstractGaussianPolicy,
 )
-from mprl.trd_party.trl.trust_region_projections.projections.kl_projection_layer import (
+from mprl.trd_party.trl.trust_region_projections.kl_projection_layer import (
     KLProjectionLayer,
 )
-from mprl.trd_party.trl.trust_region_projections.projections.w2_projection_layer import (
+from mprl.trd_party.trl.trust_region_projections.w2_projection_layer import (
     WassersteinProjectionLayer,
 )
 
@@ -28,21 +28,21 @@ class GaussianPolicyStub(AbstractGaussianPolicy):
         self.contextual_std = True
 
     def _get_std_parameter(self, action_dim):
-        raise NotImplemented
+        raise NotImplementedError
 
     def _get_std_layer(self, prev_size, action_dim, init):
-        raise NotImplemented
+        raise NotImplementedError
 
     def sample(self, p: Tuple[ch.Tensor, ch.Tensor], n=1) -> ch.Tensor:
-        raise NotImplemented
+        raise NotImplementedError
 
     def rsample(self, p: Tuple[ch.Tensor, ch.Tensor], n=1) -> ch.Tensor:
-        raise NotImplemented
+        raise NotImplementedError
 
     def log_probability(
         self, p: Tuple[ch.Tensor, ch.Tensor], x: ch.Tensor, **kwargs
     ) -> ch.Tensor:
-        raise NotImplemented
+        raise NotImplementedError
 
     def entropy(self, p: Tuple[ch.Tensor, ch.Tensor]):
         _, std = p
@@ -74,10 +74,10 @@ class GaussianPolicyStub(AbstractGaussianPolicy):
         return std.pow(2)
 
     def set_std(self, std: ch.Tensor) -> None:
-        raise NotImplemented
+        raise NotImplementedError
 
     def forward(self, x, train=True):
-        raise NotImplemented
+        raise NotImplementedError
 
     def is_diag(self):
         return True
@@ -90,6 +90,7 @@ class TrustRegionPolicy:
         network_width: int,
         network_depth: int,
         action_scale: float = 1.0,
+        layer_type: str = "kl",
         eps: float = 0.03,
         eps_cov: float = 0.001,
     ):
@@ -100,7 +101,12 @@ class TrustRegionPolicy:
             input_dim, network_width, network_depth, action_scale
         )
         self.hard_update()
-        self.trl = KLProjectionLayer(mean_bound=eps, cov_bound=eps_cov)
+        if layer_type == "kl":
+            self.trl = KLProjectionLayer(mean_bound=eps, cov_bound=eps_cov)
+        elif layer_type == "w2":
+            self.trl = WassersteinProjectionLayer(mean_bound=eps, cov_bound=eps_cov)
+        else:
+            raise ValueError("No such layer known")
         self.policy_stub = GaussianPolicyStub()
 
     def sample(
