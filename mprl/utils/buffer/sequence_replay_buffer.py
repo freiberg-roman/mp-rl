@@ -1,7 +1,8 @@
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 
+from mprl.utils.buffer.buffer_output import EnvStepsExtended
 from mprl.utils.buffer.random_replay_buffer import RandomBatchIter
 from mprl.utils.buffer.replay_buffer import EnvSteps, ReplayBuffer
 
@@ -15,6 +16,9 @@ class SequenceRB(ReplayBuffer):
         sim_qpos_dim: int,
         sim_qvel_dim: int,
         minimum_sequence_length: int,
+        des_qpos_dim: Optional[int] = None,
+        weight_mean_dim: Optional[int] = None,
+        weight_cov_dim: Optional[int] = None,
     ):
         self._s = np.empty((capacity, state_dim), dtype=np.float32)
         self._next_s = np.empty((capacity, state_dim), dtype=np.float32)
@@ -23,6 +27,18 @@ class SequenceRB(ReplayBuffer):
         self._dones = np.empty(capacity, dtype=bool)
         self._qposes = np.empty((capacity, sim_qpos_dim), dtype=np.float32)
         self._qvels = np.empty((capacity, sim_qvel_dim), dtype=np.float32)
+        if des_qpos_dim is not None:
+            self._des_qposes = np.empty((capacity, des_qpos_dim), dtype=np.float32)
+        else:
+            self._des_qposes = None
+        if weight_mean_dim is not None:
+            self._weight_means = np.empty((capacity, weight_mean_dim), dtype=np.float32)
+        else:
+            self._weight_means = None
+        if weight_cov_dim is not None:
+            self._weight_covs = np.empty((capacity, weight_cov_dim), dtype=np.float32)
+        else:
+            self._weight_covs = None
 
         self._capacity: int = 0
         self._max_capacity: int = capacity
@@ -43,7 +59,18 @@ class SequenceRB(ReplayBuffer):
         ]
         self._current_buffer = 0
 
-    def add(self, state, next_state, action, reward, done, sim_state):
+    def add(
+        self,
+        state,
+        next_state,
+        action,
+        reward,
+        done,
+        sim_state,
+        des_q=None,
+        weight_mean=None,
+        weight_cov=None,
+    ):
         self._s[self._ind, :] = state
         self._next_s[self._ind, :] = next_state
         self._acts[self._ind, :] = action
@@ -51,6 +78,9 @@ class SequenceRB(ReplayBuffer):
         self._dones[self._ind] = done
         self._qposes[self._ind, :] = sim_state[0]
         self._qvels[self._ind, :] = sim_state[1]
+        self._des_qposes[self._ind, :] = des_q
+        self._weight_means[self._ind, :] = weight_mean
+        self._weight_covs[self._ind, :] = weight_cov
         self._capacity = min(self._capacity + 1, self._max_capacity)
 
         # adjust usage and sequence length
@@ -149,14 +179,27 @@ class SequenceRB(ReplayBuffer):
         return TrueKSequenceIter(self, it, k, batch_size=batch_size)
 
     def __getitem__(self, item):
-        return EnvSteps(
-            self._s[item, :],
-            self._next_s[item, :],
-            self._acts[item, :],
-            self._rews[item],
-            self._dones[item],
-            (self._qposes[item, :], self._qvels[item, :]),
-        )
+        if self._des_qposes is not None:
+            return EnvStepsExtended(
+                self._s[item, :],
+                self._next_s[item, :],
+                self._acts[item, :],
+                self._rews[item],
+                self._dones[item],
+                (self._qposes[item, :], self._qvels[item, :]),
+                self._des_qposes[item, :],
+                self._weight_means[item, :],
+                self._weight_covs[item, :],
+            )
+        else:
+            return EnvSteps(
+                self._s[item, :],
+                self._next_s[item, :],
+                self._acts[item, :],
+                self._rews[item],
+                self._dones[item],
+                (self._qposes[item, :], self._qvels[item, :]),
+            )
 
     def __len__(self):
         return self._capacity
@@ -194,6 +237,18 @@ class SequenceRB(ReplayBuffer):
         return self._qvels
 
     @property
+    def des_qposes(self):
+        return self._des_qposes
+
+    @property
+    def weight_means(self):
+        return self._weight_means
+
+    @property
+    def weight_covs(self):
+        return self._weight_covs
+
+    @property
     def capacity(self):
         return self._capacity
 
@@ -209,6 +264,10 @@ class SequenceRB(ReplayBuffer):
             ][1]
         ]
         return np.concatenate((first_valid_starts, second_valid_starts))
+
+    @property
+    def is_extended(self):
+        return self._des_qposes is not None
 
 
 class TrueKSequenceIter:
@@ -233,16 +292,32 @@ class TrueKSequenceIter:
                 (self._batch_size, self._k)
             )
             self._current_it += 1
-            return EnvSteps(
-                self._buffer.states[full_trajectory_indices, :],
-                self._buffer.next_states[full_trajectory_indices, :],
-                self._buffer.actions[full_trajectory_indices, :],
-                self._buffer.rewards[full_trajectory_indices],
-                self._buffer.dones[full_trajectory_indices],
-                (
-                    self._buffer.qposes[full_trajectory_indices, :],
-                    self._buffer.qvels[full_trajectory_indices, :],
-                ),
-            )
+            if self._buffer.is_extended:
+                return EnvStepsExtended(
+                    self._buffer.states[full_trajectory_indices, :],
+                    self._buffer.next_states[full_trajectory_indices, :],
+                    self._buffer.actions[full_trajectory_indices, :],
+                    self._buffer.rewards[full_trajectory_indices],
+                    self._buffer.dones[full_trajectory_indices],
+                    (
+                        self._buffer.qposes[full_trajectory_indices, :],
+                        self._buffer.qvels[full_trajectory_indices, :],
+                    ),
+                    self._buffer.des_qposes[full_trajectory_indices, :],
+                    self._buffer.weight_means[full_trajectory_indices, :],
+                    self._buffer.weight_covs[full_trajectory_indices, :],
+                )
+            else:
+                return EnvSteps(
+                    self._buffer.states[full_trajectory_indices, :],
+                    self._buffer.next_states[full_trajectory_indices, :],
+                    self._buffer.actions[full_trajectory_indices, :],
+                    self._buffer.rewards[full_trajectory_indices],
+                    self._buffer.dones[full_trajectory_indices],
+                    (
+                        self._buffer.qposes[full_trajectory_indices, :],
+                        self._buffer.qvels[full_trajectory_indices, :],
+                    ),
+                )
         else:
             raise StopIteration

@@ -66,6 +66,7 @@ class ConfigRepository(ModelConfigGateway, EnvConfigGateway, TrainConfigGateway)
         cfg.layer_type = self._config.alg.hyper.get("layer_type", "kl")
         cfg.mean_bound = self._config.alg.hyper.get("mean_bound", 1.0)
         cfg.cov_bound = self._config.alg.hyper.get("cov_bound", 1.0)
+        cfg.use_imp_sampling = self._config.alg.hyper.get("use_imp_sampling", False)
         return cfg
 
     def get_buffer_config(self) -> DictConfig:

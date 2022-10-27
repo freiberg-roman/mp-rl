@@ -22,6 +22,7 @@ class Trainer:
         self.steps_per_epoch = cfg.steps_per_epoch
         self.total_steps = cfg.total_steps
         self.warm_steps = cfg.warm_start_steps
+        self.update_after_first = cfg.update_after_first
         self.update_each = cfg.update_each
         self.update_for = cfg.update_for
         self.time_out_after = cfg.time_out_after
@@ -59,6 +60,7 @@ class Trainer:
             if (
                 self.env.total_steps % self.update_each == 0
                 and self.env.total_steps >= self.warm_steps
+                and self.env.total_steps >= self.update_after_first
             ):
                 for _ in range(self.update_for):
                     loggable = agent.update()

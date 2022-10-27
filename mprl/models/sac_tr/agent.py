@@ -47,6 +47,7 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
         planner_act: MPTrajectory,
         planner_eval: MPTrajectory,
         planner_update: MPTrajectory,
+        planner_imp_sampling: MPTrajectory,
         ctrl: Controller,
         buffer: SequenceRB,
         decompose_fn: Callable,
@@ -56,6 +57,7 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
         layer_type: Optional[str] = "kl",
         mean_bound: Optional[float] = 1.0,
         cov_bound: Optional[float] = 1.0,
+        use_imp_sampling: bool = False,
     ):
         # Parameters
         self.gamma: float = gamma
@@ -70,6 +72,7 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
         self.planner_act: MPTrajectory = planner_act
         self.planner_eval: MPTrajectory = planner_eval
         self.planner_update: MPTrajectory = planner_update
+        self.planner_imp_sampling: MPTrajectory = planner_imp_sampling
         self.ctrl: Controller = ctrl
         self.decompose_fn = decompose_fn
         self.batch_size: int = batch_size
@@ -77,6 +80,7 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
         self.model = model
         self.num_dof = num_dof
         self.kl_loss_scaler = kl_loss_scale
+        self.use_imp_sampling = use_imp_sampling
 
         # Networks
         self.critic: QNetwork = QNetwork(
@@ -105,6 +109,9 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
         self.weights_log = []
         self.traj_log = []
         self.traj_des_log = []
+        self.c_weight_mean = None
+        self.c_weight_cov = None
+        self.c_des_q = None
 
     def sequence_reset(self):
         if len(self.buffer) > 0:
@@ -124,6 +131,12 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
             weights, _, _, _, _ = self.policy.sample(state)
             self.planner_act.init(weights, bc_pos=b_q, bc_vel=b_v, num_t=self.num_steps)
             q, v = next(self.planner_act)
+
+        # only for importance sampling
+        if self.use_imp_sampling:
+            (_, _), (self.c_weight_mean, self.c_weight_cov) = self.policy.forward(state)
+            self.c_des_q = q
+
         action = self.ctrl.get_action(q, v, b_q, b_v)
         return to_np(action.squeeze())
 
@@ -205,7 +218,20 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
         done: bool,
         sim_state: Tuple[np.ndarray, np.ndarray],
     ):
-        self.buffer.add(state, next_state, action, reward, done, sim_state)
+        if self.use_imp_sampling:
+            self.buffer.add(
+                state,
+                next_state,
+                action,
+                reward,
+                done,
+                sim_state,
+                weight_mean=self.c_weight_mean,
+                weight_cov=self.c_weight_cov,
+                des_q=self.c_des_q,
+            )
+        else:
+            self.buffer.add(state, next_state, action, reward, done, sim_state)
 
     def sample(self, states, sim_states):
         self.planner_update.reset_planner()
@@ -439,16 +465,31 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
             self.buffer.get_true_k_sequence_iter(1, self.num_steps, self.batch_size)
         )
         # dimensions (batch_size, sequence_len, data_dimension)
-        (
-            states,
-            next_states,
-            actions,
-            rewards,
-            dones,
-            sim_states,
-        ) = batch.to_torch_batch()
+        if self.use_imp_sampling:
+            (
+                states,
+                next_states,
+                actions,
+                rewards,
+                dones,
+                sim_states,
+                des_qs,
+                weight_means,
+                weight_covs,
+            ) = batch.to_torch_batch()
+        else:
+            (
+                states,
+                next_states,
+                actions,
+                rewards,
+                dones,
+                sim_states,
+            ) = batch.to_torch_batch()
         # dimension (batch_size, sequence_len, weight_dimension)
         weights, log_pi, _, p, proj_p = self.policy.sample(states[:, 0, :])
+        if self.use_imp_sampling:
+            (_, _), (mean, cov) = self.policy.forward(states[:, 0, :])
         b_q, b_v = self.decompose_fn(states, sim_states)
         self.planner_update.init(
             weights,
@@ -466,23 +507,51 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
         qf1_pi, qf2_pi = self.critic(s, a)
         min_qf = torch.min(qf1_pi, qf2_pi)
         kl_loss = self.policy.kl_regularization_loss(p, proj_p)
-        policy_loss = (
-            (-min_qf).mean()
-            + self.kl_loss_scaler * kl_loss
-            + self.alpha * log_pi.mean()
-        )
+        if self.use_imp_sampling:
+            with torch.no_grad():
+                traj_old_des = torch.concat(
+                    (to_ts(b_q).unsqueeze(dim=1), des_qs), dim=1
+                )
+                old_log_prob = self.planner_imp_sampling.get_log_prob(
+                    traj_old_des,
+                    weight_means[:, 0, :],
+                    weight_covs[:, 0, :],
+                    to_ts(b_q),
+                    to_ts(b_v),
+                )
+                curr_log_prob = self.planner_imp_sampling.get_log_prob(
+                    traj_old_des, mean, cov, to_ts(b_q), to_ts(b_v)
+                )
+                imp = (curr_log_prob - old_log_prob).clamp(min=0, max=5.0).exp()
+                to_add = {
+                    "imp_mean": imp.detach().cpu().mean().item(),
+                }
+            policy_loss = (
+                imp * ((-min_qf) + self.alpha * log_pi)
+            ).mean() + self.kl_loss_scaler * kl_loss
+        else:
+            policy_loss = (
+                (-min_qf).mean()
+                + self.kl_loss_scaler * kl_loss
+                + self.alpha * log_pi.mean()
+            )
+            to_add = {}
         return policy_loss, {
+            **to_add,
             "entropy": (-log_pi).detach().cpu().mean().item(),
             "kl_loss": kl_loss.detach().cpu().mean().item(),
             "weight_mean": weights[..., :-1].detach().cpu().mean().item(),
             "weight_std": weights[..., :-1].detach().cpu().std().item(),
             "weight_goal_mean": weights[..., -1].detach().cpu().mean().item(),
             "weight_goal_std": weights[..., -1].detach().cpu().std().item(),
-            "weight_goal_max": weights[..., -1].detach().cpu().max().item(),
-            "weight_goal_min": weights[..., -1].detach().cpu().min().item(),
             "weights_histogram": wandb.Histogram(
                 weights[..., :-1].detach().cpu().numpy().flatten()
             ),
+            "action_update_histogram": wandb.Histogram(
+                a.detach().cpu().numpy().flatten()
+            ),
+            "action_update_mean": a.detach().cpu().mean().item(),
+            "action_update_std": a.detach().cpu().std().item(),
         }
 
     def _model_mean_performance_loss(self):

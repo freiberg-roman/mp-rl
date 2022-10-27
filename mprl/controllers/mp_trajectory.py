@@ -4,6 +4,7 @@ from mp_pytorch.mp import ProDMP
 from mp_pytorch.util import tensor_linspace
 
 from mprl.utils.ds_helper import to_ts
+from mprl.utils.math_helper import build_lower_matrix
 
 
 class MPTrajectory:
@@ -75,3 +76,27 @@ class MPTrajectory:
     @property
     def steps_planned(self):
         return len(self.current_traj) - 1
+
+    def get_times(self, num_t):
+        return tensor_linspace(0, self.dt * num_t, num_t + 1).unsqueeze(dim=0)
+
+    def get_log_prob(self, smp_traj, mean, chol_cov, bc_q, bc_v):
+        num_t = smp_traj.shape[1] - 1
+        bc_time = torch.tensor([0.0] * mean.shape[0], device=self.device)
+        times = tensor_linspace(0, self.dt * num_t, num_t + 1).unsqueeze(dim=0)
+        chol_cov = build_lower_matrix(chol_cov)
+        self.mp.update_inputs(
+            times=times,
+            params=mean,
+            params_L=chol_cov,
+            bc_time=bc_time,
+            bc_pos=bc_q,
+            bc_vel=bc_v,
+        )
+        traj_mean = self.mp.get_traj_pos(flat_shape=True)
+        traj_cov = self.mp.get_traj_pos_cov()
+        traj = smp_traj.flatten(start_dim=-2, end_dim=-1)
+        mv = torch.distributions.MultivariateNormal(
+            loc=traj_mean, covariance_matrix=traj_cov, validate_args=False
+        )
+        return mv.log_prob(traj)

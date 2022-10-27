@@ -3,6 +3,7 @@ alpha_q: ${env.sac_tr.alpha_q}
 auto_alpha: ${env.sac_tr.auto_alpha}
 mean_bound: ${env.sac_tr.mean_bound}
 cov_bound: ${env.sac_tr.cov_bound}
+use_imp_sampling: True
 target_entropy: ${env.sac_tr.target_entropy}
 basis_bandwidth_factor: ${env.idmp.basis_bandwidth_factor}
 gamma: 0.99
@@ -11,4 +12,4 @@ num_dof: ${env.num_dof}
 num_steps: ${env.sac_tr.num_steps}
 policy_loss: "mean_performance"  # other is mean
 tau: 0.005
-warm_start_steps: 10000
+warm_start_steps: 0
