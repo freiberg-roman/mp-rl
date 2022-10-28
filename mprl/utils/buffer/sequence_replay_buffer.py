@@ -78,9 +78,12 @@ class SequenceRB(ReplayBuffer):
         self._dones[self._ind] = done
         self._qposes[self._ind, :] = sim_state[0]
         self._qvels[self._ind, :] = sim_state[1]
-        self._des_qposes[self._ind, :] = des_q
-        self._weight_means[self._ind, :] = weight_mean
-        self._weight_covs[self._ind, :] = weight_cov
+        if des_q is not None:
+            self._des_qposes[self._ind, :] = des_q
+        if weight_mean is not None:
+            self._weight_means[self._ind, :] = weight_mean
+        if weight_cov is not None:
+            self._weight_covs[self._ind, :] = weight_cov
         self._capacity = min(self._capacity + 1, self._max_capacity)
 
         # adjust usage and sequence length
