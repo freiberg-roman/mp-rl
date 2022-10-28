@@ -111,9 +111,7 @@ class TrustRegionPolicy:
             raise ValueError("No such layer known")
         self.policy_stub = GaussianPolicyStub()
 
-    def sample(
-        self, state: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def forward(self, state):
         mean, log_std = self.policy.forward(state)
         std = log_std.exp()
         old_mean, old_log_std = self.old_policy.forward(state)
@@ -128,6 +126,12 @@ class TrustRegionPolicy:
             0,
         )
         std_proj = std_proj.diagonal(dim1=-2, dim2=-1)
+        return (mean, std), (mean_proj, std_proj)
+
+    def sample(
+        self, state: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        (mean, std), (mean_proj, std_proj) = self.forward(state)
         normal = Normal(mean_proj, std_proj)
         x_t = normal.rsample()  # for re-parameterization trick (mean + std * N(0,1))
         y_t = torch.tanh(x_t)

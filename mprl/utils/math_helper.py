@@ -29,7 +29,7 @@ def truncated_normal(
 
 
 def build_lower_matrix(
-    param_diag: torch.Tensor, param_off_diag: Optional[torch.Tensor]
+    param_diag: torch.Tensor, param_off_diag: Optional[torch.Tensor] = None
 ) -> torch.Tensor:
     """
     Compose the lower triangular matrix L from diag and off-diag elements

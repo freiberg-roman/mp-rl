@@ -46,3 +46,32 @@ class EnvSteps:
             torch.unsqueeze(torch.from_numpy(self.dones), dim=-1),
             self.sim_states,  # they won't be used in torch
         )
+
+
+@dataclass
+class EnvStepsExtended:
+    states: np.ndarray
+    next_states: np.ndarray
+    actions: np.ndarray
+    rewards: np.ndarray
+    dones: np.ndarray
+    sim_states: Tuple[np.ndarray, np.ndarray]
+    des_qposes: np.ndarray
+    weight_means: np.ndarray
+    weight_covs: np.ndarray
+
+    def __len__(self):
+        return len(self.states)
+
+    def to_torch_batch(self):
+        return (
+            torch.from_numpy(self.states),
+            torch.from_numpy(self.next_states),
+            torch.from_numpy(self.actions),
+            torch.unsqueeze(torch.from_numpy(self.rewards), dim=-1),
+            torch.unsqueeze(torch.from_numpy(self.dones), dim=-1),
+            self.sim_states,  # they won't be used in torch
+            torch.from_numpy(self.des_qposes),
+            torch.from_numpy(self.weight_means),
+            torch.from_numpy(self.weight_covs),
+        )
