@@ -389,7 +389,7 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
         # dimension (batch_size, sequence_len, weight_dimension)
         weights, log_pi, _, p, proj_p = self.policy.sample(states[:, 0, :])
         if self.use_imp_sampling:
-            (_, _), (mean, cov) = self.policy.forward(states[:, 0, :])
+            (_, _), (mean, std) = self.policy.forward(states[:, 0, :])
         b_q, b_v = self.decompose_fn(states, sim_states)
         self.planner_update.init(
             weights,
@@ -430,9 +430,9 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
                     to_ts(b_v),
                 )
                 curr_log_prob = self.planner_imp_sampling.get_log_prob(
-                    traj_old_des, mean, cov, to_ts(b_q), to_ts(b_v)
+                    traj_old_des, mean, std, to_ts(b_q), to_ts(b_v)
                 )
-                imp = (curr_log_prob - old_log_prob).clamp(min=0, max=5.0).exp()
+                imp = (curr_log_prob - old_log_prob).clamp(max=0).exp()
                 to_add = {
                     "imp_mean": imp.detach().cpu().mean().item(),
                 }
@@ -533,7 +533,7 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
         # dimension (batch_size, sequence_len, weight_dimension)
         weights, log_pi, _, p, proj_p = self.policy.sample(states[:, 0, :])
         if self.use_imp_sampling:
-            (_, _), (mean, cov) = self.policy.forward(states[:, 0, :])
+            (_, _), (mean, std) = self.policy.forward(states[:, 0, :])
         b_q, b_v = self.decompose_fn(states, sim_states)
         self.planner_update.init(
             weights,
@@ -564,9 +564,9 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
                     to_ts(b_v),
                 )
                 curr_log_prob = self.planner_imp_sampling.get_log_prob(
-                    traj_old_des, mean, cov, to_ts(b_q), to_ts(b_v)
+                    traj_old_des, mean, std, to_ts(b_q), to_ts(b_v)
                 )
-                imp = (curr_log_prob - old_log_prob).clamp(min=0, max=5.0).exp()
+                imp = (curr_log_prob - old_log_prob).clamp(max=0.0).exp()
                 to_add = {
                     "imp_mean": imp.detach().cpu().mean().item(),
                 }

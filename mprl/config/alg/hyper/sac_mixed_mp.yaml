@@ -4,9 +4,10 @@ auto_alpha: ${env.sac_mixed_mp.auto_alpha}
 target_entropy: ${env.sac_mixed_mp.target_entropy}
 basis_bandwidth_factor: ${env.idmp.basis_bandwidth_factor}
 gamma: 0.99
+use_imp_sampling: True
 num_basis: ${env.idmp.num_basis}
 num_dof: ${env.num_dof}
 num_steps: ${env.sac_mixed_mp.num_steps}
 policy_loss: "mean"  # other is mean_performance
 tau: 0.005
-warm_start_steps: 10000
+warm_start_steps: 0
