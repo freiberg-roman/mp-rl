@@ -1,6 +1,7 @@
 name: "mixture_of_experts"
 
-hidden_dim: 512
+network_width: 256
+network_depth: 3
 num_experts: 5
 
 env:
