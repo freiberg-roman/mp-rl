@@ -365,16 +365,31 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
             self.buffer.get_true_k_sequence_iter(1, self.num_steps, self.batch_size)
         )
         # dimensions (batch_size, sequence_len, data_dimension)
-        (
-            states,
-            next_states,
-            actions,
-            rewards,
-            dones,
-            sim_states,
-        ) = batch.to_torch_batch()
+        if self.use_imp_sampling:
+            (
+                states,
+                next_states,
+                actions,
+                rewards,
+                dones,
+                sim_states,
+                des_qs,
+                weight_means,
+                weight_covs,
+            ) = batch.to_torch_batch()
+        else:
+            (
+                states,
+                next_states,
+                actions,
+                rewards,
+                dones,
+                sim_states,
+            ) = batch.to_torch_batch()
         # dimension (batch_size, sequence_len, weight_dimension)
         weights, log_pi, _, p, proj_p = self.policy.sample(states[:, 0, :])
+        if self.use_imp_sampling:
+            (_, _), (mean, cov) = self.policy.forward(states[:, 0, :])
         b_q, b_v = self.decompose_fn(states, sim_states)
         self.planner_update.init(
             weights,
@@ -402,8 +417,37 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
             )
         min_qf /= self.num_steps
         kl_loss = self.policy.kl_regularization_loss(p, proj_p)
-        policy_loss = (-min_qf).mean() + kl_loss
+        if self.use_imp_sampling:
+            with torch.no_grad():
+                traj_old_des = torch.concat(
+                    (to_ts(b_q).unsqueeze(dim=1), des_qs), dim=1
+                )
+                old_log_prob = self.planner_imp_sampling.get_log_prob(
+                    traj_old_des,
+                    weight_means[:, 0, :],
+                    weight_covs[:, 0, :],
+                    to_ts(b_q),
+                    to_ts(b_v),
+                )
+                curr_log_prob = self.planner_imp_sampling.get_log_prob(
+                    traj_old_des, mean, cov, to_ts(b_q), to_ts(b_v)
+                )
+                imp = (curr_log_prob - old_log_prob).clamp(min=0, max=5.0).exp()
+                to_add = {
+                    "imp_mean": imp.detach().cpu().mean().item(),
+                }
+            policy_loss = (
+                imp * ((-min_qf) + self.alpha * log_pi)
+            ).mean() + self.kl_loss_scaler * kl_loss
+        else:
+            policy_loss = (
+                (-min_qf).mean()
+                + self.kl_loss_scaler * kl_loss
+                + self.alpha * log_pi.mean()
+            )
+            to_add = {}
         return policy_loss, {
+            **to_add,
             "entropy": (-log_pi).detach().cpu().mean().item(),
             "weight_mean": weights[..., :-1].detach().cpu().mean().item(),
             "weight_std": weights[..., :-1].detach().cpu().std().item(),
