@@ -1,9 +1,9 @@
 name: "mixture_of_experts"
 
 network_width: 256
-network_depth: 3
-num_experts: 5
+num_experts: 4
+variance: 1.0
 
-env:
-  state_dim: ${env.state_dim}
-  action_dim: ${env.action_dim}
+state_dim_in: ${env.moe.state_dim_in}
+state_dim_out: ${env.moe.state_dim_out}
+action_dim: ${env.moe.action_dim}

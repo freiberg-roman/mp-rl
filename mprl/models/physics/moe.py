@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Callable, Optional
 
 import torch
 import torch.nn as nn
@@ -14,17 +15,19 @@ from mprl.utils.ds_helper import to_ts
 class MixtureOfExperts(nn.Module):
     def __init__(
         self,
-        state_dim_in,
-        action_dim,
-        state_dim_out,
-        num_experts,
-        network_width,
-        variance=1.0,
+        state_dim_in: int,
+        action_dim: int,
+        state_dim_out: int,
+        num_experts: int,
+        network_width: int,
+        variance: float = 1.0,
+        lr: float = 3e-4,
+        prep_input_fn: Optional[Callable[[torch.Tensor], torch.Tensor]] = lambda x: x,
     ):
         super(MixtureOfExperts, self).__init__()
 
-        self.bn_in = nn.BatchNorm1d(state_dim_in)
-        self.bb_out = nn.BatchNorm1d(state_dim_out)
+        # self.bn_in = nn.BatchNorm1d(state_dim_in)
+        # self.bb_out = nn.BatchNorm1d(state_dim_out)
         self.linear1 = nn.Linear(
             state_dim_in + action_dim,
             network_width,
@@ -38,11 +41,16 @@ class MixtureOfExperts(nn.Module):
 
         self.expert_heads = nn.ModuleList(self.expert_heads)
         self._action_dim = action_dim
-        self.optimizer: torch.optim.Optimizer = torch.optim.Adam(self.parameters())
+        self.optimizer: torch.optim.Optimizer = torch.optim.Adam(
+            self.parameters(),
+            lr=lr,
+        )
         self.variance = variance
+        self._prep_input_fn = prep_input_fn
 
     def forward(self, state, action):
-        n_state = self.bn_in(self._prep_input_fn(state))
+        # n_state = self.bn_in(self._prep_input_fn(state))
+        n_state = self._prep_input_fn(state)
         net_in = torch.cat([n_state, action], dim=-1)
 
         x1 = F.silu(self.linear1(net_in))
@@ -62,7 +70,8 @@ class MixtureOfExperts(nn.Module):
         return MixtureSameFamily(categorical_experts, ind_expert_dist)
 
     def log_prob(self, state, action, next_state):
-        n_next_state_delta = self.bb_out(next_state - state)
+        # n_next_state_delta = self.bb_out(next_state - state)
+        n_next_state_delta = next_state - state
         prob = self.forward(state, action)
         return prob.log_prob(n_next_state_delta)
 
@@ -75,15 +84,15 @@ class MixtureOfExperts(nn.Module):
         states = to_ts(states)
         actions = to_ts(actions)
         if not deterministic:
-            pred_delta = self.forward(states, actions).sample((states.shape[:-1], 1))
+            pred_delta = self.forward(states, actions).sample()
         else:
             pred_delta = self.forward(states, actions).mean
 
         # denorm pred_delta
-        pred_delta = (
-            pred_delta * torch.sqrt(self.bb_out.running_var + self.bb_out.eps)
-            + self.bb_out.running_mean
-        )
+        # pred_delta = (
+        #     pred_delta * torch.sqrt(self.bb_out.running_var + self.bb_out.eps)
+        #     + self.bb_out.running_mean
+        # )
         return states + pred_delta
 
     def update(
