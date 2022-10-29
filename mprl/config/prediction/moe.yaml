@@ -3,6 +3,7 @@ name: "mixture_of_experts"
 network_width: 256
 num_experts: 4
 variance: 1.0
+use_batch_normalization: False
 
 state_dim_in: ${env.moe.state_dim_in}
 state_dim_out: ${env.moe.state_dim_out}

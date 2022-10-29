@@ -38,7 +38,7 @@ def update_moe(batch, moe):
 def evaluate_moe(batch, moe):
     (states, next_states, actions, _, _, _) = batch.to_torch_batch()
     pred_next_states = moe.next_state(states, actions)
-    return {"mse": (pred_next_states - next_states).pow(2).mean().item()}
+    return (pred_next_states - next_states).pow(2).mean().item()
 
 
 @hydra.main(config_path="../config", config_name="main.yaml")
@@ -62,8 +62,8 @@ def run(cfg: DictConfig):
     )
     # Fill buffer
     print("Filling buffer")
-    buffer_train = fill_buffer(1000, training_environment, buffer)
-    buffer_eval = fill_buffer(1000, training_environment, buffer)
+    buffer_train = fill_buffer(1000000, training_environment, buffer)
+    buffer_eval = fill_buffer(1000000, training_environment, buffer)
     model = MixtureOfExperts(
         state_dim_in=config_model.state_dim_in,
         state_dim_out=config_model.state_dim_out,
@@ -72,6 +72,7 @@ def run(cfg: DictConfig):
         network_width=config_model.network_width,
         variance=config_model.variance,
         prep_input_fn=get_prep_fn(config_repository.get_env_name()),
+        use_batch_normalization=config_model.use_batch_normalization,
     )
 
     cfg_wandb = cfg.logging
@@ -90,8 +91,15 @@ def run(cfg: DictConfig):
 
         # Train and evaluate model
         update_loss = update_moe(train_batch, model)
-        mse_loss = evaluate_moe(eval_batch, model)
-        wandb.log({**update_loss, **mse_loss})
+        mse_loss_eval = evaluate_moe(eval_batch, model)
+        mse_loss_train = evaluate_moe(train_batch, model)
+        wandb.log(
+            {
+                **update_loss,
+                "mse_loss_eval": mse_loss_eval,
+                "mse_loss_train": mse_loss_train,
+            }
+        )
 
 
 if __name__ == "__main__":
