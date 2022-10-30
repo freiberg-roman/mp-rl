@@ -13,6 +13,7 @@ from mprl.utils import SequenceRB
 
 from ..common.config_gateway import ModelConfigGateway
 from ..physics.ground_truth import GroundTruthPrediction, GroundTruthPredictionMeta
+from ..physics.moe_constructor import MOEFactory
 from .agent import SACMixedMP
 
 
@@ -55,14 +56,11 @@ class SACMixedMPFactory:
         if cfg_model.name == "off_policy":
             model = None
         elif cfg_model.name == "ground_truth":
-            if is_pos_ctrl:
-                model = GroundTruthPredictionMeta(
-                    env=MujocoFactory(env_config_gateway=self._env_gateway).create()
-                )
-            else:
-                model = GroundTruthPrediction(
-                    env=MujocoFactory(env_config_gateway=self._env_gateway).create()
-                )
+            model = GroundTruthPrediction(
+                env=MujocoFactory(env_config_gateway=self._env_gateway).create()
+            )
+        elif cfg_model.name == "mixture_of_experts":
+            model = MOEFactory(self._gateway, self._env_gateway).create()
         else:
             raise ValueError(f"Unknown model name {cfg_model.name}")
 
