@@ -29,7 +29,6 @@ class MixtureOfExperts(nn.Module):
 
         if use_batch_normalization:
             self.bn_in = nn.BatchNorm1d(state_dim_in)
-            self.bb_out = nn.BatchNorm1d(state_dim_out)
         self.linear1 = nn.Linear(
             state_dim_in + action_dim,
             network_width,
@@ -76,14 +75,8 @@ class MixtureOfExperts(nn.Module):
 
     def log_prob(self, state, action, next_state):
         next_state_delta = next_state - state
-        if self.use_batch_normalization:
-            n_next_state_delta = (next_state_delta - self.bb_out.bias) / torch.sqrt(
-                self.bb_out.weight + self.bb_out.eps
-            )
-        else:
-            n_next_state_delta = next_state_delta
         prob = self.forward(state, action)
-        return prob.log_prob(n_next_state_delta)
+        return prob.log_prob(next_state_delta)
 
     def loss(self, state, action, next_state):
         log_prob = self.log_prob(state, action, next_state)
@@ -97,17 +90,7 @@ class MixtureOfExperts(nn.Module):
             pred_delta = self.forward(states, actions).sample()
         else:
             pred_delta = self.forward(states, actions).mean
-
-        # denorm pred_delta
-        if self.use_batch_normalization:
-            bias = self.bb_out.bias.detach()
-            weight = self.bb_out.weight.detach()
-            eps = self.bb_out.eps
-            norm_pred_delta = pred_delta * torch.sqrt(weight + eps) + bias
-        else:
-            norm_pred_delta = pred_delta
-
-        return states + norm_pred_delta
+        return states + pred_delta
 
     def update(
         self, states: torch.Tensor, actions: torch.Tensor, next_states: torch.Tensor

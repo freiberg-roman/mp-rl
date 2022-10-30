@@ -2,7 +2,7 @@ import os
 
 
 def run():
-    for use_batch_norm in ["True", "False"]:
+    for use_batch_norm in ["True"]:
         for var in ["0.1", "0.25", "0.5", "0.75", "1.0", "1.5"]:
             for i in range(3):
                 launch_command = (
