@@ -29,6 +29,19 @@ class MOEPrediction(Predictable, Trainable):
                 return state
             else:
                 return ch.cat((state[..., :18], state[..., -3:]), dim=-1)
+        else:
+            raise ValueError(f"Unknown environment name: {self.env_name}")
+
+    def prepare_delta(self, delta):
+        if self.env_name == "HalfCheetah":
+            return delta
+        elif "Meta" in self.env_name:
+            if self.naive_prepare:
+                return delta
+            else:
+                return ch.cat((delta[..., :18], delta[..., -3:]), dim=-1)
+        else:
+            raise ValueError(f"Unknown environment name: {self.env_name}")
 
     def reconstruct_state(self, prediction_delta, state):
         if self.env_name == "HalfCheetah":
@@ -51,6 +64,7 @@ class MOEPrediction(Predictable, Trainable):
         (states, next_states, actions, _, _, _) = batch.to_torch_batch()
         next_state_delta = next_states - states
         states = self.prepare_state(states)
+        next_state_delta = self.prepare_delta(next_state_delta)
         update_loss = self.model.update(states, actions, next_state_delta)
         return update_loss
 
