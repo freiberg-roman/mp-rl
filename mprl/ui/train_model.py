@@ -9,13 +9,6 @@ from mprl.models.physics.moe_constructor import MOEFactory
 from mprl.utils.buffer.random_replay_buffer import RandomRB
 
 
-def get_prep_fn(name: str):
-    if name == "HalfCheetah":
-        return lambda x: x[..., 1:]
-    else:
-        raise ValueError(f"Unknown environment {name}")
-
-
 def fill_buffer(num_steps, env, buffer):
     state, sim_state = env.reset(time_out_after=500)
     for _ in tqdm(range(num_steps)):
