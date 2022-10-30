@@ -104,8 +104,8 @@ class HalfCheetahEnv(MujocoEnv):
     def decompose_fn(
         self, states: np.ndarray, sim_states: Tuple[np.ndarray, np.ndarray]
     ) -> Tuple[np.ndarray, np.ndarray]:
-        qpos_joint = sim_states[0][..., self.qpos_idx]
-        qvel_joint = sim_states[1][..., self.qvel_idx]
+        qpos_joint = states[..., 2:8]
+        qvel_joint = states[..., -6:]
         return qpos_joint, qvel_joint
 
     @property

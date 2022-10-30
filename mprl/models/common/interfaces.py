@@ -48,7 +48,7 @@ class Trainable(ABC):
 
 class Predictable(ABC):
     @abstractmethod
-    def next_state(self, states, sim_states, actions):
+    def next_state(self, states, actions, sim_states=None):
         raise NotImplementedError
 
 

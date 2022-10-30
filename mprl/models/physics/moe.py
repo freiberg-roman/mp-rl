@@ -23,7 +23,6 @@ class MixtureOfExperts(nn.Module):
         variance: float = 1.0,
         lr: float = 3e-4,
         use_batch_normalization: bool = False,
-        prep_input_fn: Optional[Callable[[torch.Tensor], torch.Tensor]] = lambda x: x,
     ):
         super(MixtureOfExperts, self).__init__()
 
@@ -48,14 +47,11 @@ class MixtureOfExperts(nn.Module):
         )
         self.variance = variance
         self.use_batch_normalization = use_batch_normalization
-        self._prep_input_fn = prep_input_fn
 
     def forward(self, state, action):
         if self.use_batch_normalization:
-            n_state = self.bn_in(self._prep_input_fn(state))
-        else:
-            n_state = self._prep_input_fn(state)
-        net_in = torch.cat([n_state, action], dim=-1)
+            state = self.bn_in(state)
+        net_in = torch.cat([state, action], dim=-1)
 
         x1 = F.silu(self.linear1(net_in))
         x2 = F.silu(self.linear2(x1))
@@ -73,24 +69,23 @@ class MixtureOfExperts(nn.Module):
         )
         return MixtureSameFamily(categorical_experts, ind_expert_dist)
 
-    def log_prob(self, state, action, next_state):
-        next_state_delta = next_state - state
+    def log_prob(self, state, action, next_state_delta):
         prob = self.forward(state, action)
         return prob.log_prob(next_state_delta)
 
-    def loss(self, state, action, next_state):
-        log_prob = self.log_prob(state, action, next_state)
+    def loss(self, state, action, next_state_delta):
+        log_prob = self.log_prob(state, action, next_state_delta)
         return (-log_prob).mean()  # NLL
 
     @torch.no_grad()
-    def next_state(self, states, actions, deterministic=False):
+    def next_state_delta(self, states, actions, deterministic=False):
         states = to_ts(states)
         actions = to_ts(actions)
         if not deterministic:
             pred_delta = self.forward(states, actions).sample()
         else:
             pred_delta = self.forward(states, actions).mean
-        return states + pred_delta
+        return pred_delta
 
     def update(
         self, states: torch.Tensor, actions: torch.Tensor, next_states: torch.Tensor

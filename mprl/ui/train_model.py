@@ -71,7 +71,6 @@ def run(cfg: DictConfig):
         num_experts=config_model.num_experts,
         network_width=config_model.network_width,
         variance=config_model.variance,
-        prep_input_fn=get_prep_fn(config_repository.get_env_name()),
         use_batch_normalization=config_model.use_batch_normalization,
     )
 
