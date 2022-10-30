@@ -4,7 +4,7 @@ auto_alpha: ${env.sac_mixed_mp.auto_alpha}
 target_entropy: ${env.sac_mixed_mp.target_entropy}
 basis_bandwidth_factor: ${env.idmp.basis_bandwidth_factor}
 gamma: 0.99
-use_imp_sampling: True
+use_imp_sampling: False
 num_basis: ${env.idmp.num_basis}
 num_dof: ${env.num_dof}
 num_steps: ${env.sac_mixed_mp.num_steps}

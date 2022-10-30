@@ -49,3 +49,8 @@ network:
   network_width: 256
   network_depth: 2
   action_scale: 1.0
+
+moe:
+  state_dim_in: 16
+  state_dim_out: 17
+  action_dim: 6

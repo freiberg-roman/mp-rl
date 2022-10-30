@@ -32,7 +32,23 @@ sac_mixed_mp:
   tau_idmp: 0.625
   num_steps: 50
 
+sac_tr:
+  alpha: 0.0
+  alpha_q: 0.0
+  auto_alpha: False
+  target_entropy: -100
+  tau_idmp: 0.625
+  num_steps: 50
+  layer_type: "kl"
+  mean_bound: 0.03
+  cov_bound: 0.001
+
 network:
   network_width: 256
   network_depth: 2
   action_scale: 1.0
+
+moe:
+  state_dim_in: 21
+  state_dim_out: 21
+  action_dim: 4

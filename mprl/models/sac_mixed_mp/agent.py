@@ -261,8 +261,17 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         return self.policy.parameters()
 
     def update(self) -> dict:
-        batch = next(self.buffer.get_iter(1, self.batch_size)).to_torch_batch()
-        states, next_states, actions, rewards, dones, sim_states = batch
+        batch = next(self.buffer.get_iter(1, self.batch_size))
+        if self.model is not None and isinstance(self.model, Trainable):
+            model_loss = self.model.update(batch=batch)
+        (
+            states,
+            next_states,
+            actions,
+            rewards,
+            dones,
+            sim_states,
+        ) = batch.to_torch_batch()
 
         # Compute critic loss
         with torch.no_grad():
@@ -334,6 +343,7 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
                 "alpha": self.alpha,
             },
             **loggable,
+            **model_loss,
         }
 
     def _off_policy_mean_loss(self):
@@ -456,7 +466,7 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
             qf1_pi, qf2_pi = self.critic(next_states, action)
             min_qf += torch.min(qf1_pi, qf2_pi)
             next_states, next_sim_states = self.model.next_state(
-                next_states, next_sim_states, action
+                next_states, action, next_sim_states
             )
             next_states = to_ts(next_states).to(self.device)
         min_qf /= self.num_steps
@@ -587,7 +597,7 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
                 min_qf = torch.min(qf1_pi, qf2_pi)
                 break
             next_states, next_sim_states = self.model.next_state(
-                next_states, next_sim_states, action
+                next_states, action, next_sim_states
             )
             next_states = to_ts(next_states).to(self.device)
         policy_loss = (-min_qf).mean() + self.alpha * log_pi.mean()

@@ -3,7 +3,7 @@ alpha_q: ${env.sac_tr.alpha_q}
 auto_alpha: ${env.sac_tr.auto_alpha}
 mean_bound: ${env.sac_tr.mean_bound}
 cov_bound: ${env.sac_tr.cov_bound}
-use_imp_sampling: True
+use_imp_sampling: False
 target_entropy: ${env.sac_tr.target_entropy}
 basis_bandwidth_factor: ${env.idmp.basis_bandwidth_factor}
 gamma: 0.99
