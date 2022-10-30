@@ -5,7 +5,7 @@ from tqdm import tqdm
 
 from mprl.config import ConfigRepository
 from mprl.env import MujocoFactory
-from mprl.models.physics.moe import MixtureOfExperts
+from mprl.models.physics.moe_constructor import MOEFactory
 from mprl.utils.buffer.random_replay_buffer import RandomRB
 
 
@@ -29,15 +29,9 @@ def fill_buffer(num_steps, env, buffer):
     return buffer
 
 
-def update_moe(batch, moe):
-    (states, next_states, actions, _, _, _) = batch.to_torch_batch()
-    update_loss = moe.update(states, actions, next_states)
-    return update_loss
-
-
 def evaluate_moe(batch, moe):
     (states, next_states, actions, _, _, _) = batch.to_torch_batch()
-    pred_next_states = moe.next_state(states, actions)
+    pred_next_states, _ = moe.next_state(states, actions)
     return (pred_next_states - next_states).pow(2).mean().item()
 
 
@@ -50,7 +44,6 @@ def run(cfg: DictConfig):
     # Dependency Injection
     config_repository = ConfigRepository(cfg)
     config_env = config_repository.get_environment_config()
-    config_model = config_repository.get_model_config()
     # Setup
     training_environment = MujocoFactory(env_config_gateway=config_repository).create()
     buffer = RandomRB(
@@ -64,15 +57,7 @@ def run(cfg: DictConfig):
     print("Filling buffer")
     buffer_train = fill_buffer(1000000, training_environment, buffer)
     buffer_eval = fill_buffer(1000000, training_environment, buffer)
-    model = MixtureOfExperts(
-        state_dim_in=config_model.state_dim_in,
-        state_dim_out=config_model.state_dim_out,
-        action_dim=config_model.action_dim,
-        num_experts=config_model.num_experts,
-        network_width=config_model.network_width,
-        variance=config_model.variance,
-        use_batch_normalization=config_model.use_batch_normalization,
-    )
+    model = MOEFactory(config_repository, config_repository).create()
 
     cfg_wandb = cfg.logging
     wandb.init(
@@ -89,7 +74,7 @@ def run(cfg: DictConfig):
         eval_batch = next(buffer_eval.get_iter(it=1, batch_size=128))
 
         # Train and evaluate model
-        update_loss = update_moe(train_batch, model)
+        update_loss = model.update(batch=train_batch)
         mse_loss_eval = evaluate_moe(eval_batch, model)
         mse_loss_train = evaluate_moe(train_batch, model)
         wandb.log(
