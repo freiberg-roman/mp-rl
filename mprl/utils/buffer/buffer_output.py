@@ -33,6 +33,8 @@ class EnvSteps:
     rewards: np.ndarray
     dones: np.ndarray
     sim_states: Tuple[np.ndarray, np.ndarray]
+    des_qposes: np.ndarray
+    des_vs: np.ndarray
 
     def __len__(self):
         return len(self.states)
@@ -45,6 +47,8 @@ class EnvSteps:
             torch.unsqueeze(torch.from_numpy(self.rewards), dim=-1),
             torch.unsqueeze(torch.from_numpy(self.dones), dim=-1),
             self.sim_states,  # they won't be used in torch
+            torch.from_numpy(self.des_qposes),
+            torch.from_numpy(self.des_vs),
         )
 
 

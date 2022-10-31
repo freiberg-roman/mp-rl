@@ -16,7 +16,7 @@ class SequenceRB(ReplayBuffer):
         sim_qpos_dim: int,
         sim_qvel_dim: int,
         minimum_sequence_length: int,
-        des_qpos_dim: Optional[int] = None,
+        des_qpos_dim: int,
         weight_mean_dim: Optional[int] = None,
         weight_cov_dim: Optional[int] = None,
     ):
@@ -27,10 +27,8 @@ class SequenceRB(ReplayBuffer):
         self._dones = np.empty(capacity, dtype=bool)
         self._qposes = np.empty((capacity, sim_qpos_dim), dtype=np.float32)
         self._qvels = np.empty((capacity, sim_qvel_dim), dtype=np.float32)
-        if des_qpos_dim is not None:
-            self._des_qposes = np.empty((capacity, des_qpos_dim), dtype=np.float32)
-        else:
-            self._des_qposes = None
+        self._des_qposes = np.empty((capacity, des_qpos_dim), dtype=np.float32)
+        self._des_vs = np.empty((capacity, des_qpos_dim), dtype=np.float32)
         if weight_mean_dim is not None:
             self._weight_means = np.empty((capacity, weight_mean_dim), dtype=np.float32)
         else:
@@ -67,7 +65,8 @@ class SequenceRB(ReplayBuffer):
         reward,
         done,
         sim_state,
-        des_q=None,
+        des_q,
+        des_v,
         weight_mean=None,
         weight_cov=None,
     ):
@@ -78,8 +77,8 @@ class SequenceRB(ReplayBuffer):
         self._dones[self._ind] = done
         self._qposes[self._ind, :] = sim_state[0]
         self._qvels[self._ind, :] = sim_state[1]
-        if des_q is not None:
-            self._des_qposes[self._ind, :] = des_q
+        self._des_qposes[self._ind, :] = des_q
+        self._des_vs[self._ind, :] = des_v
         if weight_mean is not None:
             self._weight_means[self._ind, :] = weight_mean
         if weight_cov is not None:
@@ -182,7 +181,7 @@ class SequenceRB(ReplayBuffer):
         return TrueKSequenceIter(self, it, k, batch_size=batch_size)
 
     def __getitem__(self, item):
-        if self._des_qposes is not None:
+        if self._weight_covs is not None:
             return EnvStepsExtended(
                 self._s[item, :],
                 self._next_s[item, :],
@@ -191,6 +190,7 @@ class SequenceRB(ReplayBuffer):
                 self._dones[item],
                 (self._qposes[item, :], self._qvels[item, :]),
                 self._des_qposes[item, :],
+                self._des_vs[item, :],
                 self._weight_means[item, :],
                 self._weight_covs[item, :],
             )
@@ -202,6 +202,8 @@ class SequenceRB(ReplayBuffer):
                 self._rews[item],
                 self._dones[item],
                 (self._qposes[item, :], self._qvels[item, :]),
+                self._des_qposes[item, :],
+                self._des_vs[item, :],
             )
 
     def __len__(self):
@@ -244,6 +246,10 @@ class SequenceRB(ReplayBuffer):
         return self._des_qposes
 
     @property
+    def des_vs(self):
+        return self._des_vs
+
+    @property
     def weight_means(self):
         return self._weight_means
 
@@ -270,7 +276,7 @@ class SequenceRB(ReplayBuffer):
 
     @property
     def is_extended(self):
-        return self._des_qposes is not None
+        return self._weight_covs is not None
 
 
 class TrueKSequenceIter:
@@ -307,6 +313,7 @@ class TrueKSequenceIter:
                         self._buffer.qvels[full_trajectory_indices, :],
                     ),
                     self._buffer.des_qposes[full_trajectory_indices, :],
+                    self._buffer.des_vs[full_trajectory_indices, :],
                     self._buffer.weight_means[full_trajectory_indices, :],
                     self._buffer.weight_covs[full_trajectory_indices, :],
                 )
@@ -321,6 +328,8 @@ class TrueKSequenceIter:
                         self._buffer.qposes[full_trajectory_indices, :],
                         self._buffer.qvels[full_trajectory_indices, :],
                     ),
+                    self._buffer.des_qposes[full_trajectory_indices, :],
+                    self._buffer.des_vs[full_trajectory_indices, :],
                 )
         else:
             raise StopIteration

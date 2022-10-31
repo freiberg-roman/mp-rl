@@ -12,5 +12,5 @@ mp_args:
   num_basis_outside: 0
   dt: ${env.dt}
   alpha: 20
-  weight_scale: 1000.0
-  goals_scale: 10.0
+  weight_scale: 2.0
+  goals_scale: 0.0
