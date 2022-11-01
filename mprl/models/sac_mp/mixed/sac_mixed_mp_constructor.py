@@ -9,15 +9,18 @@ from mp_pytorch.phase_gn import ExpDecayPhaseGenerator
 from mprl.controllers import MetaController, MPTrajectory, PDController
 from mprl.env.config_gateway import EnvConfigGateway
 from mprl.env.mj_factory import MujocoFactory
+from mprl.models.common.config_gateway import ModelConfigGateway
+from mprl.models.physics.ground_truth import (
+    GroundTruthPrediction,
+    GroundTruthPredictionMeta,
+)
+from mprl.models.physics.moe_constructor import MOEFactory
 from mprl.utils import SequenceRB
 
-from ..common.config_gateway import ModelConfigGateway
-from ..physics.ground_truth import GroundTruthPrediction, GroundTruthPredictionMeta
-from ..physics.moe_constructor import MOEFactory
-from .agent import SACTRL
+from .agent import SACMixedMP
 
 
-class SACTRFactory:
+class SACMixedMPFactory:
     def __init__(
         self, config_gateway: ModelConfigGateway, env_config_gateway: EnvConfigGateway
     ):
@@ -108,14 +111,13 @@ class SACTRFactory:
                 pgains=pgains, dgains=dgains, device=self._gateway.get_device()
             )
 
-        return SACTRL(
+        return SACMixedMP(
             buffer=buffer,
             state_dim=env_cfg.state_dim,
             action_dim=env_cfg.action_dim,
             network_width=cfg_net.network_width,
             network_depth=cfg_net.network_depth,
             action_scale=cfg_net.action_scale,
-            kl_loss_scale=0.1,
             lr=cfg_hyper.lr,
             gamma=cfg_hyper.gamma,
             tau=cfg_hyper.tau,
@@ -136,8 +138,5 @@ class SACTRFactory:
             planner_eval=deepcopy(planner),
             planner_imp_sampling=deepcopy(planner),
             ctrl=ctrl,
-            layer_type=cfg_hyper.layer_type,
-            mean_bound=cfg_hyper.mean_bound,
-            cov_bound=cfg_hyper.cov_bound,
             use_imp_sampling=cfg_hyper.use_imp_sampling,
         )

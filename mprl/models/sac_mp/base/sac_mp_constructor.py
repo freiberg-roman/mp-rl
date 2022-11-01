@@ -9,9 +9,9 @@ from mp_pytorch.phase_gn import ExpDecayPhaseGenerator
 from mprl.controllers import MetaController, MPTrajectory, PDController
 from mprl.env.config_gateway import EnvConfigGateway
 from mprl.env.mj_factory import MujocoFactory
+from mprl.models.common.config_gateway import ModelConfigGateway
 from mprl.utils import SequenceRB
 
-from ..common.config_gateway import ModelConfigGateway
 from .agent import SACMP
 
 

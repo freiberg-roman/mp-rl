@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions import Normal, TanhTransform
 
-from ..common import weights_init_
+from mprl.models.common import weights_init_
 
 LOG_SIG_MAX = 2
 LOG_SIG_MIN = -20

@@ -5,6 +5,7 @@ import torch
 import torch as ch
 from torch.distributions import Normal
 
+from mprl.models.common.policy_network import GaussianPolicy
 from mprl.trd_party.trl.trust_region_projections.abstract_gaussian_policy import (
     AbstractGaussianPolicy,
 )
@@ -14,9 +15,7 @@ from mprl.trd_party.trl.trust_region_projections.kl_projection_layer import (
 from mprl.trd_party.trl.trust_region_projections.w2_projection_layer import (
     WassersteinProjectionLayer,
 )
-
-from ...utils.math_helper import hard_update, soft_update
-from ..sac.networks import GaussianPolicy
+from mprl.utils.math_helper import hard_update, soft_update
 
 LOG_SIG_MAX = 2
 LOG_SIG_MIN = -20

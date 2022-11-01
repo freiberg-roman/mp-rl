@@ -8,17 +8,15 @@ import torch.nn.functional as F
 import wandb
 from matplotlib import pyplot as plt
 from mp_pytorch.util import tensor_linspace
-from torch.distributions import Independent, Normal
 from torch.optim import Adam
 
+from mprl.controllers import Controller, MPTrajectory
+from mprl.models import Actable, Evaluable, Predictable, Serializable, Trainable
+from mprl.models.common import QNetwork
+from mprl.models.common.policy_network import GaussianPolicy
 from mprl.utils import SequenceRB
 from mprl.utils.ds_helper import to_np, to_ts
 from mprl.utils.math_helper import hard_update, soft_update
-
-from ...controllers import Controller, MPTrajectory
-from .. import Actable, Evaluable, Predictable, Serializable, Trainable
-from ..common import QNetwork
-from ..sac.networks import GaussianPolicy
 
 LOG_PROB_MIN = -27.5
 LOG_PROB_MAX = 0.0

@@ -8,13 +8,12 @@ from mprl.utils.math_helper import build_lower_matrix
 
 
 class MPTrajectory:
-    def __init__(self, dt: float, mp: ProDMP, device: torch.device):
+    def __init__(self, dt: float, mp: ProDMP):
         self.mp: ProDMP = mp
         self.dt = dt
         self.current_traj: torch.Tensor = None
         self.current_traj_v: torch.Tensor = None
         self.current_t: int = 0
-        self.device: torch.device = device
         self.num_t: int = 0
 
     def init(

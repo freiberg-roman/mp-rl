@@ -7,11 +7,11 @@ import torch.nn.functional as F
 from torch.nn import Parameter
 from torch.optim import Adam
 
+from mprl.models.common.policy_network import GaussianPolicy
 from mprl.utils import RandomRB
 from mprl.utils.math_helper import hard_update, soft_update
 
 from ..common import Actable, Evaluable, QNetwork, Serializable, Trainable
-from .networks import GaussianPolicy
 
 
 class SAC(Actable, Evaluable, Serializable, Trainable):
