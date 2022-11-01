@@ -264,23 +264,6 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         action = self.ctrl.get_action(q, v, b_q, b_v)
         return action, logp, mean
 
-    def prob(self, states, weights):
-        """
-        expected dimensions of states: [num_samples, state_dim]
-        expected dimensions of weights: [num_samples, weight_dim]
-
-        returns: [num_samples, 1]
-        """
-        raise RuntimeError("Wrong policy")
-        mean, log_std = self.policy.forward(states)
-        std = log_std.exp()
-        normal_dist = Independent(Normal(mean, std), 1)
-        log_prob = torch.clamp(
-            normal_dist.log_prob(weights), min=LOG_PROB_MIN, max=LOG_PROB_MAX
-        )
-        prob = log_prob.exp().unsqueeze(1)
-        return prob
-
     # Save model parameters
     def save(self, path):
         Path(path).mkdir(parents=True, exist_ok=True)

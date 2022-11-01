@@ -14,7 +14,7 @@ def run():
                             "python -m mprl.ui.run alg=sac_mixed_mp "
                             "alg.hyper.policy_loss={} "
                             "prediction={} "
-                            "alg.mp.goals_scale={} "
+                            "alg.mp.mp_args.goals_scale={} "
                             "env={} run_id={}".format(
                                 type,
                                 prediction,

@@ -50,6 +50,7 @@ class SACTRFactory:
                 sim_qpos_dim=env_cfg.sim_qpos_dim,
                 sim_qvel_dim=env_cfg.sim_qvel_dim,
                 minimum_sequence_length=cfg_hyper.num_steps,
+                des_qpos_dim=cfg_hyper.num_dof,
             )
         is_pos_ctrl = "Pos" in self._env_gateway.get_env_name()
         env = MujocoFactory(self._env_gateway).create()
@@ -92,6 +93,7 @@ class SACTRFactory:
             dtype=torch.float32,
             device=self._gateway.get_device(),
             weights_scale=cfg_idmp.mp_args["weight_scale"],
+            auto_scale_basis=True,
             goal_scale=cfg_idmp.mp_args["goals_scale"],
             **cfg_idmp.mp_args,
         )

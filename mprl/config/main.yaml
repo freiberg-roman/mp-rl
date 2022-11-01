@@ -10,7 +10,7 @@ defaults:
 
 root_dir: "../experiments"
 device: "cpu"
-project_name: "sac-mixed-mp-test-fix"
+project_name: "sac-tr-fixed"
 run_id: 0
 
 hydra:
