@@ -1,6 +1,6 @@
 defaults:
   - _self_
-  - alg: sac
+  - alg: sac_mixed_mp
   - buffer: settings
   - env: half_cheetah
   - eval: scheme
@@ -8,9 +8,8 @@ defaults:
   - prediction: off_policy
   - train: scheme
 
-root_dir: "../experiments"
-device: "cpu"
-project_name: "sac-tr-fixed"
+root_dir: "./experiment"
+project_name: "mprl"
 run_id: 0
 
 hydra:

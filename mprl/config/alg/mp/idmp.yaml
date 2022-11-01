@@ -1,8 +1,7 @@
 mp_type: "prodmp"
 
-tau: ${env.sac_mixed_mp.tau_idmp}
 num_basis: ${env.idmp.num_basis}
-num_dof: ${env.num_dof}
+num_dof: ${env.num_actions}
 device: ${device}
 
 mp_args:

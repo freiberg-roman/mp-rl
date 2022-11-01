@@ -1,14 +1,9 @@
 name: "HalfCheetah"
 
-num_dof: 6
-q_dim: 8
-vel_dim: 8
-time_out_after: 1000
 action_dim: 6
-state_dim: 17
-sim_qpos_dim: 9
-sim_qvel_dim: 9
 dt: 0.05
+state_dim: 17
+time_out_after: 1000
 
 pd:
   pgains: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
@@ -17,6 +12,7 @@ pd:
 idmp:
   num_basis: 10
   basis_bandwidth_factor: 1.0
+  num_steps: 10
 
 sac:
   alpha: 0.1
@@ -24,20 +20,16 @@ sac:
   target_entropy: -6
 
 sac_mixed_mp:
-  alpha: 0.01
+  alpha: 0.025
   alpha_q: 0.0
   auto_alpha: False
   target_entropy: -48
-  tau_idmp: 0.5
-  num_steps: 10
 
 sac_tr:
   alpha: 0.025
   alpha_q: 0.0
   auto_alpha: False
   target_entropy: -48
-  tau_idmp: 0.5
-  num_steps: 10
   layer_type: "kl"
   mean_bound: 0.03
   cov_bound: 0.003
@@ -48,10 +40,7 @@ sac_mp:
 network:
   network_width: 256
   network_depth: 2
-  action_scale: 1.0
-  basis_scale: 1.0
 
 moe:
   state_dim_in: 16
   state_dim_out: 17
-  action_dim: 6

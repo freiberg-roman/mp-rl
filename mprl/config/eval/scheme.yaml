@@ -1,5 +1,2 @@
 num_eval_episodes: 10
-record_video: ${logging.record}
-record_mode: ${logging.mode}
-record_each: 1  # record video of agent each n epochs
 time_out_after: ${env.time_out_after}

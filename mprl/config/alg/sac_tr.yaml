@@ -3,5 +3,16 @@ defaults:
   - hyper: sac_tr
   - network: ff
   - mp: idmp
+  - tr: settings
 
 name: "sac_tr"
+
+alpha: ${env.sac_tr.alpha}
+alpha_q: ${env.sac_tr.alpha_q}
+auto_alpha: ${env.sac_tr.auto_alpha}
+use_imp_sampling: False
+target_entropy: ${env.sac_tr.target_entropy}
+gamma: 0.99
+policy_loss: "mean"  # other is mean
+target_tau: 0.005
+warm_start_steps: 0

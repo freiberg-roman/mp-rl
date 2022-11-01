@@ -1,0 +1,2 @@
+mean_bound: ${env.sac_tr.mean_bound}
+cov_bound: ${env.sac_tr.cov_bound}
