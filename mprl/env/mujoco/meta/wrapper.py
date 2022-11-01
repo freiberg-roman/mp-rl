@@ -3,7 +3,6 @@ from typing import Tuple
 
 import metaworld
 import numpy as np
-from mujoco_py import MjSimState
 
 from mprl.env.mujoco.mj_env import MujocoEnv
 
@@ -48,43 +47,7 @@ class OriginalMetaWorld(MujocoEnv):
 
     @property
     def name(self) -> str:
-        return "OriginalMetaReacher"
-
-    def get_sim_state(self):
-        """Meta world sim state
-
-        We will encode _site_targets in qpos and mocap information in qvel
-        Layout qpos sim state qpos, qpostarget site pos
-        qvel[0:15] sim state qvel,
-        :return:
-        """
-        state = self.env.get_env_state()
-        qvel = state[0].qvel
-        mocap_pos = state[1][0][0]
-        mocap_quat = state[1][1][0]
-        qvel_all = np.concatenate((qvel, mocap_pos, mocap_quat))
-
-        qpos = state[0].qpos
-        if self._name == "reach-v2":
-            target = self.env._target_pos
-            qpos_all = np.concatenate((qpos, target))
-        else:
-            qpos_all = qpos
-
-        return qpos_all, qvel_all
-
-    def set_sim_state(self, sim_state: Tuple[np.ndarray, np.ndarray]):
-        qpos_all, qvel_all = sim_state
-
-        if self._name == "reach-v2":
-            mj_sim_state = MjSimState(0.0, qpos_all[0:16], qvel_all[0:15], None, {})
-            self.env.sim.set_state(mj_sim_state)
-
-            mocap_pos, mocap_quat = (qvel_all[15:18])[None], (qvel_all[18:22])[None]
-            self.env.data.set_mocap_pos("mocap", mocap_pos)
-            self.env.data.set_mocap_quat("mocap", mocap_quat)
-            self.env.sim.forward()
-            self.env._target_pos = qpos_all[16:19]
+        return self._name
 
     def reset_model(self):
         return self.env.reset_model()
@@ -92,6 +55,10 @@ class OriginalMetaWorld(MujocoEnv):
     @property
     def dt(self):
         return self.env.model.opt.timestep * self.env.frame_skip
+
+    @property
+    def dof(self) -> int:
+        return 4  # all are positional
 
     def random_action(self):
         return self.env.action_space.sample()

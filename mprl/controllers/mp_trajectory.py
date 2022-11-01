@@ -1,5 +1,5 @@
 import numpy as np
-import torch
+import torch as ch
 from mp_pytorch.mp import ProDMP
 from mp_pytorch.util import tensor_linspace
 
@@ -11,14 +11,14 @@ class MPTrajectory:
     def __init__(self, dt: float, mp: ProDMP):
         self.mp: ProDMP = mp
         self.dt = dt
-        self.current_traj: torch.Tensor = None
-        self.current_traj_v: torch.Tensor = None
+        self.current_traj: ch.Tensor = None
+        self.current_traj_v: ch.Tensor = None
         self.current_t: int = 0
         self.num_t: int = 0
 
     def init(
         self,
-        weights: torch.Tensor,
+        weights: ch.Tensor,
         bc_pos: np.ndarray,
         bc_vel: np.ndarray,
         num_t: int,
@@ -27,7 +27,7 @@ class MPTrajectory:
         times = tensor_linspace(0, t, num_t + 1).unsqueeze(dim=0)
         bc_pos = to_ts(bc_pos, device=self.device)
         bc_vel = to_ts(bc_vel, device=self.device)
-        bc_time = torch.tensor([0.0] * weights.shape[0], device=self.device)
+        bc_time = ch.tensor([0.0] * weights.shape[0], device=self.device)
         self.current_traj = self.mp.get_traj_pos(
             times=times,
             params=weights,
@@ -90,7 +90,7 @@ class MPTrajectory:
 
     def get_log_prob(self, smp_traj, mean, chol_cov, bc_q, bc_v):
         num_t = smp_traj.shape[1] - 1
-        bc_time = torch.tensor([0.0] * mean.shape[0], device=self.device)
+        bc_time = ch.tensor([0.0] * mean.shape[0], device=self.device)
         times = tensor_linspace(0, self.dt * num_t, num_t + 1).unsqueeze(dim=0)
         chol_cov = build_lower_matrix(chol_cov)
         self.mp.update_inputs(
@@ -104,7 +104,7 @@ class MPTrajectory:
         traj_mean = self.mp.get_traj_pos(flat_shape=True)
         traj_cov = self.mp.get_traj_pos_cov()
         traj = smp_traj.flatten(start_dim=-2, end_dim=-1)
-        mv = torch.distributions.MultivariateNormal(
+        mv = ch.distributions.MultivariateNormal(
             loc=traj_mean, covariance_matrix=traj_cov, validate_args=False
         )
         return mv.log_prob(traj)

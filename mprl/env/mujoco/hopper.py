@@ -98,12 +98,12 @@ class HopperEnv(MujocoEnv):
         self._total_steps += 1
         observation = self._get_obs()
         reward = rewards - costs
-        done = self.done
+        failure = self.done
         timeout = (
             self.time_out_after is not None
             and self.current_steps >= self.time_out_after
         )
-        return observation, reward, done, timeout, self.get_sim_state(), {}
+        return observation, reward, failure, timeout
 
     def random_action(self):
         return np.random.uniform(-1, 1, (3,))

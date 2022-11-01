@@ -1,4 +1,3 @@
-import mujoco
 import numpy as np
 
 from mprl.env.mujoco.mj_env import MujocoEnv

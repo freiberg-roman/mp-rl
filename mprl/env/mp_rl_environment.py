@@ -67,3 +67,6 @@ class MPRLEnvironment(ABC):
     @abstractmethod
     def name(self) -> str:
         raise NotImplementedError
+
+    def get_info(self):
+        return {}

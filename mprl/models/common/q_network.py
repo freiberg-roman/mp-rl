@@ -1,6 +1,6 @@
 from typing import Tuple
 
-import torch
+import torch as ch
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -39,9 +39,9 @@ class QNetwork(nn.Module):
         self.apply(weights_init_)
 
     def forward(
-        self, state: torch.Tensor, action: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
-        xu = torch.cat([state, action], 1)
+        self, state: ch.Tensor, action: ch.Tensor
+    ) -> Tuple[ch.Tensor, ch.Tensor]:
+        xu = ch.cat([state, action], 1)
 
         x1, x2 = F.silu(self.first_input_layer(xu)), F.silu(self.second_input_layer(xu))
         for l1, l2 in zip(self.pipeline_one, self.pipeline_two):

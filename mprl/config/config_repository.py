@@ -1,4 +1,3 @@
-import torch
 from omegaconf import OmegaConf
 from omegaconf.omegaconf import DictConfig
 
@@ -108,14 +107,6 @@ class ConfigRepository(ModelConfigGateway, EnvConfigGateway, TrainConfigGateway)
         :return: The environment configuration.
         """
         return self._config.env
-
-    def get_device(self) -> str:
-        """
-        Returns the device to use.
-
-        :return: The device to use.
-        """
-        return torch.device(self._config.device)
 
     def get_env_name(self) -> str:
         """

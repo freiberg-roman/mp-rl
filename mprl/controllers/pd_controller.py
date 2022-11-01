@@ -1,7 +1,7 @@
 from typing import Union
 
 import numpy as np
-import torch
+import torch as ch
 
 from mprl.utils.ds_helper import to_ts
 
@@ -11,19 +11,18 @@ from .ctrl import Controller
 class PDController(Controller):
     def __init__(
         self,
-        pgains: Union[np.ndarray, torch.Tensor],
-        dgains: Union[np.ndarray, torch.Tensor],
-        device: torch.device,
+        pgains: Union[np.ndarray, ch.Tensor],
+        dgains: Union[np.ndarray, ch.Tensor],
     ):
-        self.pgains: torch.Tensor = to_ts(pgains).to(device)
-        self.dgains: torch.Tensor = to_ts(dgains).to(device)
+        self.pgains: ch.Tensor = to_ts(pgains)
+        self.dgains: ch.Tensor = to_ts(dgains)
 
     def get_action(
         self,
-        desired_pos: Union[np.ndarray, torch.Tensor],
-        desired_vel: Union[np.ndarray, torch.Tensor],
-        current_pos: Union[np.ndarray, torch.Tensor],
-        current_vel: Union[np.ndarray, torch.Tensor],
+        desired_pos: Union[np.ndarray, ch.Tensor],
+        desired_vel: Union[np.ndarray, ch.Tensor],
+        current_pos: Union[np.ndarray, ch.Tensor],
+        current_vel: Union[np.ndarray, ch.Tensor],
     ):
         desired_pos = to_ts(desired_pos)
         desired_vel = to_ts(desired_vel)

@@ -1,5 +1,3 @@
-from abc import ABC
-
 import torch as ch
 
 from mprl.models import Predictable, Trainable
