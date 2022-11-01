@@ -36,9 +36,7 @@ class MPTrajectory:
             bc_pos=bc_pos,
             bc_vel=bc_vel,
         ).squeeze()
-        self.current_traj_v = (
-            self.current_traj[..., 1:, :] - self.current_traj[..., :-1, :]
-        ) / self.dt
+        self.current_traj_v = self.mp.get_traj_vel().squeeze()
         self.current_t = 0
         self.num_t = num_t
         return self
@@ -48,7 +46,7 @@ class MPTrajectory:
             raise StopIteration
 
         q, v = (
-            self.current_traj[..., self.current_t + 1, :],
+            self.current_traj[..., self.current_t, :],
             self.current_traj_v[..., self.current_t, :],
         )
         self.current_t += 1
@@ -58,14 +56,25 @@ class MPTrajectory:
         return self
 
     def __getitem__(self, item):
+        if self.current_traj is None or self.current_traj_v is None:
+            return None, None
         q, v = (
-            self.current_traj[..., item + 1, :],
+            self.current_traj[..., item, :],
             self.current_traj_v[..., item, :],
         )
         return q, v
 
     def get_current(self):
         return self.current_traj[..., self.current_t - 1, :]
+
+    def get_next_bc(self):
+        if self.current_traj is None or self.current_traj_v is None:
+            return None, None
+        q, v = (
+            self.current_traj[..., -1, :],
+            self.current_traj_v[..., -1, :],
+        )
+        return q, v
 
     def reset_planner(self):
         self.current_traj = None

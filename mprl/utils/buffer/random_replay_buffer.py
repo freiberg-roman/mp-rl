@@ -2,7 +2,6 @@ from pathlib import Path
 from typing import Tuple
 
 import numpy as np
-from omegaconf import DictConfig
 
 from mprl.utils.buffer import EnvStep, EnvSteps
 from mprl.utils.buffer.replay_buffer import ReplayBuffer
@@ -152,6 +151,8 @@ class RandomBatchIter:
                 self._buffer.rewards[idxs],
                 self._buffer.dones[idxs],
                 (self._buffer.qposes[idxs], self._buffer.qvels[idxs]),
+                self._buffer.des_qposes[idxs],
+                self._buffer.des_vs[idxs],
             )
         else:
             raise StopIteration
