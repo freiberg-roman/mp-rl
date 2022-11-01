@@ -99,6 +99,8 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
             self.log_alpha = torch.zeros(1, requires_grad=True, device=self.device)
             self.optimizer_alpha = Adam([self.log_alpha], lr=lr)
         self.weights_log = []
+        self.traj_log = []
+        self.traj_des_log = []
         self.c_weight_mean = None
         self.c_weight_cov = None
         self.c_des_q = None
@@ -122,17 +124,16 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
             weights, _, _ = self.policy.sample(state)
             b_q_des, b_v_des = self.planner_act.get_next_bc()
             if b_q_des is not None and b_v_des is not None:
-                self.planner_eval.init(
+                self.planner_act.init(
                     weights,
                     bc_pos=b_q_des[None],
                     bc_vel=b_v_des[None],
                     num_t=self.num_steps,
                 )
             else:
-                self.planner_eval.init(
+                self.planner_act.init(
                     weights, bc_pos=b_q, bc_vel=b_v, num_t=self.num_steps
                 )
-            self.planner_act.init(weights, bc_pos=b_q, bc_vel=b_v, num_t=self.num_steps)
             q, v = next(self.planner_act)
 
         if self.use_imp_sampling:
@@ -146,8 +147,14 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
     def eval_reset(self) -> np.ndarray:
         self.planner_eval.reset_planner()
         self.weights_log = []
+        self.traj_log = []
+        self.traj_des_log = []
 
     def eval_log(self) -> Dict:
+        times_full_traj = tensor_linspace(
+            0.0, self.planner_eval.dt * len(self.traj_log), len(self.traj_log)
+        )
+        # just last planned trajectory
         times = tensor_linspace(
             0,
             self.planner_eval.dt * self.planner_eval.num_t,
@@ -156,11 +163,30 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         pos = self.planner_eval.current_traj
         if pos is None:
             return {}
-        plt.close()
+        plt.close("all")
+        figs = {}
+
         for dim in range(self.num_dof):
-            plt.plot(times, pos[:, dim])
+            figs["last_desired_traj"] = plt.figure()
+            ax = figs["last_desired_traj"].add_subplot(111)
+            ax.plot(times, pos[:, dim])
+
+        pos_real = np.array(self.traj_log)
+        pos_des = np.array(self.traj_des_log)
+        for dim in range(self.num_dof):
+            figs["traj_" + str(dim)] = plt.figure()
+            ax = figs["traj_" + str(dim)].add_subplot(111)
+            ax.plot(times_full_traj, pos_real[:, dim])
+            ax.plot(times_full_traj, pos_des[:, dim])
+
+        pos_delta = np.abs(pos_real - pos_des)
+        plt.figure()
+        for dim in range(self.num_dof):
+            figs["abs_delta_traj_" + str(dim)] = plt.figure()
+            ax = figs["abs_delta_traj_" + str(dim)].add_subplot(111)
+            ax.plot(times_full_traj, pos_delta[:, dim])
         return {
-            "traj": plt,
+            **figs,
             "weights_histogram": wandb.Histogram(np.array(self.weights_log).flatten()),
         }
 
@@ -190,6 +216,9 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
             q, v = next(self.planner_eval)
             self.weights_log.append(to_np(weights.squeeze()).flatten())
         action = self.ctrl.get_action(q, v, b_q, b_v)
+        q_curr = self.planner_eval.get_current()
+        self.traj_des_log.append(to_np((q_curr)))
+        self.traj_log.append(to_np(b_q[0]))
         return to_np(action.squeeze())
 
     def add_step(

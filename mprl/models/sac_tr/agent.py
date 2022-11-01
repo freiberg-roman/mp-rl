@@ -202,7 +202,6 @@ class SACTRL(Actable, Trainable, Serializable, Evaluable):
             )
             q, v = next(self.planner_eval)
             self.weights_log.append(to_np(weights.squeeze()).flatten())
-        self.planner_eval.get_current()
         action = self.ctrl.get_action(q, v, b_q, b_v)
         q_curr = self.planner_eval.get_current()
         self.traj_des_log.append(to_np((q_curr)))
