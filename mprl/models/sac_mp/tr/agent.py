@@ -9,12 +9,12 @@ import wandb
 from torch.optim import Adam
 
 from mprl.controllers import Controller, MPTrajectory
-from mprl.models import Actable, Evaluable, Predictable, Serializable, Trainable
-from mprl.models.common import QNetwork
 from mprl.utils import SequenceRB
 from mprl.utils.ds_helper import to_ts
 from mprl.utils.math_helper import hard_update, soft_update
 
+from ...common.interfaces import Predictable, Trainable
+from ...common.q_network import QNetwork
 from ..mp_agent import SACMPBase
 from .tr_networks import TrustRegionPolicy
 
@@ -22,7 +22,7 @@ LOG_PROB_MIN = -27.5
 LOG_PROB_MAX = 0.0
 
 
-class SACTRL(SACMPBase, Actable, Trainable, Serializable, Evaluable):
+class SACTRL(SACMPBase):
     def __init__(
         self,
         gamma: float,

@@ -10,4 +10,5 @@ output/
 saved_models/
 dkitty_eval.sh
 experiments/
+mprl/ui/experiments/
 docs/build/

@@ -5,19 +5,18 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch.nn.functional as F
-from mp_pytorch.util import tensor_linspace
 from torch.optim import Adam
 
 from mprl.controllers import Controller, MPTrajectory
-from mprl.models import Actable, Evaluable, Serializable, Trainable
-from mprl.models.common import QNetwork
+from mprl.models.common.interfaces import Actable, Evaluable, Serializable, Trainable
 from mprl.models.common.policy_network import GaussianPolicy
-from mprl.models.sac_mp.mp_agent import SACMPBase
 from mprl.utils import SequenceRB
 from mprl.utils.math_helper import hard_update, soft_update
 
+from ..mp_agent import SACMPBase
 
-class SACMP(SACMPBase, Actable, Trainable, Serializable, Evaluable):
+
+class SACMP(SACMPBase):
     def __init__(
         self,
         gamma: float,

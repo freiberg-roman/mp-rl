@@ -1,4 +1,3 @@
-from abc import ABC
 from typing import Callable, Dict
 
 import numpy as np
@@ -9,13 +8,13 @@ from mp_pytorch.util import tensor_linspace
 from torch.optim import Adam
 
 from mprl.controllers import Controller, MPTrajectory
-from mprl.models import Actable, Evaluable, Serializable, Trainable
 from mprl.models.common import QNetwork
+from mprl.models.common.interfaces import Actable, Evaluable, Serializable, Trainable
 from mprl.utils.ds_helper import to_np
 from mprl.utils.math_helper import hard_update
 
 
-class SACMPBase(ABC, Actable, Evaluable, Serializable, Trainable):
+class SACMPBase(Actable, Evaluable, Serializable, Trainable):
     def __init__(
         self,
         action_dim: int,

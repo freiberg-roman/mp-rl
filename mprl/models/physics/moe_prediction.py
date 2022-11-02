@@ -1,8 +1,9 @@
 import torch as ch
 
-from mprl.models import Predictable, Trainable
-from mprl.models.physics.moe import MixtureOfExperts
-from mprl.utils.ds_helper import to_np, to_ts
+from mprl.utils.ds_helper import to_ts
+
+from ..common.interfaces import Predictable, Trainable
+from .moe import MixtureOfExperts
 
 
 class MOEPrediction(Predictable, Trainable):

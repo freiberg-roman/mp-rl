@@ -1,8 +1,8 @@
 from mprl.env import EnvConfigGateway
-from mprl.models import ModelConfigGateway
-from mprl.models.physics.moe import MixtureOfExperts
 
+from ..common.config_gateway import ModelConfigGateway
 from ..physics.moe_prediction import MOEPrediction
+from .moe import MixtureOfExperts
 
 
 class MOEFactory:

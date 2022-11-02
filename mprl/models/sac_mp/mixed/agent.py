@@ -6,24 +6,22 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 import wandb
-from matplotlib import pyplot as plt
-from mp_pytorch.util import tensor_linspace
 from torch.optim import Adam
 
 from mprl.controllers import Controller, MPTrajectory
-from mprl.models import Actable, Evaluable, Predictable, Serializable, Trainable
-from mprl.models.common import QNetwork
-from mprl.models.common.policy_network import GaussianPolicy
-from mprl.models.sac_mp.mp_agent import SACMPBase
 from mprl.utils import SequenceRB
-from mprl.utils.ds_helper import to_np, to_ts
+from mprl.utils.ds_helper import to_ts
 from mprl.utils.math_helper import hard_update, soft_update
+
+from ...common import Predictable, QNetwork, Trainable
+from ...common.policy_network import GaussianPolicy
+from ..mp_agent import SACMPBase
 
 LOG_PROB_MIN = -27.5
 LOG_PROB_MAX = 0.0
 
 
-class SACMixedMP(SACMPBase, Actable, Trainable, Serializable, Evaluable):
+class SACMixedMP(SACMPBase):
     def __init__(
         self,
         gamma: float,
@@ -143,15 +141,6 @@ class SACMixedMP(SACMPBase, Actable, Trainable, Serializable, Evaluable):
                 des_q=self.c_des_q,
                 des_v=self.c_des_v,
             )
-
-    def sample(self, states, sim_states):
-        self.planner_update.reset_planner()
-        weights, logp, mean = self.policy.sample(states)
-        b_q, b_v = self.decompose_fn(states, sim_states)
-        self.planner_update.init(weights, bc_pos=b_q, bc_vel=b_v, num_t=self.num_steps)
-        q, v = next(self.planner_update)
-        action = self.ctrl.get_action(q, v, b_q, b_v)
-        return action, logp, mean
 
     # Save model parameters
     def save(self, path):

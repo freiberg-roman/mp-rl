@@ -125,11 +125,11 @@ class RandomBatchIter:
     def __iter__(self) -> "RandomBatchIter":
         return self
 
-    def __next__(self) -> EnvSteps:
+    def __next__(self) -> EnvStep:
         if self._current_it < self._it:
             idxs = np.random.randint(0, len(self._buffer), self._batch_size)
             self._current_it += 1
-            return EnvSteps(
+            return EnvStep(
                 self._buffer.states[idxs],
                 self._buffer.next_states[idxs],
                 self._buffer.actions[idxs],

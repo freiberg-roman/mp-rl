@@ -2,12 +2,10 @@ from typing import List, Optional, Tuple
 
 import numpy as np
 
-from mprl.utils.buffer.buffer_output import EnvStepsExtended
 from mprl.utils.buffer.random_replay_buffer import RandomBatchIter
-from mprl.utils.buffer.replay_buffer import EnvSteps, ReplayBuffer
 
 
-class SequenceRB(ReplayBuffer):
+class SequenceRB:
     def __init__(
         self,
         capacity: int,
@@ -182,7 +180,7 @@ class SequenceRB(ReplayBuffer):
 
     def __getitem__(self, item):
         if self._weight_covs is not None:
-            return EnvStepsExtended(
+            return (
                 self._s[item, :],
                 self._next_s[item, :],
                 self._acts[item, :],
@@ -195,7 +193,7 @@ class SequenceRB(ReplayBuffer):
                 self._weight_covs[item, :],
             )
         else:
-            return EnvSteps(
+            return (
                 self._s[item, :],
                 self._next_s[item, :],
                 self._acts[item, :],
@@ -302,7 +300,7 @@ class TrueKSequenceIter:
             )
             self._current_it += 1
             if self._buffer.is_extended:
-                return EnvStepsExtended(
+                return (
                     self._buffer.states[full_trajectory_indices, :],
                     self._buffer.next_states[full_trajectory_indices, :],
                     self._buffer.actions[full_trajectory_indices, :],
@@ -318,7 +316,7 @@ class TrueKSequenceIter:
                     self._buffer.weight_covs[full_trajectory_indices, :],
                 )
             else:
-                return EnvSteps(
+                return (
                     self._buffer.states[full_trajectory_indices, :],
                     self._buffer.next_states[full_trajectory_indices, :],
                     self._buffer.actions[full_trajectory_indices, :],
