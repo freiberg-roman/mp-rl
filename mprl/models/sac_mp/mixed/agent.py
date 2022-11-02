@@ -316,12 +316,13 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
             rewards,
             dones,
             sim_states,
-            _,
-            _,
+            des_qs,
+            des_vs,
         ) = batch.to_torch_batch()
 
         # Compute critic loss
         with torch.no_grad():
+            # BUG: TODO --> should be using write bc
             next_state_action, next_state_log_pi, _ = self.sample(
                 next_states, sim_states
             )

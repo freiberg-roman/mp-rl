@@ -7,12 +7,13 @@ import torch
 
 @dataclass
 class EnvStep:
+    """Used in SAC and SAC_MP"""
+
     state: np.ndarray
     next_state: np.ndarray
     action: np.ndarray
     reward: float
     done: bool
-    sim_state: Tuple[np.ndarray, np.ndarray]
 
     def to_torch_batch(self):
         return (
@@ -21,19 +22,20 @@ class EnvStep:
             torch.unsqueeze(torch.from_numpy(self.action).to(torch.float32), 0),
             torch.unsqueeze(torch.tensor(self.reward).to(torch.float32), 0),
             torch.unsqueeze(torch.tensor(self.done), 0),
-            self.sim_state,  # they won't be used in torch
         )
 
 
 @dataclass
-class EnvSteps:
+class EnvSequenceSimStateDesired:
+    """Used in SAC_MIXED_MP and SAC_TR"""
+
     states: np.ndarray
     next_states: np.ndarray
     actions: np.ndarray
     rewards: np.ndarray
     dones: np.ndarray
     sim_states: Tuple[np.ndarray, np.ndarray]
-    des_qposes: np.ndarray
+    des_qs: np.ndarray
     des_vs: np.ndarray
 
     def __len__(self):
@@ -47,22 +49,25 @@ class EnvSteps:
             torch.unsqueeze(torch.from_numpy(self.rewards), dim=-1),
             torch.unsqueeze(torch.from_numpy(self.dones), dim=-1),
             self.sim_states,  # they won't be used in torch
-            torch.from_numpy(self.des_qposes),
+            torch.from_numpy(self.des_qs),
             torch.from_numpy(self.des_vs),
         )
 
 
 @dataclass
-class EnvStepsExtended:
+class EnvSequenceSimStateDesiredStatistics:
+    """Used for SAC_MIXED_MP and SAC_TR with importance sampling"""
+
     states: np.ndarray
     next_states: np.ndarray
     actions: np.ndarray
     rewards: np.ndarray
     dones: np.ndarray
     sim_states: Tuple[np.ndarray, np.ndarray]
-    des_qposes: np.ndarray
+    des_qs: np.ndarray
+    des_vs: np.ndarray
     weight_means: np.ndarray
-    weight_covs: np.ndarray
+    weight_stds: np.ndarray
 
     def __len__(self):
         return len(self.states)
@@ -75,7 +80,8 @@ class EnvStepsExtended:
             torch.unsqueeze(torch.from_numpy(self.rewards), dim=-1),
             torch.unsqueeze(torch.from_numpy(self.dones), dim=-1),
             self.sim_states,  # they won't be used in torch
-            torch.from_numpy(self.des_qposes),
+            torch.from_numpy(self.des_qs),
+            torch.from_numpy(self.des_vs),
             torch.from_numpy(self.weight_means),
-            torch.from_numpy(self.weight_covs),
+            torch.from_numpy(self.weight_stds),
         )

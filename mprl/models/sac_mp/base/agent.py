@@ -74,16 +74,6 @@ class SACMP(Actable, Trainable, Serializable, Evaluable):
         self.optimizer_policy = Adam(self.policy.parameters(), lr=lr)
         self.optimizer_critic = Adam(self.critic.parameters(), lr=lr)
 
-    def select_weights_and_time(self, state, evaluate=False):
-        state = torch.FloatTensor(state).to(self.device).unsqueeze(0)
-        if not evaluate:
-            weight_times, _, _, _ = self.policy.sample(state)
-        else:
-            _, _, weight_times, _ = self.policy.sample(state)
-        return weight_times, {
-            "time": weight_times.squeeze()[-1].detach().cpu().numpy(),
-        }
-
     def sequence_reset(self):
         if len(self.buffer) > 0:
             self.buffer.close_trajectory()
@@ -212,12 +202,12 @@ class SACMP(Actable, Trainable, Serializable, Evaluable):
             self.buffer.get_true_k_sequence_iter(1, self.num_steps, self.batch_size)
         ).to_torch_batch()
         # dimensions (batch_size, sequence_len, data_dimension)
-        states, next_states, actions, rewards, dones, sim_states = batch
+        states, next_states, actions, rewards, dones = batch
 
         next_states_idx = torch.floor(actions[:, 0, -1]).to(
             torch.long
         )  # get the time left for the action
-        # TODO: think of version without for loop
+        # TODO use simple batch --> need to accumulate write data
         next_states_reduced = torch.zeros_like(next_states[:, 0, :])
         rewards_reduced = torch.zeros_like(rewards[:, 0, :])
         dones_reduced = torch.zeros_like(dones[:, 0, :])
@@ -287,10 +277,6 @@ class SACMP(Actable, Trainable, Serializable, Evaluable):
             # weight statistics
             "weight_mean": weights[..., :-1].detach().cpu().mean().item(),
             "weight_std": weights[..., :-1].detach().cpu().std().item(),
-            "weight_max": weights[..., :-1].detach().cpu().max().item(),
-            "weight_min": weights[..., :-1].detach().cpu().min().item(),
             "weight_goal_mean": weights[..., -1].detach().cpu().mean().item(),
             "weight_goal_std": weights[..., -1].detach().cpu().std().item(),
-            "weight_goal_max": weights[..., -1].detach().cpu().max().item(),
-            "weight_goal_min": weights[..., -1].detach().cpu().min().item(),
         }

@@ -47,7 +47,19 @@ class GaussianPolicy(nn.Module):
         log_std = ch.clamp(log_std, min=LOG_SIG_MIN, max=LOG_SIG_MAX)
         return mean, log_std
 
+    @ch.no_grad()
     def sample(self, state: ch.Tensor) -> Tuple[ch.Tensor, ch.Tensor, ch.Tensor]:
+        mean, log_std = self.forward(state)
+        std = log_std.exp()
+        normal = Normal(mean, std)
+        x_t = normal.rsample()  # for re-parameterization trick (mean + std * N(0,1))
+        y_t = ch.tanh(x_t)
+        action = y_t * self.action_scale + self.action_bias
+        return action
+
+    def sample_log_prob(
+        self, state: ch.Tensor
+    ) -> Tuple[ch.Tensor, ch.Tensor, ch.Tensor]:
         mean, log_std = self.forward(state)
         std = log_std.exp()
         normal = Normal(mean, std)
@@ -58,5 +70,10 @@ class GaussianPolicy(nn.Module):
         # Enforcing Action Bound
         log_prob -= ch.log(self.action_scale * (1 - y_t.pow(2)) + epsilon)
         log_prob = log_prob.sum(1, keepdim=True)
+        return action, log_prob
+
+    @ch.no_grad()
+    def mean(self, state: ch.Tensor) -> ch.Tensor:
+        mean, _ = self.forward(state)
         mean = ch.tanh(mean) * self.action_scale + self.action_bias
-        return action, log_prob, mean
+        return mean

@@ -10,7 +10,7 @@ class Actable(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def action(self, state: np.ndarray, info: any) -> np.ndarray:
+    def action_train(self, state: np.ndarray, info: any) -> np.ndarray:
         raise NotImplementedError
 
 

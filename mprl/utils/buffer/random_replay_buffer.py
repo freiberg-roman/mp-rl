@@ -4,10 +4,9 @@ from typing import Tuple
 import numpy as np
 
 from mprl.utils.buffer import EnvStep, EnvSteps
-from mprl.utils.buffer.replay_buffer import ReplayBuffer
 
 
-class RandomRB(ReplayBuffer):
+class RandomRB:
     def __init__(
         self, capacity: int, state_dim, action_dim, sim_qpos_dim, sim_qvel_dim
     ):
@@ -19,8 +18,8 @@ class RandomRB(ReplayBuffer):
         self._acts = np.empty((capacity, action_dim), dtype=np.float32)
         self._rews = np.empty(capacity, dtype=np.float32)
         self._dones = np.empty(capacity, dtype=bool)
-        self._qposes = np.empty((capacity, sim_qpos_dim), dtype=np.float32)
-        self._qvels = np.empty((capacity, sim_qvel_dim), dtype=np.float32)
+        self._sim_qs = np.empty((capacity, sim_qpos_dim), dtype=np.float32)
+        self._sim_vs = np.empty((capacity, sim_qvel_dim), dtype=np.float32)
 
     def add(
         self,
@@ -114,20 +113,6 @@ class RandomRB(ReplayBuffer):
     @property
     def qposes(self):
         return self._qposes
-
-
-class RandomSequenceBasedRB(RandomRB):
-    def __init__(self, cfg):
-        self._cfg = cfg
-        self._capacity = 0
-        self._ind = 0
-        self._s = np.empty((cfg.capacity, cfg.env.state_dim), dtype=np.float32)
-        self._next_s = np.empty((cfg.capacity, cfg.env.state_dim), dtype=np.float32)
-        cfg.env.action_dim = eval(cfg.env.action_dim) + 1  # add one for time action
-
-        self._acts = np.empty((cfg.capacity, cfg.env.action_dim), dtype=np.float32)
-        self._rews = np.empty(cfg.capacity, dtype=np.float32)
-        self._dones = np.empty(cfg.capacity, dtype=bool)
 
 
 class RandomBatchIter:
