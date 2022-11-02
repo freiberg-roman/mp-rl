@@ -3,7 +3,7 @@ from typing import Tuple
 
 import numpy as np
 
-from mprl.utils.buffer import EnvStep, EnvSteps
+from mprl.utils.buffer import EnvStep
 
 
 class RandomRB:

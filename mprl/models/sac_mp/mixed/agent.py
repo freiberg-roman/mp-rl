@@ -14,6 +14,7 @@ from mprl.controllers import Controller, MPTrajectory
 from mprl.models import Actable, Evaluable, Predictable, Serializable, Trainable
 from mprl.models.common import QNetwork
 from mprl.models.common.policy_network import GaussianPolicy
+from mprl.models.sac_mp.mp_agent import SACMPBase
 from mprl.utils import SequenceRB
 from mprl.utils.ds_helper import to_np, to_ts
 from mprl.utils.math_helper import hard_update, soft_update
@@ -22,7 +23,7 @@ LOG_PROB_MIN = -27.5
 LOG_PROB_MAX = 0.0
 
 
-class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
+class SACMixedMP(SACMPBase, Actable, Trainable, Serializable, Evaluable):
     def __init__(
         self,
         gamma: float,
@@ -108,116 +109,6 @@ class SACMixedMP(Actable, Trainable, Serializable, Evaluable):
         if len(self.buffer) > 0:
             self.buffer.close_trajectory()
         self.planner_act.reset_planner()
-
-    @torch.no_grad()
-    def action(self, state: np.ndarray, info: any) -> np.ndarray:
-        sim_state = info
-        b_q, b_v = self.decompose_fn(state, sim_state)
-        b_q = torch.FloatTensor(b_q).to(self.device).unsqueeze(0)
-        b_v = torch.FloatTensor(b_v).to(self.device).unsqueeze(0)
-        state = torch.FloatTensor(state).to(self.device).unsqueeze(0)
-        try:
-            q, v = next(self.planner_act)
-        except StopIteration:
-            weights, _, _ = self.policy.sample(state)
-            b_q_des, b_v_des = self.planner_act.get_next_bc()
-            if b_q_des is not None and b_v_des is not None:
-                self.planner_act.init(
-                    weights,
-                    bc_pos=b_q_des[None],
-                    bc_vel=b_v_des[None],
-                    num_t=self.num_steps,
-                )
-            else:
-                self.planner_act.init(
-                    weights, bc_pos=b_q, bc_vel=b_v, num_t=self.num_steps
-                )
-            q, v = next(self.planner_act)
-
-        if self.use_imp_sampling:
-            (self.c_weight_mean, self.c_weight_cov) = self.policy.forward(state)
-            self.c_weight_cov = self.c_weight_cov.exp()
-        self.c_des_q = q
-        self.c_des_v = v
-        action = self.ctrl.get_action(q, v, b_q, b_v)
-        return to_np(action.squeeze())
-
-    def eval_reset(self) -> np.ndarray:
-        self.planner_eval.reset_planner()
-        self.weights_log = []
-        self.traj_log = []
-        self.traj_des_log = []
-
-    def eval_log(self) -> Dict:
-        times_full_traj = tensor_linspace(
-            0.0, self.planner_eval.dt * len(self.traj_log), len(self.traj_log)
-        )
-        # just last planned trajectory
-        times = tensor_linspace(
-            0,
-            self.planner_eval.dt * self.planner_eval.num_t,
-            self.planner_eval.num_t + 1,
-        )
-        pos = self.planner_eval.current_traj
-        if pos is None:
-            return {}
-        plt.close("all")
-        figs = {}
-
-        for dim in range(self.num_dof):
-            figs["last_desired_traj"] = plt.figure()
-            ax = figs["last_desired_traj"].add_subplot(111)
-            ax.plot(times, pos[:, dim])
-
-        pos_real = np.array(self.traj_log)
-        pos_des = np.array(self.traj_des_log)
-        for dim in range(self.num_dof):
-            figs["traj_" + str(dim)] = plt.figure()
-            ax = figs["traj_" + str(dim)].add_subplot(111)
-            ax.plot(times_full_traj, pos_real[:, dim])
-            ax.plot(times_full_traj, pos_des[:, dim])
-
-        pos_delta = np.abs(pos_real - pos_des)
-        plt.figure()
-        for dim in range(self.num_dof):
-            figs["abs_delta_traj_" + str(dim)] = plt.figure()
-            ax = figs["abs_delta_traj_" + str(dim)].add_subplot(111)
-            ax.plot(times_full_traj, pos_delta[:, dim])
-        return {
-            **figs,
-            "weights_histogram": wandb.Histogram(np.array(self.weights_log).flatten()),
-        }
-
-    @torch.no_grad()
-    def action_eval(self, state: np.ndarray, info: any) -> np.ndarray:
-        sim_state = info
-        b_q, b_v = self.decompose_fn(state, sim_state)
-        b_q = torch.FloatTensor(b_q).to(self.device).unsqueeze(0)
-        b_v = torch.FloatTensor(b_v).to(self.device).unsqueeze(0)
-        state = torch.FloatTensor(state).to(self.device).unsqueeze(0)
-        try:
-            q, v = next(self.planner_eval)
-        except StopIteration:
-            _, _, weights = self.policy.sample(state)
-            b_q_des, b_v_des = self.planner_eval.get_next_bc()
-            if b_q_des is not None and b_v_des is not None:
-                self.planner_eval.init(
-                    weights,
-                    bc_pos=b_q_des[None],
-                    bc_vel=b_v_des[None],
-                    num_t=self.num_steps,
-                )
-            else:
-                self.planner_eval.init(
-                    weights, bc_pos=b_q, bc_vel=b_v, num_t=self.num_steps
-                )
-            q, v = next(self.planner_eval)
-            self.weights_log.append(to_np(weights.squeeze()).flatten())
-        action = self.ctrl.get_action(q, v, b_q, b_v)
-        q_curr = self.planner_eval.get_current()
-        self.traj_des_log.append(to_np((q_curr)))
-        self.traj_log.append(to_np(b_q[0]))
-        return to_np(action.squeeze())
 
     def add_step(
         self,

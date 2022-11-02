@@ -12,25 +12,21 @@ from mprl.controllers import Controller, MPTrajectory
 from mprl.models import Actable, Evaluable, Serializable, Trainable
 from mprl.models.common import QNetwork
 from mprl.models.common.policy_network import GaussianPolicy
+from mprl.models.sac_mp.mp_agent import SACMPBase
 from mprl.utils import SequenceRB
-from mprl.utils.ds_helper import to_np
 from mprl.utils.math_helper import hard_update, soft_update
 
 
-class SACMP(Actable, Trainable, Serializable, Evaluable):
+class SACMP(SACMPBase, Actable, Trainable, Serializable, Evaluable):
     def __init__(
         self,
         gamma: float,
         tau: float,
         alpha: float,
-        num_steps: int,
         lr: float,
-        batch_size: int,
-        device: torch.device,
         state_dim: int,
         action_dim: int,
         num_basis: int,
-        num_dof: int,
         network_width: int,
         network_depth: int,
         planner_act: MPTrajectory,
@@ -40,98 +36,37 @@ class SACMP(Actable, Trainable, Serializable, Evaluable):
         buffer: SequenceRB,
         decompose_fn: Callable,
     ):
+        super(SACMP).__init__(
+            action_dim,
+            ctrl,
+            decompose_fn,
+            lr,
+            network_width,
+            network_depth,
+            planner_act,
+            planner_eval,
+            state_dim,
+        )
         # Parameters
         self.gamma: float = gamma
         self.tau: float = tau
         self.alpha: float = alpha
-        self.num_steps: int = num_steps
-        self.device: torch.device = device
         self.buffer: SequenceRB = buffer
-        self.planner_act: MPTrajectory = planner_act
-        self.planner_eval: MPTrajectory = planner_eval
         self.planner_update: MPTrajectory = planner_update
-        self.ctrl: Controller = ctrl
-        self.decompose_fn: Callable = decompose_fn
-        self.batch_size: int = batch_size
-        self._current_weights: torch.Tensor = None
-        self._current_time: int = -1
-        self.num_dof: int = num_dof
-        action_dim = (num_basis + 1) * num_dof + 1
+        weight_dim = (num_basis + 1) * action_dim + 1
 
         # Networks
-        self.critic: QNetwork = QNetwork(
-            (state_dim, action_dim), network_width, network_depth
-        ).to(device=self.device)
-        self.critic_target: QNetwork = QNetwork(
-            (state_dim, action_dim), network_width, network_depth
-        ).to(self.device)
-        hard_update(self.critic_target, self.critic)
         self.policy: GaussianPolicy = GaussianPolicy(
-            (state_dim, (num_basis + 1) * num_dof),
+            (state_dim, weight_dim),
             network_width,
             network_depth,
         ).to(self.device)
         self.optimizer_policy = Adam(self.policy.parameters(), lr=lr)
-        self.optimizer_critic = Adam(self.critic.parameters(), lr=lr)
 
     def sequence_reset(self):
         if len(self.buffer) > 0:
             self.buffer.close_trajectory()
         self.planner_act.reset_planner()
-
-    @torch.no_grad()
-    def action(self, state: np.ndarray, info: any) -> np.ndarray:
-        sim_state = info
-        b_q, b_v = self.decompose_fn(state, sim_state)
-        b_q = torch.FloatTensor(b_q).to(self.device).unsqueeze(0)
-        b_v = torch.FloatTensor(b_v).to(self.device).unsqueeze(0)
-        state = torch.FloatTensor(state).to(self.device).unsqueeze(0)
-        try:
-            q, v = next(self.planner_act)
-        except StopIteration:
-            weights, _, _ = self.policy.sample(state)
-            self._current_weights = weights
-            self._current_time = self.num_steps
-            self.planner_act.init(weights, bc_pos=b_q, bc_vel=b_v, num_t=self.num_steps)
-            q, v = next(self.planner_act)
-        action = self.ctrl.get_action(q, v, b_q, b_v)
-        self._current_time -= 1
-        return to_np(action.squeeze())
-
-    def eval_reset(self) -> np.ndarray:
-        self.planner_eval.reset_planner()
-
-    def eval_log(self) -> Dict:
-        times = tensor_linspace(
-            0,
-            self.planner_eval.dt * self.planner_eval.num_t,
-            self.planner_eval.num_t + 1,
-        )
-        pos = self.planner_eval.current_traj
-        if pos is None:
-            return {}
-        plt.close()
-        for dim in range(self.num_dof):
-            plt.plot(times, pos[:, dim])
-        return {"traj": plt}
-
-    @torch.no_grad()
-    def action_eval(self, state: np.ndarray, info: any) -> np.ndarray:
-        sim_state = info
-        b_q, b_v = self.decompose_fn(state, sim_state)
-        b_q = torch.FloatTensor(b_q).to(self.device).unsqueeze(0)
-        b_v = torch.FloatTensor(b_v).to(self.device).unsqueeze(0)
-        state = torch.FloatTensor(state).to(self.device).unsqueeze(0)
-        try:
-            q, v = next(self.planner_eval)
-        except StopIteration:
-            _, _, weights = self.policy.sample(state)
-            self.planner_eval.init(
-                weights, bc_pos=b_q, bc_vel=b_v, num_t=self.num_steps
-            )
-            q, v = next(self.planner_eval)
-        action = self.ctrl.get_action(q, v, b_q, b_v)
-        return to_np(action.squeeze())
 
     def add_step(
         self,
@@ -142,13 +77,7 @@ class SACMP(Actable, Trainable, Serializable, Evaluable):
         done: bool,
         sim_state: Tuple[np.ndarray, np.ndarray],
     ):
-        time = np.array([self._current_time]) + np.random.uniform(
-            low=0.0, high=1.0
-        )  # smear time
-        weight_time = np.concatenate(
-            (self._current_weights.squeeze().cpu().numpy(), time)
-        )
-        self.buffer.add(state, next_state, weight_time, reward, done, sim_state)
+        self.buffer.add(state, next_state, self.c_weights, reward, done, sim_state)
 
     def sample(self, state):
         return self.policy.sample(state)
@@ -198,29 +127,9 @@ class SACMP(Actable, Trainable, Serializable, Evaluable):
         self.critic_target.train()
 
     def update(self) -> dict:
-        batch = next(
-            self.buffer.get_true_k_sequence_iter(1, self.num_steps, self.batch_size)
-        ).to_torch_batch()
         # dimensions (batch_size, sequence_len, data_dimension)
+        batch = self.buffer.get_random_batch().to_torch_batch()
         states, next_states, actions, rewards, dones = batch
-
-        next_states_idx = torch.floor(actions[:, 0, -1]).to(
-            torch.long
-        )  # get the time left for the action
-        # TODO use simple batch --> need to accumulate write data
-        next_states_reduced = torch.zeros_like(next_states[:, 0, :])
-        rewards_reduced = torch.zeros_like(rewards[:, 0, :])
-        dones_reduced = torch.zeros_like(dones[:, 0, :])
-        for i, idx in zip(range(self.batch_size), next_states_idx):
-            next_states_reduced[i, :] = next_states[i, idx, :]
-            rewards_reduced[i, :] = rewards[i, idx, :]
-            dones_reduced[i, :] = dones[i, idx, :]
-
-        next_states = next_states_reduced
-        states = states[:, 0, :]
-        actions = actions[:, 0, :]
-        rewards = rewards_reduced
-        dones = dones_reduced
         # Compute critic loss
         with torch.no_grad():
             next_state_action, next_state_log_pi, _ = self.sample(next_states)

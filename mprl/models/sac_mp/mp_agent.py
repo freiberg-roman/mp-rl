@@ -56,6 +56,10 @@ class SACMPBase(ABC, Actable, Evaluable, Serializable, Trainable):
         """Should just return the sampled policy actions, not the log probability."""
         raise NotImplementedError
 
+    def replan(self, state, sim_state, weights):
+        """Called at the beginning of each replan."""
+        pass
+
     @ch.no_grad()
     def action_train(self, state: np.ndarray, info: any) -> np.ndarray:
         sim_state = info
@@ -65,6 +69,9 @@ class SACMPBase(ABC, Actable, Evaluable, Serializable, Trainable):
         state = ch.FloatTensor(state).to(self.device).unsqueeze(0)
         try:
             q, v = next(self.planner_act)
+            self.c_des_q = q
+            self.c_des_v = v
+            action = self.ctrl.get_action(q, v, b_q, b_v)
         except StopIteration:
             weights = self.sample(state)
             b_q_des, b_v_des = self.planner_act.get_next_bc()
@@ -80,10 +87,11 @@ class SACMPBase(ABC, Actable, Evaluable, Serializable, Trainable):
                     weights, bc_pos=b_q, bc_vel=b_v, num_t=self.num_steps
                 )
             q, v = next(self.planner_act)
+            self.c_des_q = q
+            self.c_des_v = v
+            action = self.ctrl.get_action(q, v, b_q, b_v)
+            self.replan(state, sim_state, weights)
 
-        self.c_des_q = q
-        self.c_des_v = v
-        action = self.ctrl.get_action(q, v, b_q, b_v)
         return to_np(action.squeeze())
 
     def eval_reset(self) -> np.ndarray:
