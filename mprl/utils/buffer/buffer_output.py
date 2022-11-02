@@ -17,11 +17,11 @@ class EnvStep:
 
     def to_torch_batch(self):
         return (
-            torch.unsqueeze(torch.from_numpy(self.state).to(torch.float32), 0),
-            torch.unsqueeze(torch.from_numpy(self.next_state).to(torch.float32), 0),
-            torch.unsqueeze(torch.from_numpy(self.action).to(torch.float32), 0),
-            torch.unsqueeze(torch.tensor(self.reward).to(torch.float32), 0),
-            torch.unsqueeze(torch.tensor(self.done), 0),
+            torch.from_numpy(self.state).to(torch.float32),
+            torch.from_numpy(self.next_state).to(torch.float32),
+            torch.from_numpy(self.action).to(torch.float32),
+            torch.unsqueeze(torch.tensor(self.reward).to(torch.float32), dim=-1),
+            torch.unsqueeze(torch.tensor(self.done), dim=-1),
         )
 
 

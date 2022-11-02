@@ -4,6 +4,8 @@ action_dim: 6
 dt: 0.05
 state_dim: 17
 time_out_after: 1000
+sim_qp_dim: 9
+sim_qv_dim: 9
 
 pd:
   pgains: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]

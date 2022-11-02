@@ -7,9 +7,7 @@ from mprl.utils.buffer import EnvStep
 
 
 class RandomRB:
-    def __init__(
-        self, capacity: int, state_dim, action_dim, sim_qpos_dim, sim_qvel_dim
-    ):
+    def __init__(self, capacity: int, state_dim, action_dim, sim_qp_dim, sim_qv_dim):
         self._capacity = 0
         self._max_capacity = capacity
         self._ind = 0
@@ -18,8 +16,8 @@ class RandomRB:
         self._acts = np.empty((capacity, action_dim), dtype=np.float32)
         self._rews = np.empty(capacity, dtype=np.float32)
         self._dones = np.empty(capacity, dtype=bool)
-        self._sim_qs = np.empty((capacity, sim_qpos_dim), dtype=np.float32)
-        self._sim_vs = np.empty((capacity, sim_qvel_dim), dtype=np.float32)
+        self._sim_qps = np.empty((capacity, sim_qp_dim), dtype=np.float32)
+        self._sim_qvs = np.empty((capacity, sim_qv_dim), dtype=np.float32)
 
     def add(
         self,
@@ -35,8 +33,8 @@ class RandomRB:
         self._acts[self._ind, :] = action
         self._rews[self._ind] = reward
         self._dones[self._ind] = done
-        self._qposes[self._ind, :] = sim_state[0]
-        self._qvels[self._ind, :] = sim_state[1]
+        self._sim_qps[self._ind, :] = sim_state[0]
+        self._sim_qvs[self._ind, :] = sim_state[1]
         self._capacity = min(self._capacity + 1, self._max_capacity)
         self._ind = (self._ind + 1) % self._max_capacity
 
@@ -51,7 +49,7 @@ class RandomRB:
                 self._acts[item],
                 self._rews[item],
                 self._dones[item],
-                (self._qposes[item], self._qvels[item]),
+                (self._sim_qps[item], self._sim_qvs[item]),
             )
         else:
             raise ValueError(
@@ -69,8 +67,8 @@ class RandomRB:
         np.save(path + "actions.npy", self._acts)
         np.save(path + "rewards.npy", self._rews)
         np.save(path + "dones.npy", self._dones)
-        np.save(path + "qposes.npy", self._qposes)
-        np.save(path + "qvels.npy", self._qvels)
+        np.save(path + "qps.npy", self._qps)
+        np.save(path + "qvs.npy", self._qvs)
         np.save(path + "capacity.npy", np.array([self._capacity], dtype=int))
         np.save(path + "index.npy", np.array([self._ind], dtype=int))
 
@@ -81,8 +79,8 @@ class RandomRB:
         self._acts = np.load(path + "actions.npy")
         self._rews = np.load(path + "rewards.npy")
         self._dones = np.load(path + "dones.npy")
-        self._qposes = np.load(path + "qposes.npy")
-        self._qvels = np.load(path + "qvels.npy")
+        self._qps = np.load(path + "qps.npy")
+        self._qvs = np.load(path + "qvs.npy")
         self._capacity = np.load(path + "capacity.npy").item()
         self._ind = np.load(path + "index.npy").item()
 
@@ -107,12 +105,12 @@ class RandomRB:
         return self._dones
 
     @property
-    def qvels(self):
-        return self._qvels
+    def qps(self):
+        return self._sim_qps
 
     @property
-    def qposes(self):
-        return self._qposes
+    def qvs(self):
+        return self._sim_qvs
 
 
 class RandomBatchIter:
@@ -135,9 +133,6 @@ class RandomBatchIter:
                 self._buffer.actions[idxs],
                 self._buffer.rewards[idxs],
                 self._buffer.dones[idxs],
-                (self._buffer.qposes[idxs], self._buffer.qvels[idxs]),
-                self._buffer.des_qposes[idxs],
-                self._buffer.des_vs[idxs],
             )
         else:
             raise StopIteration

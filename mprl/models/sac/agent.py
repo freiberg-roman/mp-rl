@@ -41,19 +41,19 @@ class SAC(Actable, Evaluable, Serializable, Trainable):
         # Networks
         self.critic: QNetwork = QNetwork(
             (state_dim, action_dim), network_width, network_depth
-        ).to(device=self.device)
+        )
         self.critic_target: QNetwork = QNetwork(
             (state_dim, action_dim), network_width, network_depth
-        ).to(self.device)
+        )
         hard_update(self.critic_target, self.critic)
         self.policy: GaussianPolicy = GaussianPolicy(
             (state_dim, action_dim), network_width, network_depth
-        ).to(self.device)
+        )
         self.optimizer_policy = Adam(self.policy.parameters(), lr=lr)
         self.optimizer_critic = Adam(self.critic.parameters(), lr=lr)
         if automatic_entropy_tuning:
             self.target_entropy = -action_dim
-            self.log_alpha = ch.zeros(1, requires_grad=True, device=self.device)
+            self.log_alpha = ch.zeros(1, requires_grad=True)
             self.alpha_optim = Adam([self.log_alpha], lr=lr)
 
     def sequence_reset(self):
@@ -61,10 +61,10 @@ class SAC(Actable, Evaluable, Serializable, Trainable):
         pass
 
     @ch.no_grad()
-    def action(self, state: np.ndarray, info) -> np.ndarray:
+    def action_train(self, state: np.ndarray, info) -> np.ndarray:
         _ = info  # not used
-        state = ch.FloatTensor(state).to(self.device).unsqueeze(0)
-        action, _, _ = self.policy.sample(state)
+        state = ch.FloatTensor(state).unsqueeze(0)
+        action = self.policy.sample(state)
         return action.detach().cpu().numpy()[0]
 
     def eval_reset(self) -> np.ndarray:
@@ -76,9 +76,9 @@ class SAC(Actable, Evaluable, Serializable, Trainable):
 
     def action_eval(self, state: np.ndarray, info: any) -> np.ndarray:
         _ = info
-        state = ch.FloatTensor(state).to(self.device).unsqueeze(0)
-        _, _, action = self.policy.sample(state)
-        return action.detach().cpu().numpy()[0]
+        state = ch.FloatTensor(state).unsqueeze(0)
+        mean_action = self.policy.mean(state)
+        return mean_action.detach().cpu().numpy()[0]
 
     def add_step(
         self,
@@ -135,11 +135,13 @@ class SAC(Actable, Evaluable, Serializable, Trainable):
 
     def update(self) -> dict:
         batch = next(self.buffer.get_iter(1, self.batch_size)).to_torch_batch()
-        states, next_states, actions, rewards, dones, _ = batch
+        states, next_states, actions, rewards, dones = batch
 
         # Compute critic loss
         with ch.no_grad():
-            next_state_action, next_state_log_pi, _ = self.policy.sample(next_states)
+            next_state_action, next_state_log_pi = self.policy.sample_log_prob(
+                next_states
+            )
             qf1_next_target, qf2_next_target = self.critic_target(
                 next_states, next_state_action
             )
@@ -168,7 +170,7 @@ class SAC(Actable, Evaluable, Serializable, Trainable):
         self.optimizer_critic.step()
 
         # Compute policy loss
-        pi, log_pi, _ = self.policy.sample(states)
+        pi, log_pi = self.policy.sample_log_prob(states)
         qf1_pi, qf2_pi = self.critic(states, pi)
         min_qf_pi = ch.min(qf1_pi, qf2_pi)
         policy_loss = (

@@ -1,7 +1,7 @@
 total_steps: 3000000
 steps_per_epoch: 20000
 batch_size: 128
-warm_start_steps: ${alg.hyper.warm_start_steps}
+warm_start_steps: ${alg.warm_start_steps}
 update_after_first: 5000
 update_each: 1
 update_for: 1
