@@ -22,18 +22,30 @@ class MujocoFactory:
             return HopperEnv(base=BASE)
         if cfg.get_env_name() == "Reacher":
             return ReacherEnv(base=BASE)
-        if cfg.get_env_name() == "MetaPosReacher":
+        if cfg.get_env_name() == "MetaReacher":
             from .mujoco.meta import OriginalMetaWorld
 
             return OriginalMetaWorld("reach-v2")
-        if cfg.get_env_name() == "MetaPosWindowOpen":
+        if cfg.get_env_name() == "MetaWindowOpen":
             from .mujoco.meta import OriginalMetaWorld
 
             return OriginalMetaWorld("window-open-v2")
-        if cfg.get_env_name() == "MetaPosButtonPress":
+        if cfg.get_env_name() == "MetaButtonPress":
             from .mujoco.meta import OriginalMetaWorld
 
             return OriginalMetaWorld("button-press-v2")
+        if cfg.get_env_name() == "MetaBinPick":
+            from .mujoco.meta import OriginalMetaWorld
+
+            return OriginalMetaWorld("bin-pick-v2")
+        if cfg.get_env_name() == "MetaPush":
+            from .mujoco.meta import OriginalMetaWorld
+
+            return OriginalMetaWorld("push-v2")
+        if cfg.get_env_name() == "MetaBoxClose":
+            from .mujoco.meta import OriginalMetaWorld
+
+            return OriginalMetaWorld("box-close-v2")
 
     @staticmethod
     def get_test_env():

@@ -8,23 +8,23 @@ from mprl.utils.math_helper import build_lower_matrix
 
 
 class MPTrajectory:
-    def __init__(self, dt: float, mp: ProDMP):
+    def __init__(self, dt: float, mp: ProDMP, num_steps: int):
         self.mp: ProDMP = mp
         self.dt = dt
         self.current_traj: ch.Tensor = None
         self.current_traj_v: ch.Tensor = None
         self.current_t: int = 0
         self.num_t: int = 0
+        self.num_steps: int = num_steps
 
     def init(
         self,
         weights: ch.Tensor,
         bc_pos: np.ndarray,
         bc_vel: np.ndarray,
-        num_t: int,
     ) -> "MPTrajectory":
-        t = self.dt * num_t
-        times = tensor_linspace(0, t, num_t + 1).unsqueeze(dim=0)
+        t = self.dt * self.num_steps
+        times = tensor_linspace(0, t, self.num_steps + 1).unsqueeze(dim=0)
         bc_pos = to_ts(bc_pos, device=self.device)
         bc_vel = to_ts(bc_vel, device=self.device)
         bc_time = ch.tensor([0.0] * weights.shape[0], device=self.device)
@@ -37,11 +37,10 @@ class MPTrajectory:
         ).squeeze()
         self.current_traj_v = self.mp.get_traj_vel().squeeze()
         self.current_t = 0
-        self.num_t = num_t
         return self
 
     def __next__(self):
-        if self.current_traj is None or self.current_t >= self.num_t:
+        if self.current_traj is None or self.current_t >= self.num_steps:
             raise StopIteration
 
         q, v = (
