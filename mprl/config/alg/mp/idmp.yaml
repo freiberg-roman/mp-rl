@@ -1,7 +1,7 @@
 mp_type: "prodmp"
 
 num_basis: ${env.idmp.num_basis}
-num_dof: ${env.num_actions}
+num_dof: ${env.action_dim}
 device: ${device}
 
 mp_args:

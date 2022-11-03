@@ -25,9 +25,9 @@ class MPTrajectory:
     ) -> "MPTrajectory":
         t = self.dt * self.num_steps
         times = tensor_linspace(0, t, self.num_steps + 1).unsqueeze(dim=0)
-        bc_pos = to_ts(bc_pos, device=self.device)
-        bc_vel = to_ts(bc_vel, device=self.device)
-        bc_time = ch.tensor([0.0] * weights.shape[0], device=self.device)
+        bc_pos = to_ts(bc_pos)
+        bc_vel = to_ts(bc_vel)
+        bc_time = ch.tensor([0.0] * weights.shape[0])
         self.current_traj = self.mp.get_traj_pos(
             times=times,
             params=weights,

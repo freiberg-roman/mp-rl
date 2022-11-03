@@ -134,8 +134,9 @@ class SAC(Actable, Evaluable, Serializable, Trainable):
         self.critic_target.train()
 
     def update(self) -> dict:
-        batch = next(self.buffer.get_iter(1, self.batch_size)).to_torch_batch()
-        states, next_states, actions, rewards, dones = batch
+        states, next_states, actions, rewards, dones = self.buffer.sample_batch(
+            batch_size=self.batch_size
+        )
 
         # Compute critic loss
         with ch.no_grad():

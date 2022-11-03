@@ -9,7 +9,7 @@ defaults:
   - train: scheme
 
 root_dir: "./experiment"
-project_name: "mprl"
+project_name: "mprl-refactoring"
 run_id: 0
 
 hydra:

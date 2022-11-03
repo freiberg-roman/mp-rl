@@ -32,14 +32,15 @@ class SACMPBase(Actable, Evaluable, Serializable, Trainable):
         self.planner_eval: MPTrajectory = planner_eval
         self.ctrl: Controller = ctrl
         self.decompose_fn: Callable = decompose_fn
+        self.num_dof: int = action_dim
 
         # Networks
         self.critic: QNetwork = QNetwork(
             (state_dim, action_dim), network_width, network_depth
-        ).to(device=self.device)
+        )
         self.critic_target: QNetwork = QNetwork(
             (state_dim, action_dim), network_width, network_depth
-        ).to(self.device)
+        )
         hard_update(self.critic_target, self.critic)
         self.optimizer_critic = Adam(self.critic.parameters(), lr=lr)
 
@@ -63,9 +64,9 @@ class SACMPBase(Actable, Evaluable, Serializable, Trainable):
     def action_train(self, state: np.ndarray, info: any) -> np.ndarray:
         sim_state = info
         b_q, b_v = self.decompose_fn(state, sim_state)
-        b_q = ch.FloatTensor(b_q).to(self.device).unsqueeze(0)
-        b_v = ch.FloatTensor(b_v).to(self.device).unsqueeze(0)
-        state = ch.FloatTensor(state).to(self.device).unsqueeze(0)
+        b_q = ch.FloatTensor(b_q).unsqueeze(0)
+        b_v = ch.FloatTensor(b_v).unsqueeze(0)
+        state = ch.FloatTensor(state).unsqueeze(0)
         try:
             q, v = next(self.planner_act)
             self.c_des_q = q
@@ -79,12 +80,9 @@ class SACMPBase(Actable, Evaluable, Serializable, Trainable):
                     weights,
                     bc_pos=b_q_des[None],
                     bc_vel=b_v_des[None],
-                    num_t=self.num_steps,
                 )
             else:
-                self.planner_act.init(
-                    weights, bc_pos=b_q, bc_vel=b_v, num_t=self.num_steps
-                )
+                self.planner_act.init(weights, bc_pos=b_q, bc_vel=b_v)
             q, v = next(self.planner_act)
             self.c_des_q = q
             self.c_des_v = v
@@ -106,8 +104,8 @@ class SACMPBase(Actable, Evaluable, Serializable, Trainable):
         # just last planned trajectory
         times = tensor_linspace(
             0,
-            self.planner_eval.dt * self.planner_eval.num_t,
-            self.planner_eval.num_t + 1,
+            self.planner_eval.dt * self.planner_eval.num_steps,
+            self.planner_eval.num_steps + 1,
         )
         pos = self.planner_eval.current_traj
         if pos is None:
@@ -143,9 +141,9 @@ class SACMPBase(Actable, Evaluable, Serializable, Trainable):
     def action_eval(self, state: np.ndarray, info: any) -> np.ndarray:
         sim_state = info
         b_q, b_v = self.decompose_fn(state, sim_state)
-        b_q = ch.FloatTensor(b_q).to(self.device).unsqueeze(0)
-        b_v = ch.FloatTensor(b_v).to(self.device).unsqueeze(0)
-        state = ch.FloatTensor(state).to(self.device).unsqueeze(0)
+        b_q = ch.FloatTensor(b_q).unsqueeze(0)
+        b_v = ch.FloatTensor(b_v).unsqueeze(0)
+        state = ch.FloatTensor(state).unsqueeze(0)
         try:
             q, v = next(self.planner_eval)
         except StopIteration:
@@ -156,12 +154,9 @@ class SACMPBase(Actable, Evaluable, Serializable, Trainable):
                     weights,
                     bc_pos=b_q_des[None],
                     bc_vel=b_v_des[None],
-                    num_t=self.num_steps,
                 )
             else:
-                self.planner_eval.init(
-                    weights, bc_pos=b_q, bc_vel=b_v, num_t=self.num_steps
-                )
+                self.planner_eval.init(weights, bc_pos=b_q, bc_vel=b_v)
             q, v = next(self.planner_eval)
             self.weights_log.append(to_np(weights.squeeze()).flatten())
         q_curr = self.planner_eval.get_current()

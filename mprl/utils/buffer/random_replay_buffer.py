@@ -84,6 +84,12 @@ class RandomRB:
         self._capacity = np.load(path + "capacity.npy").item()
         self._ind = np.load(path + "index.npy").item()
 
+    def sample_batch(self, batch_size, torch_batch=True):
+        if torch_batch:
+            return next(self.get_iter(1, batch_size)).to_torch_batch()
+        else:
+            return next(self.get_iter(1, batch_size))
+
     @property
     def states(self):
         return self._s
