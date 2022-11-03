@@ -8,7 +8,7 @@ pd:
   pgains: [35, 35, 35, -10]  # weird ctrl for gripper (see tuning in utils)
 
 idmp:
-  num_basis: 5
+  num_basis: 10
   basis_bandwidth_factor: 1.0
   num_steps: 50
 

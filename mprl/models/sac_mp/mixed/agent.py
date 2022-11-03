@@ -32,7 +32,6 @@ class SACMixedMP(SACMPBase):
         num_steps: int,
         lr: float,
         batch_size: int,
-        device: torch.device,
         state_dim: int,
         action_dim: int,
         num_basis: int,
@@ -52,6 +51,8 @@ class SACMixedMP(SACMPBase):
         target_entropy: Optional[float] = None,
         use_imp_sampling: bool = False,
     ):
+        super().__init__(action_dim)
+
         # Parameters
         self.gamma: float = gamma
         self.tau: float = tau
@@ -60,7 +61,6 @@ class SACMixedMP(SACMPBase):
         self.automatic_entropy_tuning: bool = automatic_entropy_tuning
         self.target_entropy: Optional[float] = target_entropy
         self.num_steps: int = num_steps
-        self.device: torch.device = device
         self.buffer: SequenceRB = buffer
         self.planner_act: MPTrajectory = planner_act
         self.planner_eval: MPTrajectory = planner_eval
@@ -75,21 +75,13 @@ class SACMixedMP(SACMPBase):
         self.use_imp_sampling = use_imp_sampling
 
         # Networks
-        self.critic: QNetwork = QNetwork(
-            (state_dim, action_dim), network_width, network_depth
-        ).to(device=self.device)
-        self.critic_target: QNetwork = QNetwork(
-            (state_dim, action_dim), network_width, network_depth
-        ).to(self.device)
-        hard_update(self.critic_target, self.critic)
         self.policy: GaussianPolicy = GaussianPolicy(
             (state_dim, (num_basis + 1) * num_dof),
             network_width,
             network_depth,
             action_scale=action_scale,
-        ).to(self.device)
+        )
         self.optimizer_policy = Adam(self.policy.parameters(), lr=lr)
-        self.optimizer_critic = Adam(self.critic.parameters(), lr=lr)
         if automatic_entropy_tuning:
             if self.target_entropy is None:
                 self.target_entropy = -((num_basis + 1) * num_dof)

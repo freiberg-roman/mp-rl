@@ -40,7 +40,7 @@ def test_reset_sim_states():
 
         state, sim_state = env.reset(time_out_after=100)
         action = env.random_action()
-        new_state, _, _, _, _, _ = env.step(action)
+        new_state, _, _, _ = env.step(action)
         for _ in range(10):
             env.step(action)
 
