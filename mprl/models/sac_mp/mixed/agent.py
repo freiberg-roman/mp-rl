@@ -3,7 +3,7 @@ from random import randrange
 from typing import Callable, Dict, Optional, Tuple
 
 import numpy as np
-import torch
+import torch as ch
 import torch.nn.functional as F
 import wandb
 from torch.optim import Adam
@@ -51,7 +51,17 @@ class SACMixedMP(SACMPBase):
         target_entropy: Optional[float] = None,
         use_imp_sampling: bool = False,
     ):
-        super().__init__(action_dim)
+        super().__init__(
+            action_dim,
+            ctrl,
+            decompose_fn,
+            lr,
+            network_width,
+            network_depth,
+            planner_act,
+            planner_eval,
+            state_dim,
+        )
 
         # Parameters
         self.gamma: float = gamma
@@ -62,8 +72,6 @@ class SACMixedMP(SACMPBase):
         self.target_entropy: Optional[float] = target_entropy
         self.num_steps: int = num_steps
         self.buffer: SequenceRB = buffer
-        self.planner_act: MPTrajectory = planner_act
-        self.planner_eval: MPTrajectory = planner_eval
         self.planner_update: MPTrajectory = planner_update
         self.planner_imp_sampling: MPTrajectory = planner_imp_sampling
         self.ctrl: Controller = ctrl
@@ -71,12 +79,11 @@ class SACMixedMP(SACMPBase):
         self.batch_size: int = batch_size
         self.mode: str = policy_loss_type
         self.model = model
-        self.num_dof = num_dof
         self.use_imp_sampling = use_imp_sampling
 
         # Networks
         self.policy: GaussianPolicy = GaussianPolicy(
-            (state_dim, (num_basis + 1) * num_dof),
+            (state_dim, (num_basis + 1) * self.num_dof),
             network_width,
             network_depth,
             action_scale=action_scale,
@@ -84,21 +91,34 @@ class SACMixedMP(SACMPBase):
         self.optimizer_policy = Adam(self.policy.parameters(), lr=lr)
         if automatic_entropy_tuning:
             if self.target_entropy is None:
-                self.target_entropy = -((num_basis + 1) * num_dof)
-            self.log_alpha = torch.zeros(1, requires_grad=True, device=self.device)
+                self.target_entropy = -((num_basis + 1) * self.num_dof)
+            self.log_alpha = ch.zeros(1, requires_grad=True)
             self.optimizer_alpha = Adam([self.log_alpha], lr=lr)
         self.weights_log = []
         self.traj_log = []
         self.traj_des_log = []
         self.c_weight_mean = None
-        self.c_weight_cov = None
+        self.c_weight_std = None
         self.c_des_q = None
         self.c_des_v = None
+        self.c_des_q_next = None
+        self.c_des_v_next = None
 
     def sequence_reset(self):
         if len(self.buffer) > 0:
             self.buffer.close_trajectory()
         self.planner_act.reset_planner()
+
+    def sample(self, state: ch.Tensor) -> ch.Tensor:
+        if self.use_imp_sampling:
+            return self.policy.sample_no_tanh(state)
+        else:
+            return self.policy.sample(state)
+
+    def action_train(self, state: np.ndarray, info: any) -> np.ndarray:
+        act = super().action_train(state, info)
+        self.policy(state)
+        return act
 
     def add_step(
         self,
@@ -109,35 +129,23 @@ class SACMixedMP(SACMPBase):
         done: bool,
         sim_state: Tuple[np.ndarray, np.ndarray],
     ):
-        if self.use_imp_sampling:
-            self.buffer.add(
-                state,
-                next_state,
-                action,
-                reward,
-                done,
-                sim_state,
-                weight_mean=self.c_weight_mean,
-                weight_cov=self.c_weight_cov,
-                des_q=self.c_des_q,
-                des_v=self.c_des_v,
-            )
-        else:
-            self.buffer.add(
-                state,
-                next_state,
-                action,
-                reward,
-                done,
-                sim_state,
-                des_q=self.c_des_q,
-                des_v=self.c_des_v,
-            )
+        self.buffer.add(
+            state,
+            next_state,
+            action,
+            reward,
+            done,
+            sim_state,
+            (self.c_des_q, self.c_des_v),
+            (self.c_des_q_next, self.c_des_v_next),
+            weight_mean=self.c_weight_mean,
+            weight_std=self.c_weight_std,
+        )
 
     # Save model parameters
     def save(self, path):
         Path(path).mkdir(parents=True, exist_ok=True)
-        torch.save(
+        ch.save(
             {
                 "policy_state_dict": self.policy.state_dict(),
                 "critic_state_dict": self.critic.state_dict(),
@@ -151,7 +159,7 @@ class SACMixedMP(SACMPBase):
     # Load model parameters
     def load(self, path):
         if path is not None:
-            checkpoint = torch.load(path)
+            checkpoint = ch.load(path)
             self.policy.load_state_dict(checkpoint["policy_state_dict"])
             self.critic.load_state_dict(checkpoint["critic_state_dict"])
             self.critic_target.load_state_dict(checkpoint["critic_target_state_dict"])
@@ -188,24 +196,32 @@ class SACMixedMP(SACMPBase):
             rewards,
             dones,
             sim_states,
-            des_qs,
-            des_vs,
+            (des_qps, des_qvs),
+            (des_qps_next, des_qvs_next),
+            weight_means,
+            weight_stds,
+            _,
         ) = batch.to_torch_batch()
 
         # Compute critic loss
-        with torch.no_grad():
-            # BUG: TODO --> should be using write bc
-            next_state_action, next_state_log_pi, _ = self.sample(
-                next_states, sim_states
-            )
+        with ch.no_grad():
+            # Compute next action
+            if self.use_imp_sampling:
+                weights, weights_log_pi = self.policy.sample_log_prob_no_tanh(states)
+            else:
+                weights, weights_log_pi = self.policy.sample_log_prob(states)
+            self.planner_update.init(weights, bc_pos=des_qps, bc_vel=des_qvs)
+            next_q, next_v = self.planner_update[1]
+            b_next_q, b_next_v = self.decompose_fn(next_states, None)
+            next_state_action = self.ctrl(next_q, next_v, b_next_q, b_next_v)
+
             qf1_next_target, qf2_next_target = self.critic_target(
                 next_states, next_state_action
             )
             min_qf_next_target = (
-                torch.min(qf1_next_target, qf2_next_target)
-                - self.alpha_q * next_state_log_pi
+                ch.min(qf1_next_target, qf2_next_target) - self.alpha_q * weights_log_pi
             )
-            next_q_value = rewards + (1 - dones.to(torch.float32)) * self.gamma * (
+            next_q_value = rewards + (1 - dones.to(ch.float32)) * self.gamma * (
                 min_qf_next_target
             )
 
@@ -267,70 +283,40 @@ class SACMixedMP(SACMPBase):
         }
 
     def _off_policy_mean_loss(self):
-        batch = next(
-            self.buffer.get_true_k_sequence_iter(1, self.num_steps, self.batch_size)
-        )
         # dimensions (batch_size, sequence_len, data_dimension)
-        if self.use_imp_sampling:
-            (
-                states,
-                next_states,
-                actions,
-                rewards,
-                dones,
-                sim_states,
-                des_qs,
-                des_vs,
-                weight_means,
-                weight_covs,
-            ) = batch.to_torch_batch()
-        else:
-            (
-                states,
-                next_states,
-                actions,
-                rewards,
-                dones,
-                sim_states,
-                des_qs,
-                des_vs,
-            ) = batch.to_torch_batch()
+        (
+            states,
+            next_states,
+            actions,
+            rewards,
+            dones,
+            sim_states,
+            (des_qps, des_qvs),
+            (next_des_qps, next_des_qvs),
+            weight_means,
+            weight_covs,
+            idxs,
+        ) = self.buffer.sample_batch(self.batch_size)
         # dimension (batch_size, sequence_len, weight_dimension)
-        weights, log_pi, _ = self.policy.sample(states[:, 0, :])
         if self.use_imp_sampling:
+            weights, log_pi = self.policy.sample_log_prob_no_tanh(states[:, 0, :])
             mean, log_std = self.policy.forward(states[:, 0, :])
             std = log_std.exp()
-        b_q, b_v = self.decompose_fn(states, sim_states)
+        else:
+            weights, log_pi = self.policy.sample_log_prob(states[:, 0, :])
         self.planner_update.init(
             weights,
-            bc_pos=des_qs[:, 0, :],
-            bc_vel=des_vs[:, 0, :],
-            num_t=self.num_steps,
+            bc_pos=des_qps[:, 0, :],
+            bc_vel=des_qvs[:, 0, :],
         )
-        next_s = states[:, 0, :]
-        next_sim_states = sim_states[0][:, 0, :], sim_states[1][:, 0, :]
-        min_qf = 0
-        for i, qv in enumerate(self.planner_update):
-            q, v = qv
-            b_q, b_v = self.decompose_fn(next_s, next_sim_states)
-            action = self.ctrl.get_action(q, v, b_q, b_v)
-
-            # compute q val
-            qf1_pi, qf2_pi = self.critic(next_s, action)
-            min_qf += torch.min(qf1_pi, qf2_pi)
-            # we simply take the sequence as fixed
-            if i == self.num_steps - 1:
-                break
-            next_s, next_sim_states = next_states[:, i, :], (
-                sim_states[0][:, i + 1, :],
-                sim_states[1][:, i + 1, :],
-            )
-        min_qf /= self.num_steps
+        new_des_qps, new_des_qvs = self.planner_update.get_traj
+        b_q, b_v = self.decompose_fn(states, sim_states)
+        new_actions = self.ctrl(new_des_qps[..., :-1], new_des_qvs[..., :-1], b_q, b_v)
+        qf1_pi, qf2_pi = self.critic(states, new_actions)
+        min_qf_pi = ch.min(qf1_pi, qf2_pi).mean()
         if self.use_imp_sampling:
-            with torch.no_grad():
-                traj_old_des = torch.concat(
-                    (to_ts(b_q).unsqueeze(dim=1), des_qs), dim=1
-                )
+            with ch.no_grad():
+                traj_old_des = ch.concat((des_qps, next_des_qps[:, -1, :]), dim=1)
                 old_log_prob = self.planner_imp_sampling.get_log_prob(
                     traj_old_des,
                     weight_means[:, 0, :],
@@ -345,9 +331,10 @@ class SACMixedMP(SACMPBase):
                 to_add = {
                     "imp_mean": imp.detach().cpu().mean().item(),
                 }
-            policy_loss = (imp * ((-min_qf) + self.alpha * log_pi)).mean()
+            policy_loss = (imp * ((-min_qf_pi) + self.alpha * log_pi)).mean()
         else:
-            policy_loss = (-min_qf).mean() + self.alpha * log_pi.mean()
+            policy_loss = (-min_qf_pi).mean() + self.alpha * log_pi.mean()
+            self.buffer.update_des_qvs(idxs, (new_des_qps, new_des_qvs))
             to_add = {}
         return policy_loss, {
             **to_add,

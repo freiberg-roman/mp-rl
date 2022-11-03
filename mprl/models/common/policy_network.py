@@ -48,7 +48,7 @@ class GaussianPolicy(nn.Module):
         return mean, log_std
 
     @ch.no_grad()
-    def sample(self, state: ch.Tensor) -> Tuple[ch.Tensor, ch.Tensor, ch.Tensor]:
+    def sample(self, state: ch.Tensor) -> Tuple[ch.Tensor]:
         mean, log_std = self.forward(state)
         std = log_std.exp()
         normal = Normal(mean, std)
@@ -57,9 +57,14 @@ class GaussianPolicy(nn.Module):
         action = y_t * self.action_scale + self.action_bias
         return action
 
-    def sample_log_prob(
-        self, state: ch.Tensor
-    ) -> Tuple[ch.Tensor, ch.Tensor, ch.Tensor]:
+    @ch.no_grad()
+    def sample_no_tanh(self, state: ch.Tensor) -> Tuple[ch.Tensor]:
+        mean, log_std = self.forward(state)
+        std = log_std.exp()
+        normal = Normal(mean, std)
+        return normal.rsample()
+
+    def sample_log_prob(self, state: ch.Tensor) -> Tuple[ch.Tensor, ch.Tensor]:
         mean, log_std = self.forward(state)
         std = log_std.exp()
         normal = Normal(mean, std)
@@ -73,7 +78,21 @@ class GaussianPolicy(nn.Module):
         return action, log_prob
 
     @ch.no_grad()
+    def sample_log_prob_no_tanh(self, state: ch.Tensor) -> Tuple[ch.Tensor, ch.Tensor]:
+        mean, log_std = self.forward(state)
+        std = log_std.exp()
+        normal = Normal(mean, std)
+        action = normal.rsample()
+        log_prob = normal.log_prob(action).sum(1, keepdim=True)
+        return action, log_prob
+
+    @ch.no_grad()
     def mean(self, state: ch.Tensor) -> ch.Tensor:
         mean, _ = self.forward(state)
         mean = ch.tanh(mean) * self.action_scale + self.action_bias
+        return mean
+
+    @ch.no_grad()
+    def mean_no_tanh(self, state: ch.Tensor) -> ch.Tensor:
+        mean, _ = self.forward(state)
         return mean

@@ -32,29 +32,17 @@ class SACMixedMPFactory:
         cfg_net = self._gateway.get_network_config()
         cfg_hyper = self._gateway.get_hyper_parameter_config()
         cfg_model = self._gateway.get_model_config()
-        if cfg_hyper.use_imp_sampling:
-            dim_weights = (cfg_hyper.num_basis + 1) * cfg_hyper.num_dof
-            buffer = SequenceRB(
-                capacity=self._gateway.get_buffer_config().capacity,
-                state_dim=env_cfg.state_dim,
-                action_dim=env_cfg.action_dim,
-                sim_qpos_dim=env_cfg.sim_qpos_dim,
-                sim_qvel_dim=env_cfg.sim_qvel_dim,
-                minimum_sequence_length=cfg_hyper.num_steps,
-                des_qpos_dim=cfg_hyper.num_dof,
-                weight_mean_dim=dim_weights,
-                weight_cov_dim=dim_weights,
-            )
-        else:
-            buffer = SequenceRB(
-                capacity=self._gateway.get_buffer_config().capacity,
-                state_dim=env_cfg.state_dim,
-                action_dim=env_cfg.action_dim,
-                sim_qpos_dim=env_cfg.sim_qpos_dim,
-                sim_qvel_dim=env_cfg.sim_qvel_dim,
-                minimum_sequence_length=cfg_hyper.num_steps,
-                des_qpos_dim=cfg_hyper.num_dof,
-            )
+        dim_weights = (cfg_hyper.num_basis + 1) * cfg_hyper.num_dof
+        buffer = SequenceRB(
+            capacity=self._gateway.get_buffer_config().capacity,
+            state_dim=env_cfg.state_dim,
+            action_dim=env_cfg.action_dim,
+            sim_qp_dim=env_cfg.sim_qp_dim,
+            sim_qv_dim=env_cfg.sim_qv_dim,
+            minimum_sequence_length=cfg_hyper.num_steps,
+            weight_mean_dim=dim_weights,
+            weight_std_dim=dim_weights,
+        )
         is_pos_ctrl = "Pos" in self._env_gateway.get_env_name()
         env = MujocoFactory(self._env_gateway).create()
         if cfg_model.name == "off_policy":
@@ -72,13 +60,12 @@ class SACMixedMPFactory:
 
         # Build ProDMP Controller
         phase_gn = ExpDecayPhaseGenerator(
-            tau=cfg_idmp.tau,
+            tau=env_cfg.dt * cfg_hyper.num_steps,
             delay=0.0,
             learn_tau=False,
             learn_delay=False,
             alpha_phase=cfg_idmp.mp_args["alpha_phase"],
             dtype=torch.float32,
-            device=self._gateway.get_device(),
         )
         basis_gn = ProDMPBasisGenerator(
             phase_generator=phase_gn,
@@ -88,28 +75,24 @@ class SACMixedMPFactory:
             dt=cfg_idmp.mp_args["dt"],
             alpha=cfg_idmp.mp_args["alpha"],
             dtype=torch.float32,
-            device=self._gateway.get_device(),
         )
         idmp = ProDMP(
             basis_gn=basis_gn,
             num_dof=cfg_idmp.num_dof,
             dtype=torch.float32,
-            device=self._gateway.get_device(),
             weights_scale=cfg_idmp.mp_args["weight_scale"],
             auto_scale_basis=True,
             goal_scale=cfg_idmp.mp_args["goals_scale"],
             **cfg_idmp.mp_args,
         )
-        planner = MPTrajectory(dt=env.dt, mp=idmp, device=self._gateway.get_device())
+        planner = MPTrajectory(dt=env.dt, mp=idmp, num_steps=cfg_hyper.num_steps)
         pgains = np.array(self._gateway.get_ctrl_config().pgains)
 
         if is_pos_ctrl:
             ctrl = MetaController(pgains=pgains)
         else:
             dgains = np.array(self._gateway.get_ctrl_config().dgains)
-            ctrl = PDController(
-                pgains=pgains, dgains=dgains, device=self._gateway.get_device()
-            )
+            ctrl = PDController(pgains=pgains, dgains=dgains)
 
         return SACMixedMP(
             buffer=buffer,
@@ -117,16 +100,15 @@ class SACMixedMPFactory:
             action_dim=env_cfg.action_dim,
             network_width=cfg_net.network_width,
             network_depth=cfg_net.network_depth,
-            action_scale=cfg_net.action_scale,
             lr=cfg_hyper.lr,
             gamma=cfg_hyper.gamma,
-            tau=cfg_hyper.tau,
+            action_scale=cfg_net.action_scale,
+            tau=cfg_hyper.target_tau,
             alpha=cfg_hyper.alpha,
             alpha_q=cfg_hyper.alpha_q,
             automatic_entropy_tuning=cfg_hyper.auto_alpha,
             target_entropy=cfg_hyper.get("target_entropy", None),
             batch_size=cfg_hyper.batch_size,
-            device=self._gateway.get_device(),
             num_steps=cfg_hyper.num_steps,
             num_basis=cfg_hyper.num_basis,
             num_dof=cfg_hyper.num_dof,

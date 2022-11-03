@@ -1,5 +1,5 @@
 name: ${env.name}
-mode: "online"  # use option "online" to enable and "disabled" to disable
+mode: "disabled"  # use option "online" to enable and "disabled" to disable
 record: False
 project: ${project_name}
 run_id: ${run_id}

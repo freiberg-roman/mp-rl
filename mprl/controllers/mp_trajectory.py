@@ -107,3 +107,6 @@ class MPTrajectory:
             loc=traj_mean, covariance_matrix=traj_cov, validate_args=False
         )
         return mv.log_prob(traj)
+
+    def get_traj(self):
+        return self.current_traj, self.current_traj_v
