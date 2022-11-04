@@ -1,20 +1,16 @@
 from pathlib import Path
-from random import randrange
-from typing import Callable, Dict, Optional, Tuple
+from typing import Callable, Optional
 
 import numpy as np
 import torch as ch
-import torch.nn.functional as F
 import wandb
 from torch.optim import Adam
 
 from mprl.controllers import Controller, MPTrajectory
 from mprl.utils import SequenceRB
 from mprl.utils.ds_helper import to_ts
-from mprl.utils.math_helper import hard_update, soft_update
 
-from ...common.interfaces import Predictable, Trainable
-from ...common.q_network import QNetwork
+from ...common.interfaces import Predictable
 from ..mixed.agent import SACMixedMP
 from ..mp_agent import SACMPBase
 from .tr_networks import TrustRegionPolicy

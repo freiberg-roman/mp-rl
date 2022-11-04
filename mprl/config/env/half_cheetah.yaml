@@ -35,7 +35,7 @@ sac_tr:
   alpha_q: 0.0
   auto_alpha: False
   target_entropy: -48
-  layer_type: "w2"
+  layer_type: "kl"
   mean_bound: 0.01
   cov_bound: 0.0015
 
