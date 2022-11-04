@@ -46,6 +46,8 @@ class SACMPBase(Actable, Evaluable, Serializable, Trainable):
 
         self.c_des_q = None
         self.c_des_v = None
+        self.c_des_q_next = None
+        self.c_des_v_next = None
 
         # Logging variables
         self.weights_log = []
@@ -86,6 +88,7 @@ class SACMPBase(Actable, Evaluable, Serializable, Trainable):
             q, v = next(self.planner_act)
             self.c_des_q = q
             self.c_des_v = v
+            self.c_des_q_next, self.c_des_v_next = self.planner_act.get_current()
             action = self.ctrl.get_action(q, v, b_q, b_v)
             self.replan(state, sim_state, weights)
 
@@ -159,8 +162,7 @@ class SACMPBase(Actable, Evaluable, Serializable, Trainable):
                 self.planner_eval.init(weights, bc_pos=b_q, bc_vel=b_v)
             q, v = next(self.planner_eval)
             self.weights_log.append(to_np(weights.squeeze()).flatten())
-        q_curr = self.planner_eval.get_current()
-        self.traj_des_log.append(to_np((q_curr)))
+        self.traj_des_log.append(to_np((q)))
         self.traj_log.append(to_np(b_q[0]))
         action = self.ctrl.get_action(q, v, b_q, b_v)
         return to_np(action.squeeze())

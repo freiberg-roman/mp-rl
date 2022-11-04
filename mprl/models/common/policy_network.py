@@ -74,7 +74,7 @@ class GaussianPolicy(nn.Module):
         log_prob = normal.log_prob(x_t)
         # Enforcing Action Bound
         log_prob -= ch.log(self.action_scale * (1 - y_t.pow(2)) + epsilon)
-        log_prob = log_prob.sum(1, keepdim=True)
+        log_prob = log_prob.sum(-1, keepdim=True)
         return action, log_prob
 
     @ch.no_grad()

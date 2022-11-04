@@ -189,26 +189,55 @@ class SequenceRB:
         ]
         return np.concatenate((first_valid_starts, second_valid_starts))
 
-    def sample_batch(self, batch_size, torch_batch=True):
+    def sample_batch(self, batch_size, torch_batch=True, sequence=True):
         if torch_batch:
-            return next(
+            batch = next(
                 self.get_true_k_sequence_iter(
                     1, k=self._min_seq_len, batch_size=batch_size
                 )
             ).to_torch_batch()
         else:
-            return next(
+            batch = next(
                 self.get_true_k_sequence_iter(
                     1, k=self._min_seq_len, batch_size=batch_size
                 )
             )
+        if not sequence:
+            (
+                states,
+                next_states,
+                actions,
+                rewards,
+                dones,
+                sim_states,
+                (des_qps, des_qvs),
+                (des_qps_next, des_qvs_next),
+                weight_means,
+                weight_stds,
+                idxs,
+            ) = batch
+            return (
+                states[:, 0, :],
+                next_states[:, 0, :],
+                actions[:, 0, :],
+                rewards[:, 0, :],
+                dones[:, 0, :],
+                (sim_states[0][:, 0, :], sim_states[1][:, 0, :]),
+                (des_qps[:, 0, :], des_qvs[:, 0, :]),
+                (des_qps_next[:, 0, :], des_qvs_next[:, 0, :]),
+                weight_means[:, 0, :],
+                weight_stds[:, 0, :],
+                idxs[:, 0],
+            )
+        else:
+            return batch
 
     def update_des_qvs(self, idxes, des_qps, des_vs):
         des_qps, des_vs = to_np(des_qps), to_np(des_vs)
-        self._des_qps[idxes, :] = des_qps[..., :-1]
-        self._des_vs[idxes, :] = des_vs[..., :-1]
-        self._des_qps_next[idxes, :] = des_qps[..., 1:]
-        self._des_vs_next[idxes, :] = des_vs[..., 1:]
+        self._des_qps[idxes, :] = des_qps[:, :-1, :]
+        self._des_qvs[idxes, :] = des_vs[:, :-1, :]
+        self._des_qps_next[idxes, :] = des_qps[..., 1:, :]
+        self._des_qvs_next[idxes, :] = des_vs[..., 1:, :]
 
     def __len__(self):
         return self._capacity

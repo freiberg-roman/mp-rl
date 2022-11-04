@@ -25,14 +25,14 @@ sac_mp:
   alpha: 0.1
 
 sac_mixed_mp:
-  alpha: 0.025
-  alpha_q: 0.0025
+  alpha: 0.02
+  alpha_q: 0.02
   auto_alpha: False
   target_entropy: -48
 
 sac_tr:
   alpha: 0.025
-  alpha_q: 0.0025
+  alpha_q: 0.025
   auto_alpha: False
   target_entropy: -48
   layer_type: "kl"
@@ -42,7 +42,7 @@ sac_tr:
 network:
   network_width: 256
   network_depth: 2
-  action_scale: 2.0
+  action_scale: 1.0
 
 moe:
   state_dim_in: 16

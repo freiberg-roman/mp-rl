@@ -63,7 +63,10 @@ class MPTrajectory:
         return q, v
 
     def get_current(self):
-        return self.current_traj[..., self.current_t - 1, :]
+        return (
+            self.current_traj[..., self.current_t, :],
+            self.current_traj_v[..., self.current_t, :],
+        )
 
     def get_next_bc(self):
         if self.current_traj is None or self.current_traj_v is None:

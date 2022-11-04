@@ -59,5 +59,5 @@ class EnvSequence:
             ),
             torch.from_numpy(self.weight_means),
             torch.from_numpy(self.weight_stds),
-            self.ixdes,
+            self.idxes,
         )

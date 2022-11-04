@@ -41,7 +41,7 @@ class QNetwork(nn.Module):
     def forward(
         self, state: ch.Tensor, action: ch.Tensor
     ) -> Tuple[ch.Tensor, ch.Tensor]:
-        xu = ch.cat([state, action], 1)
+        xu = ch.cat([state, action], dim=-1)
 
         x1, x2 = F.silu(self.first_input_layer(xu)), F.silu(self.second_input_layer(xu))
         for l1, l2 in zip(self.pipeline_one, self.pipeline_two):
