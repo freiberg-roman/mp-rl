@@ -227,7 +227,7 @@ class SequenceRB:
                 (des_qps_next[:, 0, :], des_qvs_next[:, 0, :]),
                 weight_means[:, 0, :],
                 weight_stds[:, 0, :],
-                idxs[:, 0],
+                idxs,
             )
         else:
             return batch

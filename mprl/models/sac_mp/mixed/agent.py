@@ -335,7 +335,7 @@ class SACMixedMP(SACMPBase):
             policy_loss = (imp * ((-min_qf_pi) + self.alpha * log_pi)).mean()
         else:
             policy_loss = (-min_qf_pi + self.alpha * log_pi).mean()
-            self.buffer.update_des_qvs(idxs, new_des_qps, new_des_qvs)
+            # self.buffer.update_des_qvs(idxs, new_des_qps, new_des_qvs)
             to_add = {}
         return policy_loss, {
             **to_add,
@@ -350,98 +350,93 @@ class SACMixedMP(SACMPBase):
         }
 
     def _model_policy_mean_loss(self):
-        batch = next(self.buffer.get_iter(1, self.batch_size))
-        # dimension (batch_size, data_dimension)
+        # dimensions (batch_size, sequence_len, data_dimension)
         (
             states,
-            next_states,
+            _,
             actions,
             rewards,
             dones,
             sim_states,
-            des_qs,
-            des_vs,
-        ) = batch.to_torch_batch()
+            (des_qps, des_qvs),
+            (_, _),
+            weight_means,
+            weight_covs,
+            idxs,
+        ) = self.buffer.sample_batch(self.batch_size, sequence=False)
         # dimension (batch_size, weight_dimension)
-        weights, log_pi, _ = self.policy.sample(states)
-        b_q, b_v = self.decompose_fn(states, sim_states)
-        self.planner_update.init(
-            weights, bc_pos=des_qs, bc_vel=des_vs, num_t=self.num_steps
-        )
-        next_states = states
-        next_sim_states = sim_states
+        weights, log_pi = self.policy.sample_log_prob(states)
+        self.planner_update.init(weights, bc_pos=des_qps, bc_vel=des_qvs)
+        c_s = states
+        c_s_sim = sim_states
         min_qf = 0
-        for q, v in self.planner_update:
-            b_q, b_v = self.decompose_fn(next_states, next_sim_states)
-            action = self.ctrl.get_action(q, v, b_q, b_v)
+        for des_qp, des_qv in self.planner_update:
+            c_bq, c_bv = self.decompose_fn(c_s, c_s_sim)
+            action = self.ctrl.get_action(des_qp, des_qv, c_bq, c_bv)
 
             # compute q val: dimension (batch_size, 1)
-            qf1_pi, qf2_pi = self.critic(next_states, action)
-            min_qf += torch.min(qf1_pi, qf2_pi)
-            next_states, next_sim_states = self.model.next_state(
-                next_states, action, next_sim_states
-            )
-            next_states = to_ts(next_states).to(self.device)
+            qf1_pi, qf2_pi = self.critic(c_s, action)
+            min_qf += ch.min(qf1_pi, qf2_pi)
+            c_s, c_s_sim = self.model.next_state(c_s, action, c_s_sim)
+            c_s = to_ts(c_s)
+            _, log_pi_c_s = self.policy.sample_log_prob(c_s)
+            log_pi += log_pi_c_s
         min_qf /= self.num_steps
-        policy_loss = (-min_qf).mean() + self.alpha * log_pi.mean()
-        if isinstance(self.model, Trainable):
-            self.model.update(batch=batch)
+        log_pi /= self.num_steps
+        policy_loss = (-min_qf + self.alpha * log_pi).mean()
         return policy_loss, {
             "entropy": (-log_pi).detach().cpu().mean().item(),
+            "weight_mean": weights[..., :-1].detach().cpu().mean().item(),
+            "weight_std": weights[..., :-1].detach().cpu().std().item(),
             "weight_goal_mean": weights[..., -1].detach().cpu().mean().item(),
             "weight_goal_std": weights[..., -1].detach().cpu().std().item(),
-            "weight_goal_max": weights[..., -1].detach().cpu().max().item(),
-            "weight_goal_min": weights[..., -1].detach().cpu().min().item(),
             "weights_histogram": wandb.Histogram(
                 weights[..., :-1].detach().cpu().numpy().flatten()
             ),
         }
 
     def _model_mean_performance_loss(self):
-        batch = next(self.buffer.get_iter(1, self.batch_size))
-        # dimension (batch_size, data_dimension)
         (
             states,
-            next_states,
+            _,
             actions,
             rewards,
             dones,
             sim_states,
-            des_qs,
-            des_vs,
-        ) = batch.to_torch_batch()
+            (des_qps, des_qvs),
+            (_, _),
+            weight_means,
+            weight_covs,
+            idxs,
+        ) = self.buffer.sample_batch(self.batch_size, sequence=False)
         # dimension (batch_size, weight_dimension)
-        weights, log_pi, _ = self.policy.sample(states)
-        b_q, b_v = self.decompose_fn(states, sim_states)
-        self.planner_update.init(
-            weights, bc_pos=des_qs, bc_vel=des_vs, num_t=self.num_steps
-        )
-        next_states = states
-        next_sim_states = sim_states
+        weights, log_pi = self.policy.sample_log_prob(states)
+        self.planner_update.init(weights, bc_pos=des_qps, bc_vel=des_qvs)
+        c_s = states
+        c_s_sim = sim_states
+        min_qf = 0
         loss_at_iter = randrange(self.num_steps)
-        for i, qv in enumerate(self.planner_update):
-            q, v = qv
-            b_q, b_v = self.decompose_fn(next_states, next_sim_states)
-            action = self.ctrl.get_action(q, v, b_q, b_v)
+        for i, (des_qp, des_qv) in enumerate(self.planner_update):
+            c_bq, c_bv = self.decompose_fn(c_s, c_s_sim)
+            action = self.ctrl.get_action(des_qp, des_qv, c_bq, c_bv)
 
             # compute q val: dimension (batch_size, 1)
             if loss_at_iter == i:
-                qf1_pi, qf2_pi = self.critic(next_states, action)
-                min_qf = torch.min(qf1_pi, qf2_pi)
+                qf1_pi, qf2_pi = self.critic(c_s, action)
+                min_qf = ch.min(qf1_pi, qf2_pi)
+                c_s, c_s_sim = self.model.next_state(c_s, action, c_s_sim)
+                c_s = to_ts(c_s)
+                _, log_pi_c_s = self.policy.sample_log_prob(c_s)
                 break
-            next_states, next_sim_states = self.model.next_state(
-                next_states, action, next_sim_states
-            )
-            next_states = to_ts(next_states).to(self.device)
-        policy_loss = (-min_qf).mean() + self.alpha * log_pi.mean()
-        if isinstance(self.model, Trainable):
-            self.model.update(batch=batch)
+            c_s, c_s_sim = self.model.next_state(c_s, action, c_s_sim)
+            c_s = to_ts(c_s)
+        policy_loss = (-min_qf + self.alpha * log_pi).mean()
         return policy_loss, {
             "entropy": (-log_pi).detach().cpu().mean().item(),
+            "weight_mean": weights[..., :-1].detach().cpu().mean().item(),
+            "weight_std": weights[..., :-1].detach().cpu().std().item(),
             "weight_goal_mean": weights[..., -1].detach().cpu().mean().item(),
             "weight_goal_std": weights[..., -1].detach().cpu().std().item(),
-            "weight_goal_max": weights[..., -1].detach().cpu().max().item(),
-            "weight_goal_min": weights[..., -1].detach().cpu().min().item(),
             "weights_histogram": wandb.Histogram(
                 weights[..., :-1].detach().cpu().numpy().flatten()
             ),
