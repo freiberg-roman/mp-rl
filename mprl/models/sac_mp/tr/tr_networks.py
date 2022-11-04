@@ -1,7 +1,6 @@
 from typing import Tuple
 
 import numpy as np
-import torch
 import torch as ch
 from torch.distributions import Normal
 
@@ -118,7 +117,7 @@ class TrustRegionPolicy:
         if self.trl.initial_entropy is None:
             self.trl.initial_entropy = self.policy_stub.entropy((mean, std)).mean()
 
-        (mean_proj, std_proj) = self.trl(
+        mean_proj, std_proj = self.trl(
             self.policy_stub,
             (mean, std.diag_embed()),
             (old_mean, old_std.diag_embed()),
@@ -127,22 +126,51 @@ class TrustRegionPolicy:
         std_proj = std_proj.diagonal(dim1=-2, dim2=-1)
         return (mean, std), (mean_proj, std_proj)
 
-    def sample(
-        self, state: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        (mean, std), (mean_proj, std_proj) = self.forward(state)
+    def sample(self, state: ch.Tensor) -> Tuple[ch.Tensor]:
+        (_, _), (mean_proj, std_proj) = self.forward(state)
         normal = Normal(mean_proj, std_proj)
         x_t = normal.rsample()  # for re-parameterization trick (mean + std * N(0,1))
-        y_t = torch.tanh(x_t)
+        y_t = ch.tanh(x_t)
+        action = y_t * self.policy.action_scale + self.policy.action_bias
+        return action
+
+    def sample_no_tanh(self, state: ch.Tensor) -> Tuple[ch.Tensor]:
+        (_, _), (mean_proj, std_proj) = self.forward(state)
+        normal = Normal(mean_proj, std_proj)
+        action = normal.rsample()  # for re-parameterization trick (mean + std * N(0,1))
+        return action
+
+    def sample_log_prob(self, state: ch.Tensor) -> Tuple[ch.Tensor]:
+        (_, _), (mean_proj, std_proj) = self.forward(state)
+        normal = Normal(mean_proj, std_proj)
+        x_t = normal.rsample()
+        y_t = ch.tanh(x_t)
         action = y_t * self.policy.action_scale + self.policy.action_bias
         log_prob = normal.log_prob(x_t)
         # Enforcing Action Bound
-        log_prob -= torch.log(self.policy.action_scale * (1 - y_t.pow(2)) + epsilon)
-        log_prob = log_prob.sum(1, keepdim=True)
-        mean_after_proj = (
-            torch.tanh(mean_proj) * self.policy.action_scale + self.policy.action_bias
+        log_prob -= ch.log(self.policy.action_scale * (1 - y_t.pow(2)) + epsilon)
+        log_prob = log_prob.sum(-1, keepdim=True)
+        return action, log_prob
+
+    def sample_log_prob_no_tanh(self, state: ch.Tensor) -> Tuple[ch.Tensor]:
+        (_, _), (mean_proj, std_proj) = self.forward(state)
+        normal = Normal(mean_proj, std_proj)
+        action = normal.rsample()
+        log_prob = normal.log_prob(action)
+        return action, log_prob
+
+    @ch.no_grad()
+    def mean(self, state: ch.Tensor) -> ch.Tensor:
+        (_, _), (mean_proj, _) = self.forward(state)
+        mean_proj = (
+            ch.tanh(mean_proj) * self.policy.action_scale + self.policy.action_bias
         )
-        return action, log_prob, mean_after_proj, (mean, std), (mean_proj, std_proj)
+        return mean_proj
+
+    @ch.no_grad()
+    def mean_no_tanh(self, state: ch.Tensor) -> ch.Tensor:
+        (_, _), (mean_proj, _) = self.forward(state)
+        return mean_proj
 
     def hard_update(self):
         """Called after each update step"""
@@ -159,11 +187,6 @@ class TrustRegionPolicy:
             (p_mean, p_std.diag_embed()),
             (p_proj_mean, p_proj_std.diag_embed()),
         )
-
-    def to(self, device: torch.device) -> "TrustRegionPolicy":
-        self.policy.to(device)
-        self.old_policy.to(device)
-        return self
 
     def parameters(self):
         return self.policy.parameters()

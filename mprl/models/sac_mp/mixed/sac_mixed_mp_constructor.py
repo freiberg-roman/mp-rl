@@ -111,7 +111,6 @@ class SACMixedMPFactory:
             batch_size=cfg_hyper.batch_size,
             num_steps=cfg_hyper.num_steps,
             num_basis=cfg_hyper.num_basis,
-            num_dof=cfg_hyper.num_dof,
             model=model,
             policy_loss_type=cfg_hyper.policy_loss,
             decompose_fn=env.decompose_fn,

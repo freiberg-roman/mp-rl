@@ -1,6 +1,6 @@
 from pathlib import Path
 from random import randrange
-from typing import Callable, Dict, Optional, Tuple
+from typing import Callable, Optional, Tuple
 
 import numpy as np
 import torch as ch
@@ -11,9 +11,9 @@ from torch.optim import Adam
 from mprl.controllers import Controller, MPTrajectory
 from mprl.utils import SequenceRB
 from mprl.utils.ds_helper import to_ts
-from mprl.utils.math_helper import hard_update, soft_update
+from mprl.utils.math_helper import soft_update
 
-from ...common import Predictable, QNetwork, Trainable
+from ...common import Predictable, Trainable
 from ...common.policy_network import GaussianPolicy
 from ..mp_agent import SACMPBase
 
@@ -35,7 +35,6 @@ class SACMixedMP(SACMPBase):
         state_dim: int,
         action_dim: int,
         num_basis: int,
-        num_dof: int,
         network_width: int,
         network_depth: int,
         action_scale: float,
@@ -111,7 +110,7 @@ class SACMixedMP(SACMPBase):
 
     def action_train(self, state: np.ndarray, info: any) -> np.ndarray:
         act = super().action_train(state, info)
-        mean, std_log = self.policy.forward(to_ts(state))
+        mean, std_log = self.policy.forward(to_ts(state[None]))
         self.c_weight_mean = mean.detach().cpu().numpy()
         self.c_weight_std = std_log.exp().detach().cpu().numpy()
         return act
@@ -193,7 +192,7 @@ class SACMixedMP(SACMPBase):
             dones,
             sim_states,
             (des_qps, des_qvs),
-            (des_qps_next, des_qvs_next),
+            (_, _),
             weight_means,
             weight_stds,
             _,
@@ -271,6 +270,7 @@ class SACMixedMP(SACMPBase):
             loggable["alpha_loss"] = alpha_loss.item()
 
         soft_update(self.critic_target, self.critic, self.tau)
+        self.update_target_policy()
         return {
             **{
                 "critic_loss": qf_loss.item(),
@@ -280,6 +280,9 @@ class SACMixedMP(SACMPBase):
             **loggable,
             **model_loss,
         }
+
+    def update_target_policy(self):
+        pass
 
     def _off_policy_mean_loss(self):
         # dimensions (batch_size, sequence_len, data_dimension)
