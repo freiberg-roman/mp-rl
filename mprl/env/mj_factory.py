@@ -22,7 +22,7 @@ class MujocoFactory:
             return HopperEnv(base=BASE)
         if cfg.get_env_name() == "Reacher":
             return ReacherEnv(base=BASE)
-        if cfg.get_env_name() == "MetaReacher":
+        if cfg.get_env_name() == "MetaReach":
             from .mujoco.meta import OriginalMetaWorld
 
             return OriginalMetaWorld("reach-v2")
@@ -34,10 +34,10 @@ class MujocoFactory:
             from .mujoco.meta import OriginalMetaWorld
 
             return OriginalMetaWorld("button-press-v2")
-        if cfg.get_env_name() == "MetaBinPick":
+        if cfg.get_env_name() == "MetaPickBin":
             from .mujoco.meta import OriginalMetaWorld
 
-            return OriginalMetaWorld("bin-pick-v2")
+            return OriginalMetaWorld("bin-picking-v2")
         if cfg.get_env_name() == "MetaPush":
             from .mujoco.meta import OriginalMetaWorld
 

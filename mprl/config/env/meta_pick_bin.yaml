@@ -1,8 +1,11 @@
 name: "MetaPickBin"
+
 action_dim: 4
 dt: 0.0125
 time_out_after: 500
 state_dim: 39
+sim_qp_dim: 16
+sim_qv_dim: 15
 
 pd:
   pgains: [35, 35, 35, -10]  # weird ctrl for gripper (see tuning in utils)

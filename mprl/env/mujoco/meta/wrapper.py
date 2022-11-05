@@ -28,14 +28,20 @@ class OriginalMetaWorld(MujocoEnv):
         return state, (None, None)
 
     def step(self, action: np.array):
-        state, reward, done, info = self.env.step(action)
+        state, reward, failure, info = self.env.step(action)
         self.current_steps += 1
         self._total_steps += 1
         timeout = (
             self.time_out_after is not None
             and self.current_steps >= self.time_out_after
         )
-        return state, reward, done, timeout, self.get_sim_state(), info
+        return state, reward, failure, timeout
+
+    def get_sim_state(self):
+        return (
+            self.env.sim.data.qpos.ravel().copy(),
+            self.env.sim.data.qvel.ravel().copy(),
+        )
 
     @property
     def total_steps(self) -> int:
