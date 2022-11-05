@@ -83,7 +83,7 @@ class GaussianPolicy(nn.Module):
         std = log_std.exp()
         normal = Normal(mean, std)
         action = normal.rsample()
-        log_prob = normal.log_prob(action).sum(1, keepdim=True)
+        log_prob = normal.log_prob(action).sum(-1, keepdim=True)
         return action, log_prob
 
     @ch.no_grad()

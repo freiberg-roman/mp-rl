@@ -202,7 +202,7 @@ class SACMixedMP(SACMPBase):
         with ch.no_grad():
             # Compute next action
             if self.use_imp_sampling:
-                weights, _ = self.policy.sample_no_tanh(states)
+                weights = self.policy.sample_no_tanh(states)
                 _, weights_log_pi_next = self.policy.sample_log_prob_no_tanh(
                     next_states
                 )
@@ -281,6 +281,31 @@ class SACMixedMP(SACMPBase):
             **model_loss,
         }
 
+    def importance_weights(self, traj, target_dist, behavior_dist, bc_q, bc_v):
+        target_mean, target_std = target_dist
+        behavior_mean, behavior_std = behavior_dist
+        assert np.allclose(bc_q, traj[:, 0, :])
+        old_log_prob = self.planner_imp_sampling.get_log_prob(
+            traj,
+            behavior_mean,
+            behavior_std,
+            bc_q,
+            bc_v,
+        )
+        cur_log_prob = self.planner_imp_sampling.get_log_prob(
+            traj,
+            target_mean,
+            target_std,
+            bc_q,
+            bc_v,
+        )
+        imp = (cur_log_prob - old_log_prob).clamp(max=0.0).exp()
+        imp = ch.nn.functional.normalize(imp, p=1, dim=-1) * len(imp)
+        to_add = {
+            "importance_weights": wandb.Histogram(imp.detach().cpu().numpy().flatten()),
+        }
+        return imp, to_add
+
     def update_target_policy(self):
         pass
 
@@ -296,7 +321,7 @@ class SACMixedMP(SACMPBase):
             (des_qps, des_qvs),
             (next_des_qps, next_des_qvs),
             weight_means,
-            weight_covs,
+            weight_stds,
             idxs,
         ) = self.buffer.sample_batch(self.batch_size)
         # dimension (batch_size, sequence_len, weight_dimension)
@@ -319,23 +344,18 @@ class SACMixedMP(SACMPBase):
         qf1_pi, qf2_pi = self.critic(states, new_actions)
         min_qf_pi = ch.min(qf1_pi, qf2_pi)
         if self.use_imp_sampling:
+            traj_old_des = ch.concat(
+                (des_qps, next_des_qps[:, -1, :].unsqueeze(dim=1)), dim=1
+            )
             with ch.no_grad():
-                traj_old_des = ch.concat((des_qps, next_des_qps[:, -1, :]), dim=1)
-                old_log_prob = self.planner_imp_sampling.get_log_prob(
+                imp, to_add = self.importance_weights(
                     traj_old_des,
-                    weight_means[:, 0, :],
-                    weight_covs[:, 0, :],
-                    to_ts(b_q),
-                    to_ts(b_v),
+                    (mean, std),
+                    (weight_means[:, 0, :], weight_stds[:, 0, :]),
+                    des_qps[:, 0, :],
+                    des_qvs[:, 0, :],
                 )
-                curr_log_prob = self.planner_imp_sampling.get_log_prob(
-                    traj_old_des, mean, std, to_ts(b_q), to_ts(b_v)
-                )
-                imp = (curr_log_prob - old_log_prob).clamp(max=0.0).exp()
-                to_add = {
-                    "imp_mean": imp.detach().cpu().mean().item(),
-                }
-            policy_loss = (imp * ((-min_qf_pi) + self.alpha * log_pi)).mean()
+            policy_loss = (imp * (-min_qf_pi + self.alpha * log_pi)).mean()
         else:
             policy_loss = (-min_qf_pi + self.alpha * log_pi).mean()
             # self.buffer.update_des_qvs(idxs, new_des_qps, new_des_qvs)

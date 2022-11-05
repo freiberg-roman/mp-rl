@@ -92,7 +92,7 @@ class MPTrajectory:
 
     def get_log_prob(self, smp_traj, mean, chol_cov, bc_q, bc_v):
         num_t = smp_traj.shape[1] - 1
-        bc_time = ch.tensor([0.0] * mean.shape[0], device=self.device)
+        bc_time = ch.tensor([0.0] * mean.shape[0])
         times = tensor_linspace(0, self.dt * num_t, num_t + 1).unsqueeze(dim=0)
         chol_cov = build_lower_matrix(chol_cov)
         self.mp.update_inputs(
