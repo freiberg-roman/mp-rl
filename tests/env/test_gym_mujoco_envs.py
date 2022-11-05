@@ -45,7 +45,7 @@ def test_reset_sim_states():
             env.step(action)
 
         env.set_sim_state(sim_state)
-        state_after_sss, _, _, _, _, _ = env.step(action)
+        state_after_sss, _, _, _ = env.step(action)
         assert np.allclose(state_after_sss, new_state)
 
 
