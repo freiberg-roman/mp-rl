@@ -4,6 +4,8 @@ action_dim: 3
 dt: 0.008
 state_dim: 11
 time_out_after: 1000  # only for SAC activated
+sim_qp_dim: 6
+sim_qv_dim: 6
 
 pd:
   pgains: [1.0, 1.0, 1.0]
@@ -14,28 +16,6 @@ sac:
   auto_alpha: True
   target_entropy: -3
 
-sac_mixed_mp:
-  alpha: 0.025
-  alpha_q: 0.0
-  auto_alpha: False
-  target_entropy: -48
-
-sac_tr:
-  alpha: 0.025
-  alpha_q: 0.0
-  auto_alpha: False
-  target_entropy: -48
-  layer_type: "kl"
-  mean_bound: 0.03
-  cov_bound: 0.003
-
-sac_mp:
-  alpha: 0.5
-
 network:
   network_width: 256
   network_depth: 2
-
-moe:
-  state_dim_in: 16
-  state_dim_out: 17
