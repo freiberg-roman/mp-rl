@@ -43,7 +43,7 @@ class SACMixedMPFactory:
             weight_mean_dim=dim_weights,
             weight_std_dim=dim_weights,
         )
-        is_pos_ctrl = "Pos" in self._env_gateway.get_env_name()
+        is_pos_ctrl = "Meta" in self._env_gateway.get_env_name()
         env = MujocoFactory(self._env_gateway).create()
         if cfg_model.name == "off_policy":
             model = None

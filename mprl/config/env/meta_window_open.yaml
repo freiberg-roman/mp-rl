@@ -20,8 +20,8 @@ sac:
   target_entropy: -4
 
 sac_mixed_mp:
-  alpha: 0.025
-  alpha_q: 0.0
+  alpha: 0.02
+  alpha_q: 0.02
   auto_alpha: False
   target_entropy: -30
 
@@ -37,6 +37,7 @@ sac_tr:
 network:
   network_width: 256
   network_depth: 2
+  action_scale: 1.0
 
 moe:
   state_dim_in: 21

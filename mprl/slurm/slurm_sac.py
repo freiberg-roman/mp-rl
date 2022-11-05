@@ -4,17 +4,15 @@ import os
 def run():
 
     for env_name in [
-        # "half_cheetah",
-        # "hopper",
-        # "ant"
-        "meta_button_press",
-        "meta_reach",
         "meta_window_open",
     ]:
         for i in range(10):
-            launch_command = "python -m mprl.ui.run alg=sac " "env={} run_id={}".format(
-                env_name,
-                i,
+            launch_command = (
+                "python -m mprl.ui.start alg=sac "
+                "env={} run_id={}".format(
+                    env_name,
+                    i,
+                )
             )
             file_content = "#!/bin/bash\n" + launch_command
             file_name = "sac_{}_{}.sh".format(env_name, i)
@@ -22,7 +20,7 @@ def run():
                 text_file.write(file_content)
             os.system("chmod +x {}".format(file_name))
             os.system(
-                "sbatch -p single -N 1 -t 72:00:00 --mem=8000 {}".format(file_name)
+                "sbatch -p single -N 1 -t 72:00:00 --mem=4000 {}".format(file_name)
             )
 
 
