@@ -4,9 +4,10 @@ from typing import Tuple
 import numpy as np
 
 from mprl.utils.buffer import EnvStep
+from mprl.utils.serializable import Serializable
 
 
-class RandomRB:
+class RandomRB(Serializable):
     def __init__(self, capacity: int, state_dim, action_dim, sim_qp_dim, sim_qv_dim):
         self._capacity = 0
         self._max_capacity = capacity
@@ -59,7 +60,10 @@ class RandomRB:
     def __len__(self):
         return self._capacity
 
-    def save(self, base_path, folder):
+    def store_under(self):
+        return "rrb"
+
+    def store(self, base_path, folder):
         path = base_path + folder + "/rrb/"
         Path(path).mkdir(parents=True, exist_ok=True)
         np.save(path + "state.npy", self._s)
@@ -67,8 +71,8 @@ class RandomRB:
         np.save(path + "actions.npy", self._acts)
         np.save(path + "rewards.npy", self._rews)
         np.save(path + "dones.npy", self._dones)
-        np.save(path + "qps.npy", self._qps)
-        np.save(path + "qvs.npy", self._qvs)
+        np.save(path + "sim_qps.npy", self._sim_qps)
+        np.save(path + "sim_qvs.npy", self._sim_qvs)
         np.save(path + "capacity.npy", np.array([self._capacity], dtype=int))
         np.save(path + "index.npy", np.array([self._ind], dtype=int))
 
@@ -79,8 +83,8 @@ class RandomRB:
         self._acts = np.load(path + "actions.npy")
         self._rews = np.load(path + "rewards.npy")
         self._dones = np.load(path + "dones.npy")
-        self._qps = np.load(path + "qps.npy")
-        self._qvs = np.load(path + "qvs.npy")
+        self._sim_qps = np.load(path + "sim_qps.npy")
+        self._sim_qvs = np.load(path + "sim_qvs.npy")
         self._capacity = np.load(path + "capacity.npy").item()
         self._ind = np.load(path + "index.npy").item()
 

@@ -14,7 +14,9 @@ class Evaluator:
         self.env = env
         self.time_out_after: int = cfg.time_out_after
 
-    def evaluate(self, agent: Evaluable, after_performed_steps: int) -> dict:
+    def evaluate(
+        self, agent: Evaluable, after_performed_steps: int, render=False
+    ) -> dict:
         to_log = {}
 
         total_reward = 0.0
@@ -30,6 +32,8 @@ class Evaluator:
             while not done and not time_out:
                 action = agent.action_eval(state, sim_state)
                 state, reward, done, time_out = self.env.step(action)
+                if render:
+                    self.env.render()
 
                 total_reward += reward
                 info = self.env.get_info()

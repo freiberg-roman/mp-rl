@@ -11,7 +11,8 @@ from mprl.models.common.policy_network import GaussianPolicy
 from mprl.utils import RandomRB
 from mprl.utils.math_helper import hard_update, soft_update
 
-from ..common import Actable, Evaluable, QNetwork, Serializable, Trainable
+from ...utils.serializable import Serializable
+from ..common import Actable, Evaluable, QNetwork, Trainable
 
 
 class SAC(Actable, Evaluable, Serializable, Trainable):
@@ -94,23 +95,32 @@ class SAC(Actable, Evaluable, Serializable, Trainable):
     def parameters(self) -> Iterator[Parameter]:
         return self.policy.parameters()
 
+    def store_under(self):
+        return "sac"
+
     # Save model parameters
-    def save(self, path: str) -> None:
+    def store(self, path: str) -> None:
         Path(path).mkdir(parents=True, exist_ok=True)
         ch.save(
             {
                 "policy_state_dict": self.policy.state_dict(),
                 "critic_state_dict": self.critic.state_dict(),
                 "critic_target_state_dict": self.critic_target.state_dict(),
-                "critic_optimizer_state_dict": self.optimizer_critic.state_dict(),
-                "policy_optimizer_state_dict": self.optimizer_policy.state_dict(),
+                "optimizer_critic_state_dict": self.optimizer_critic.state_dict(),
+                "optimizer_policy_state_dict": self.optimizer_policy.state_dict(),
+                **(
+                    {}
+                    if self.automatic_entropy_tuning
+                    else {"optimizer_entropy": self.alpha_optim.state_dict()}
+                ),
             },
-            path + "model.pt",
+            path + "/model.pt",
         )
+        self.buffer.store(path + "/" + self.buffer.store_under())
 
     # Load model parameters
     def load(self, path: str) -> None:
-        ckpt_path = path + "/sac/model.pt"
+        ckpt_path = path + "/model.pt"
         if ckpt_path is not None:
             checkpoint = ch.load(ckpt_path)
             self.policy.load_state_dict(checkpoint["policy_state_dict"])
@@ -122,6 +132,9 @@ class SAC(Actable, Evaluable, Serializable, Trainable):
             self.optimizer_policy.load_state_dict(
                 checkpoint["policy_optimizer_state_dict"]
             )
+            if self.automatic_entropy_tuning:
+                self.alpha_optim.load_state_dict(checkpoint["optimizer_entropy"])
+        self.buffer.load(path + "/" + self.buffer.store_under())
 
     def set_eval(self):
         self.policy.eval()

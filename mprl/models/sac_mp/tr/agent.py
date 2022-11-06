@@ -197,3 +197,38 @@ class SACTRL(SACMixedMP):
                 weights[..., :-1].detach().cpu().numpy().flatten()
             ),
         }
+
+    def store(self, path):
+        Path(path).mkdir(parents=True, exist_ok=True)
+        ch.save(
+            {
+                "policy_state_dict": self.policy.policy.state_dict(),
+                "old_policy_state_dict": self.policy.old_policy.state_dict(),
+                "critic_state_dict": self.critic.state_dict(),
+                "critic_target_state_dict": self.critic_target.state_dict(),
+                "critic_optimizer_state_dict": self.optimizer_critic.state_dict(),
+                "policy_optimizer_state_dict": self.optimizer_policy.state_dict(),
+            },
+            path + "model.pt",
+        )
+
+    def load(self, path):
+        if path is not None:
+            checkpoint = ch.load(path)
+            self.policy.policy.load_state_dict(checkpoint["policy_state_dict"])
+            self.policy.old_policy.load_state_dict(checkpoint["old_policy_state_dict"])
+            self.critic.load_state_dict(checkpoint["critic_state_dict"])
+            self.critic_target.load_state_dict(checkpoint["critic_target_state_dict"])
+            self.optimizer_critic.load_state_dict(
+                checkpoint["critic_optimizer_state_dict"]
+            )
+            self.optimizer_policy.load_state_dict(
+                checkpoint["policy_optimizer_state_dict"]
+            )
+        self.planner_act.reset_planner()
+        self.planner_update.reset_planner()
+        self.planner_eval.reset_planner()
+        self.planner_imp_sampling.reset_planner()
+
+    def store_under(self, path):
+        return "sac-tr"

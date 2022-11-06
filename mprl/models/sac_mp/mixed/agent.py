@@ -509,3 +509,46 @@ class SACMixedMP(SACMPBase):
                 weights[..., :-1].detach().cpu().numpy().flatten()
             ),
         }
+
+    def store_under(self, path):
+        return "sac-mixed-mp"
+
+    def store(self, path):
+        Path(path).mkdir(parents=True, exist_ok=True)
+        ch.save(
+            {
+                "policy_state_dict": self.policy.state_dict(),
+                "critic_state_dict": self.critic.state_dict(),
+                "critic_target_state_dict": self.critic_target.state_dict(),
+                "optimizer_critic_state_dict": self.optimizer_critic.state_dict(),
+                "optimizer_policy_state_dict": self.optimizer_policy.state_dict(),
+                **(
+                    {}
+                    if self.automatic_entropy_tuning
+                    else {"optimizer_entropy": self.alpha_optim.state_dict()}
+                ),
+            },
+            path + "/model.pt",
+        )
+        self.buffer.store(path + "/" + self.buffer.store_under())
+
+    def load(self, path):
+        ckpt_path = path + "/model.pt"
+        if ckpt_path is not None:
+            checkpoint = ch.load(ckpt_path)
+            self.policy.load_state_dict(checkpoint["policy_state_dict"])
+            self.critic.load_state_dict(checkpoint["critic_state_dict"])
+            self.critic_target.load_state_dict(checkpoint["critic_target_state_dict"])
+            self.optimizer_critic.load_state_dict(
+                checkpoint["critic_optimizer_state_dict"]
+            )
+            self.optimizer_policy.load_state_dict(
+                checkpoint["policy_optimizer_state_dict"]
+            )
+            if self.automatic_entropy_tuning:
+                self.alpha_optim.load_state_dict(checkpoint["optimizer_entropy"])
+        self.buffer.load(path + "/" + self.buffer.store_under())
+        self.planner_act.reset_planner()
+        self.planner_update.reset_planner()
+        self.planner_eval.reset_planner()
+        self.planner_imp_sampling.reset_planner()

@@ -9,9 +9,10 @@ from torch.optim import Adam
 
 from mprl.controllers import Controller, MPTrajectory
 from mprl.models.common import QNetwork
-from mprl.models.common.interfaces import Actable, Evaluable, Serializable, Trainable
+from mprl.models.common.interfaces import Actable, Evaluable, Trainable
 from mprl.utils.ds_helper import to_np
 from mprl.utils.math_helper import hard_update
+from mprl.utils.serializable import Serializable
 
 
 class SACMPBase(Actable, Evaluable, Serializable, Trainable):
@@ -53,6 +54,15 @@ class SACMPBase(Actable, Evaluable, Serializable, Trainable):
         self.weights_log = []
         self.traj_des_log = []
         self.traj_log = []
+
+    def store_under(self):
+        ...
+
+    def store(self, path):
+        ...
+
+    def load(self, path):
+        ...
 
     def sample(self, state: ch.Tensor) -> ch.Tensor:
         """Should just return the sampled policy actions, not the log probability."""

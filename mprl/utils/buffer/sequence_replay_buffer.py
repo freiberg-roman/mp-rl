@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import List, Optional, Tuple
 
 import numpy as np
@@ -5,10 +6,11 @@ import numpy as np
 from mprl.utils.buffer.random_replay_buffer import RandomBatchIter
 
 from ..ds_helper import to_np
+from ..serializable import Serializable
 from .buffer_output import EnvSequence
 
 
-class SequenceRB:
+class SequenceRB(Serializable):
     def __init__(
         self,
         capacity: int,
@@ -52,6 +54,100 @@ class SequenceRB:
             (0, 0),
         ]
         self._current_buffer = 0
+
+    def store_under(self):
+        return "srb"
+
+    def store(self, path: str) -> None:
+        Path(path).mkdir(parents=True, exist_ok=True)
+        np.save(path + "state.npy", self._s)
+        np.save(path + "next_states.npy", self._next_s)
+        np.save(path + "actions.npy", self._acts)
+        np.save(path + "actions.npy", self._acts)
+        np.save(path + "rewards.npy", self._rews)
+        np.save(path + "dones.npy", self._dones)
+        np.save(path + "sim_qps.npy", self._sim_qps)
+        np.save(path + "sim_qvs.npy", self._sim_qvs)
+        np.save(path + "des_qps.npy", self._des_qps)
+        np.save(path + "des_qvs.npy", self._des_qvs)
+        np.save(path + "des_qps_next.npy", self._des_qps_next)
+        np.save(path + "des_qvs_next.npy", self._des_qvs_next)
+        np.save(path + "weight_means.npy", self._weight_means)
+        np.save(path + "weight_stds.npy", self._weight_stds)
+        np.save(path + "capacity.npy", np.array([self.capacity], dtype=int))
+        np.save(path + "max_capacity.npy", np.array([self._max_capacity], dtype=int))
+        np.save(path + "index.npy", np.array([self._ind], dtype=int))
+        np.save(path + "current_sequence.npy", np.array([self._current_seq], dtype=int))
+        np.save(path + "valid_sequence.npy", np.array([self._valid_seq], dtype=int))
+        np.save(
+            path + "min_sequence_length.npy", np.array([self._min_seq_len], dtype=int)
+        )
+        np.save(path + "buffer_one.npy", self._valid_starts_buffers[0])
+        np.save(path + "buffer_two.npy", self._valid_starts_buffers[1])
+        np.save(
+            path + "usage_one_one.npy",
+            np.array([self._valid_starts_buffer_usages[0][0]], dtype=int),
+        )
+        np.save(
+            path + "usage_one_one.npy",
+            np.array([self._valid_starts_buffer_usages[0][1]], dtype=int),
+        )
+        np.save(
+            path + "usage_one_one.npy",
+            np.array([self._valid_starts_buffer_usages[1][0]], dtype=int),
+        )
+        np.save(
+            path + "usage_one_one.npy",
+            np.array([self._valid_starts_buffer_usages[1][1]], dtype=int),
+        )
+        np.save(
+            path + "current_buffer.npy", np.array([self._current_buffer], dtype=int)
+        )
+
+    # Load model parameters
+    def load(self, path: str) -> None:
+        self._s = np.load(path + "state.npy")
+        self._next_s = np.load(path + "next_states.npy")
+        self._acts = np.load(path + "actions.npy")
+        self._rews = np.load(path + "rewards.npy")
+        self._dones = np.load(path + "dones.npy")
+        self._sim_qps = np.load(path + "sim_qps.npy")
+        self._sim_qvs = np.load(path + "sim_qvs.npy")
+        self._des_qps = np.load(path + "des_qps.npy")
+        self._des_qvs = np.load(path + "des_qvs.npy")
+        self._des_qps_next = np.load(path + "des_qps_next.npy")
+        self._des_qvs_next = np.load(path + "des_qvs_next.npy")
+        self._weight_means = np.load(path + "weight_means.npy")
+        self._weight_stds = np.load(path + "weight_stds.npy")
+        self.capacity = np.load(path + "capacity.npy").item()
+        self._max_capacity = np.load(path + "max_capacity.npy").item()
+        self._ind = np.load(path + "index.npy").item()
+        self._current_seq = np.load(path + "current_sequence.npy")
+        valid_seq_array = np.load(path + "valid_sequence.npy")
+        self._valid_seq = []
+        for i in len(valid_seq_array):
+            self._valid_seq.append(
+                (
+                    valid_seq_array[i][0],
+                    valid_seq_array[i][1],
+                    valid_seq_array[i][2],
+                    valid_seq_array[i][3],
+                    valid_seq_array[i][4],
+                )
+            )
+
+        self._min_seq_len = np.load(path + "min_sequence_length.npy").item()
+        self._valid_starts_buffers[0] = np.load(path + "buffer_one.npy")
+        self._valid_starts_buffers[1] = np.load(path + "buffer_two.npy")
+        self._valid_starts_buffer_usages[0] = (
+            np.load(path + "usage_one_one.npy").item(),
+            np.load(path + "usage_one_two.npy").item(),
+        )
+        self._valid_starts_buffer_usages[1] = (
+            np.load(path + "usage_two_one.npy").item(),
+            np.load(path + "usage_two_two.npy").item(),
+        )
+        self._current_buffer = np.load(path + "current_buffer.npy").item()
 
     def add(
         self,

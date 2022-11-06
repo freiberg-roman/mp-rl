@@ -11,6 +11,9 @@ defaults:
 root_dir: "./experiment"
 project_name: "mprl-refactoring"
 run_id: 0
+continue_run: False
+eval_current: False
+checkpoint_source: ""
 
 hydra:
   run:
