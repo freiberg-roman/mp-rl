@@ -244,6 +244,8 @@ class SACMixedMP(SACMPBase):
         if self.model is None:
             if self.mode == "mean":
                 loss, loggable = self._off_policy_mean_loss()
+            elif self.mode == "mean_performance":
+                loss, loggable = self._off_policy_mean_performance_loss()
             else:
                 raise ValueError("Invalid mode")
         else:
@@ -362,6 +364,49 @@ class SACMixedMP(SACMPBase):
             to_add = {}
         return policy_loss, {
             **to_add,
+            "entropy": (-log_pi).detach().cpu().mean().item(),
+            "weight_mean": weights[..., :-1].detach().cpu().mean().item(),
+            "weight_std": weights[..., :-1].detach().cpu().std().item(),
+            "weight_goal_mean": weights[..., -1].detach().cpu().mean().item(),
+            "weight_goal_std": weights[..., -1].detach().cpu().std().item(),
+            "weights_histogram": wandb.Histogram(
+                weights[..., :-1].detach().cpu().numpy().flatten()
+            ),
+        }
+
+    def _off_policy_mean_performance_loss(self):
+        """No importance sampling version here"""
+        # dimensions (batch_size, sequence_len, data_dimension)
+        (
+            states,
+            next_states,
+            actions,
+            rewards,
+            dones,
+            sim_states,
+            (des_qps, des_qvs),
+            (next_des_qps, next_des_qvs),
+            weight_means,
+            weight_stds,
+            idxs,
+        ) = self.buffer.sample_batch(self.batch_size)
+        # dimension (batch_size, sequence_len, weight_dimension)
+        weights, log_pi = self.policy.sample_log_prob(states)
+        self.planner_update.init(
+            weights[:, 0, :],
+            bc_pos=des_qps[:, 0, :],
+            bc_vel=des_qvs[:, 0, :],
+        )
+        loss_at_iter = randrange(self.num_steps)
+        new_des_qps, new_des_qvs = self.planner_update[loss_at_iter]
+        b_q, b_v = self.decompose_fn(states[:, loss_at_iter, :], None)
+        new_actions = self.ctrl.get_action(new_des_qps, new_des_qvs, b_q, b_v)
+        qf1_pi, qf2_pi = self.critic(states[:, loss_at_iter, :], new_actions)
+        min_qf_pi = ch.min(qf1_pi, qf2_pi)
+        policy_loss = (self.gamma**loss_at_iter) * (
+            -min_qf_pi + self.alpha * log_pi[:, loss_at_iter, :]
+        ).mean()
+        return policy_loss, {
             "entropy": (-log_pi).detach().cpu().mean().item(),
             "weight_mean": weights[..., :-1].detach().cpu().mean().item(),
             "weight_std": weights[..., :-1].detach().cpu().std().item(),
