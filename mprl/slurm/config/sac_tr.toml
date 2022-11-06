@@ -1,0 +1,10 @@
+[run.tr]
+project_name="mprl-sac-mp-toml"
+algorithm="sac_tr"
+env="half_cheetah"
+
+cluster_hours=15
+jobs=3
+
+[run.tr.buffer]
+capacity=1000000
