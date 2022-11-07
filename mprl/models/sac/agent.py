@@ -96,7 +96,7 @@ class SAC(Actable, Evaluable, Serializable, Trainable):
         return self.policy.parameters()
 
     def store_under(self):
-        return "sac"
+        return "sac/"
 
     # Save model parameters
     def store(self, path: str) -> None:
@@ -109,9 +109,9 @@ class SAC(Actable, Evaluable, Serializable, Trainable):
                 "optimizer_critic_state_dict": self.optimizer_critic.state_dict(),
                 "optimizer_policy_state_dict": self.optimizer_policy.state_dict(),
                 **(
-                    {}
+                    {"optimizer_entropy": self.alpha_optim.state_dict()}
                     if self.automatic_entropy_tuning
-                    else {"optimizer_entropy": self.alpha_optim.state_dict()}
+                    else {}
                 ),
             },
             path + "/model.pt",
@@ -127,24 +127,14 @@ class SAC(Actable, Evaluable, Serializable, Trainable):
             self.critic.load_state_dict(checkpoint["critic_state_dict"])
             self.critic_target.load_state_dict(checkpoint["critic_target_state_dict"])
             self.optimizer_critic.load_state_dict(
-                checkpoint["critic_optimizer_state_dict"]
+                checkpoint["optimizer_critic_state_dict"]
             )
             self.optimizer_policy.load_state_dict(
-                checkpoint["policy_optimizer_state_dict"]
+                checkpoint["optimizer_policy_state_dict"]
             )
             if self.automatic_entropy_tuning:
                 self.alpha_optim.load_state_dict(checkpoint["optimizer_entropy"])
         self.buffer.load(path + "/" + self.buffer.store_under())
-
-    def set_eval(self):
-        self.policy.eval()
-        self.critic.eval()
-        self.critic_target.eval()
-
-    def set_train(self):
-        self.policy.train()
-        self.critic.train()
-        self.critic_target.train()
 
     def update(self) -> dict:
         states, next_states, actions, rewards, dones = self.buffer.sample_batch(

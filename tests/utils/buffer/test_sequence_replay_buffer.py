@@ -372,4 +372,5 @@ def test_store_load_srb():
     assert np.all(buffer.weight_stds == buffer_two.weight_stds)
 
     import shutil
+
     shutil.rmtree("test_buffer/")

@@ -81,4 +81,5 @@ def test_load_store_rrb():
     assert buffer._ind == buffer_two._ind
 
     import shutil
+
     shutil.rmtree(".test_rrb/")
