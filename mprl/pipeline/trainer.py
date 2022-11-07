@@ -1,16 +1,18 @@
+from pathlib import Path
 from typing import Union
 
 import numpy as np
 import wandb
 from tqdm import tqdm
 
-from mprl.env import EnvConfigGateway, MPRLEnvironment
+from mprl.env import MPRLEnvironment
 from mprl.models.common import Actable, Trainable
 
+from ..utils.serializable import Serializable
 from .config_gateway import TrainConfigGateway
 
 
-class Trainer:
+class Trainer(Serializable):
     def __init__(
         self,
         env: MPRLEnvironment,
@@ -82,3 +84,14 @@ class Trainer:
     @property
     def performed_training_steps(self) -> int:
         return self.env.total_steps
+
+    def store_under(self, path):
+        return path + "trainer/"
+
+    def store(self, path):
+        Path(path).mkdir(parents=True, exist_ok=True)
+        np.save(path + "env_total_steps.npy", np.array([self.env.total_steps]))
+
+    def load(self, path):
+        self.env._total_steps = np.load(path + "env_total_steps.npy").item()
+        self._current_steps = 0

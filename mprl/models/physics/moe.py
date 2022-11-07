@@ -9,9 +9,10 @@ from torch.distributions.mixture_same_family import MixtureSameFamily
 from torch.distributions.multivariate_normal import MultivariateNormal
 
 from mprl.utils.ds_helper import to_ts
+from mprl.utils.serializable import Serializable
 
 
-class MixtureOfExperts(nn.Module):
+class MixtureOfExperts(nn.Module, Serializable):
     def __init__(
         self,
         state_dim_in: int,
@@ -21,12 +22,9 @@ class MixtureOfExperts(nn.Module):
         network_width: int,
         variance: float = 1.0,
         lr: float = 3e-4,
-        use_batch_normalization: bool = False,
     ):
         super(MixtureOfExperts, self).__init__()
 
-        if use_batch_normalization:
-            self.bn_in = nn.BatchNorm1d(state_dim_in)
         self.linear1 = nn.Linear(
             state_dim_in + action_dim,
             network_width,
@@ -44,11 +42,8 @@ class MixtureOfExperts(nn.Module):
             lr=lr,
         )
         self.variance = variance
-        self.use_batch_normalization = use_batch_normalization
 
     def forward(self, state, action):
-        if self.use_batch_normalization:
-            state = self.bn_in(state)
         net_in = ch.cat([state, action], dim=-1)
         x1 = F.silu(self.linear1(net_in))
         x2 = F.silu(self.linear2(x1))
@@ -88,15 +83,12 @@ class MixtureOfExperts(nn.Module):
         self.optimizer.step()
         return {"model_loss": loss.item()}
 
-    def save(self, base_path, folder):
-        path = base_path + folder + "/moe/"
+    def store(self, path):
         Path(path).mkdir(parents=True, exist_ok=True)
         ch.save(self.state_dict(), path + "model.pt")
 
-    def load(self, path, train=True):
-        path = path + "moe/model.pt"
-        self.load_state_dict(ch.load(path))
-        if train:
-            self.train()
-        else:
-            self.eval()
+    def load(self, path):
+        self.load_state_dict(ch.load(path + "model.pt"))
+
+    def store_under(self, path):
+        return path + "physics_models/"
