@@ -4,6 +4,7 @@ from typing import Dict, Iterator, Tuple
 import numpy as np
 import torch as ch
 import torch.nn.functional as F
+from torch.autograd import Variable
 from torch.nn import Parameter
 from torch.optim import Adam
 
@@ -38,6 +39,7 @@ class SAC(Actable, Evaluable, Serializable, Trainable):
         self.buffer = buffer
         self.batch_size = batch_size
         self.automatic_entropy_tuning = automatic_entropy_tuning
+        self.lr = lr
 
         # Networks
         self.critic: QNetwork = QNetwork(
@@ -109,7 +111,7 @@ class SAC(Actable, Evaluable, Serializable, Trainable):
                 "optimizer_critic_state_dict": self.optimizer_critic.state_dict(),
                 "optimizer_policy_state_dict": self.optimizer_policy.state_dict(),
                 **(
-                    {"optimizer_entropy": self.alpha_optim.state_dict()}
+                    {"log_alpha": self.log_alpha}
                     if self.automatic_entropy_tuning
                     else {}
                 ),
@@ -133,7 +135,8 @@ class SAC(Actable, Evaluable, Serializable, Trainable):
                 checkpoint["optimizer_policy_state_dict"]
             )
             if self.automatic_entropy_tuning:
-                self.alpha_optim.load_state_dict(checkpoint["optimizer_entropy"])
+                self.log_alpha = checkpoint["log_alpha"]
+                self.alpha = self.log_alpha.exp()
         self.buffer.load(path + "/" + self.buffer.store_under())
 
     def update(self) -> dict:
@@ -194,6 +197,7 @@ class SAC(Actable, Evaluable, Serializable, Trainable):
             alpha_loss.backward()
             self.alpha_optim.step()
             self.alpha = self.log_alpha.exp()
+            self.alpha_optim = Adam([self.log_alpha], lr=self.lr)
 
         # Update target networks
         soft_update(self.critic_target, self.critic, self.tau)

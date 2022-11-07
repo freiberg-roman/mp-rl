@@ -16,6 +16,7 @@ class OriginalMetaWorld(MujocoEnv):
         self._total_steps = 0
         self.current_steps = 0
         self._name = name
+        self.info = None
 
     @property
     def get_jnt_names(self):
@@ -29,6 +30,7 @@ class OriginalMetaWorld(MujocoEnv):
 
     def step(self, action: np.array):
         state, reward, failure, info = self.env.step(action)
+        self.info = info
         self.current_steps += 1
         self._total_steps += 1
         timeout = (
@@ -36,6 +38,9 @@ class OriginalMetaWorld(MujocoEnv):
             and self.current_steps >= self.time_out_after
         )
         return state, reward, failure, timeout
+
+    def get_info(self):
+        return self.info
 
     def get_sim_state(self):
         return (
