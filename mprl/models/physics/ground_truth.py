@@ -16,8 +16,8 @@ class GroundTruthPrediction(Predictable):
     def next_state(
         self,
         states: np.ndarray,
-        sim_states: Tuple[np.ndarray, np.ndarray],
         actions: np.ndarray,
+        sim_states: Tuple[np.ndarray, np.ndarray],
     ):
         """
         :param states: (batch_size, state_dim)
@@ -32,10 +32,10 @@ class GroundTruthPrediction(Predictable):
         next_states = np.empty_like(states)
         next_qposes = np.empty_like(qposes)
         next_qvels = np.empty_like(qvels)
-        for i, qva in enumerate(zip(qposes, qvels, actions)):
-            q, v, a = qva
+        for i, (q, v, a) in enumerate(zip(qposes, qvels, actions)):
             self.env.set_sim_state((q, v))
-            next_state, _, _, _, next_sim_states, _ = self.env.step(a)
+            next_state, _, _, _ = self.env.step(a)
+            next_sim_states = self.env.get_sim_state()
             next_states[i] = next_state
             next_qposes[i] = next_sim_states[0]
             next_qvels[i] = next_sim_states[1]

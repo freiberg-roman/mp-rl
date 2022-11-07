@@ -1,42 +1,40 @@
+from pathlib import Path
 from typing import List, Optional, Tuple
 
 import numpy as np
 
-from mprl.utils.buffer.buffer_output import EnvStepsExtended
 from mprl.utils.buffer.random_replay_buffer import RandomBatchIter
-from mprl.utils.buffer.replay_buffer import EnvSteps, ReplayBuffer
+
+from ..ds_helper import to_np
+from ..serializable import Serializable
+from .buffer_output import EnvSequence
 
 
-class SequenceRB(ReplayBuffer):
+class SequenceRB(Serializable):
     def __init__(
         self,
         capacity: int,
         state_dim: int,
         action_dim: int,
-        sim_qpos_dim: int,
-        sim_qvel_dim: int,
+        sim_qp_dim: int,
+        sim_qv_dim: int,
         minimum_sequence_length: int,
-        des_qpos_dim: int,
-        weight_mean_dim: Optional[int] = None,
-        weight_cov_dim: Optional[int] = None,
+        weight_mean_dim: int,
+        weight_std_dim: int,
     ):
         self._s = np.empty((capacity, state_dim), dtype=np.float32)
         self._next_s = np.empty((capacity, state_dim), dtype=np.float32)
         self._acts = np.empty((capacity, action_dim), dtype=np.float32)
         self._rews = np.empty(capacity, dtype=np.float32)
         self._dones = np.empty(capacity, dtype=bool)
-        self._qposes = np.empty((capacity, sim_qpos_dim), dtype=np.float32)
-        self._qvels = np.empty((capacity, sim_qvel_dim), dtype=np.float32)
-        self._des_qposes = np.empty((capacity, des_qpos_dim), dtype=np.float32)
-        self._des_vs = np.empty((capacity, des_qpos_dim), dtype=np.float32)
-        if weight_mean_dim is not None:
-            self._weight_means = np.empty((capacity, weight_mean_dim), dtype=np.float32)
-        else:
-            self._weight_means = None
-        if weight_cov_dim is not None:
-            self._weight_covs = np.empty((capacity, weight_cov_dim), dtype=np.float32)
-        else:
-            self._weight_covs = None
+        self._sim_qps = np.empty((capacity, sim_qp_dim), dtype=np.float32)
+        self._sim_qvs = np.empty((capacity, sim_qv_dim), dtype=np.float32)
+        self._des_qps = np.empty((capacity, action_dim), dtype=np.float32)
+        self._des_qvs = np.empty((capacity, action_dim), dtype=np.float32)
+        self._des_qps_next = np.empty((capacity, action_dim), dtype=np.float32)
+        self._des_qvs_next = np.empty((capacity, action_dim), dtype=np.float32)
+        self._weight_means = np.empty((capacity, weight_mean_dim), dtype=np.float32)
+        self._weight_stds = np.empty((capacity, weight_std_dim), dtype=np.float32)
 
         self._capacity: int = 0
         self._max_capacity: int = capacity
@@ -57,6 +55,100 @@ class SequenceRB(ReplayBuffer):
         ]
         self._current_buffer = 0
 
+    def store_under(self):
+        return "srb"
+
+    def store(self, path: str) -> None:
+        Path(path).mkdir(parents=True, exist_ok=True)
+        np.save(path + "state.npy", self._s)
+        np.save(path + "next_states.npy", self._next_s)
+        np.save(path + "actions.npy", self._acts)
+        np.save(path + "actions.npy", self._acts)
+        np.save(path + "rewards.npy", self._rews)
+        np.save(path + "dones.npy", self._dones)
+        np.save(path + "sim_qps.npy", self._sim_qps)
+        np.save(path + "sim_qvs.npy", self._sim_qvs)
+        np.save(path + "des_qps.npy", self._des_qps)
+        np.save(path + "des_qvs.npy", self._des_qvs)
+        np.save(path + "des_qps_next.npy", self._des_qps_next)
+        np.save(path + "des_qvs_next.npy", self._des_qvs_next)
+        np.save(path + "weight_means.npy", self._weight_means)
+        np.save(path + "weight_stds.npy", self._weight_stds)
+        np.save(path + "capacity.npy", np.array([self._capacity], dtype=int))
+        np.save(path + "max_capacity.npy", np.array([self._max_capacity], dtype=int))
+        np.save(path + "index.npy", np.array([self._ind], dtype=int))
+        np.save(path + "current_sequence.npy", np.array([self._current_seq], dtype=int))
+        np.save(path + "valid_sequence.npy", np.array([self._valid_seq], dtype=int))
+        np.save(
+            path + "min_sequence_length.npy", np.array([self._min_seq_len], dtype=int)
+        )
+        np.save(path + "buffer_one.npy", self._valid_starts_buffers[0])
+        np.save(path + "buffer_two.npy", self._valid_starts_buffers[1])
+        np.save(
+            path + "usage_one_one.npy",
+            np.array([self._valid_starts_buffer_usages[0][0]], dtype=int),
+        )
+        np.save(
+            path + "usage_one_two.npy",
+            np.array([self._valid_starts_buffer_usages[0][1]], dtype=int),
+        )
+        np.save(
+            path + "usage_two_one.npy",
+            np.array([self._valid_starts_buffer_usages[1][0]], dtype=int),
+        )
+        np.save(
+            path + "usage_two_two.npy",
+            np.array([self._valid_starts_buffer_usages[1][1]], dtype=int),
+        )
+        np.save(
+            path + "current_buffer.npy", np.array([self._current_buffer], dtype=int)
+        )
+
+    # Load model parameters
+    def load(self, path: str) -> None:
+        self._s = np.load(path + "state.npy")
+        self._next_s = np.load(path + "next_states.npy")
+        self._acts = np.load(path + "actions.npy")
+        self._rews = np.load(path + "rewards.npy")
+        self._dones = np.load(path + "dones.npy")
+        self._sim_qps = np.load(path + "sim_qps.npy")
+        self._sim_qvs = np.load(path + "sim_qvs.npy")
+        self._des_qps = np.load(path + "des_qps.npy")
+        self._des_qvs = np.load(path + "des_qvs.npy")
+        self._des_qps_next = np.load(path + "des_qps_next.npy")
+        self._des_qvs_next = np.load(path + "des_qvs_next.npy")
+        self._weight_means = np.load(path + "weight_means.npy")
+        self._weight_stds = np.load(path + "weight_stds.npy")
+        self._capacity = np.load(path + "capacity.npy").item()
+        self._max_capacity = np.load(path + "max_capacity.npy").item()
+        self._ind = np.load(path + "index.npy").item()
+        self._current_seq = np.load(path + "current_sequence.npy").item()
+        valid_seq_array = np.load(path + "valid_sequence.npy")[0]
+        self._valid_seq = []
+        for i in range(len(valid_seq_array)):
+            self._valid_seq.append(
+                (
+                    valid_seq_array[i][0],
+                    valid_seq_array[i][1],
+                    valid_seq_array[i][2],
+                    valid_seq_array[i][3],
+                    valid_seq_array[i][4],
+                )
+            )
+
+        self._min_seq_len = np.load(path + "min_sequence_length.npy").item()
+        self._valid_starts_buffers[0] = np.load(path + "buffer_one.npy")
+        self._valid_starts_buffers[1] = np.load(path + "buffer_two.npy")
+        self._valid_starts_buffer_usages[0] = (
+            np.load(path + "usage_one_one.npy").item(),
+            np.load(path + "usage_one_two.npy").item(),
+        )
+        self._valid_starts_buffer_usages[1] = (
+            np.load(path + "usage_two_one.npy").item(),
+            np.load(path + "usage_two_two.npy").item(),
+        )
+        self._current_buffer = np.load(path + "current_buffer.npy").item()
+
     def add(
         self,
         state,
@@ -65,24 +157,24 @@ class SequenceRB(ReplayBuffer):
         reward,
         done,
         sim_state,
-        des_q,
-        des_v,
-        weight_mean=None,
-        weight_cov=None,
+        des_qv,
+        des_qv_next,
+        weight_mean,
+        weight_std,
     ):
         self._s[self._ind, :] = state
         self._next_s[self._ind, :] = next_state
         self._acts[self._ind, :] = action
         self._rews[self._ind] = reward
         self._dones[self._ind] = done
-        self._qposes[self._ind, :] = sim_state[0]
-        self._qvels[self._ind, :] = sim_state[1]
-        self._des_qposes[self._ind, :] = des_q
-        self._des_vs[self._ind, :] = des_v
-        if weight_mean is not None:
-            self._weight_means[self._ind, :] = weight_mean
-        if weight_cov is not None:
-            self._weight_covs[self._ind, :] = weight_cov
+        self._sim_qps[self._ind, :] = sim_state[0]
+        self._sim_qvs[self._ind, :] = sim_state[1]
+        self._des_qps[self._ind, :] = des_qv[0]
+        self._des_qvs[self._ind, :] = des_qv[1]
+        self._des_qps_next[self._ind, :] = des_qv_next[0]
+        self._des_qvs_next[self._ind, :] = des_qv_next[1]
+        self._weight_means[self._ind, :] = weight_mean
+        self._weight_stds[self._ind, :] = weight_std
         self._capacity = min(self._capacity + 1, self._max_capacity)
 
         # adjust usage and sequence length
@@ -180,31 +272,68 @@ class SequenceRB(ReplayBuffer):
         """
         return TrueKSequenceIter(self, it, k, batch_size=batch_size)
 
-    def __getitem__(self, item):
-        if self._weight_covs is not None:
-            return EnvStepsExtended(
-                self._s[item, :],
-                self._next_s[item, :],
-                self._acts[item, :],
-                self._rews[item],
-                self._dones[item],
-                (self._qposes[item, :], self._qvels[item, :]),
-                self._des_qposes[item, :],
-                self._des_vs[item, :],
-                self._weight_means[item, :],
-                self._weight_covs[item, :],
+    def get_valid_starts(self):
+        first_valid_starts = self._valid_starts_buffers[0][
+            self._valid_starts_buffer_usages[0][0] : self._valid_starts_buffer_usages[
+                0
+            ][1]
+        ]
+        second_valid_starts = self._valid_starts_buffers[1][
+            self._valid_starts_buffer_usages[1][0] : self._valid_starts_buffer_usages[
+                1
+            ][1]
+        ]
+        return np.concatenate((first_valid_starts, second_valid_starts))
+
+    def sample_batch(self, batch_size, torch_batch=True, sequence=True):
+        if torch_batch:
+            batch = next(
+                self.get_true_k_sequence_iter(
+                    1, k=self._min_seq_len, batch_size=batch_size
+                )
+            ).to_torch_batch()
+        else:
+            batch = next(
+                self.get_true_k_sequence_iter(
+                    1, k=self._min_seq_len, batch_size=batch_size
+                )
+            )
+        if not sequence:
+            (
+                states,
+                next_states,
+                actions,
+                rewards,
+                dones,
+                sim_states,
+                (des_qps, des_qvs),
+                (des_qps_next, des_qvs_next),
+                weight_means,
+                weight_stds,
+                idxs,
+            ) = batch
+            return (
+                states[:, 0, :],
+                next_states[:, 0, :],
+                actions[:, 0, :],
+                rewards[:, 0, :],
+                dones[:, 0, :],
+                (sim_states[0][:, 0, :], sim_states[1][:, 0, :]),
+                (des_qps[:, 0, :], des_qvs[:, 0, :]),
+                (des_qps_next[:, 0, :], des_qvs_next[:, 0, :]),
+                weight_means[:, 0, :],
+                weight_stds[:, 0, :],
+                idxs,
             )
         else:
-            return EnvSteps(
-                self._s[item, :],
-                self._next_s[item, :],
-                self._acts[item, :],
-                self._rews[item],
-                self._dones[item],
-                (self._qposes[item, :], self._qvels[item, :]),
-                self._des_qposes[item, :],
-                self._des_vs[item, :],
-            )
+            return batch
+
+    def update_des_qvs(self, idxes, des_qps, des_vs):
+        des_qps, des_vs = to_np(des_qps), to_np(des_vs)
+        self._des_qps[idxes, :] = des_qps[:, :-1, :]
+        self._des_qvs[idxes, :] = des_vs[:, :-1, :]
+        self._des_qps_next[idxes, :] = des_qps[..., 1:, :]
+        self._des_qvs_next[idxes, :] = des_vs[..., 1:, :]
 
     def __len__(self):
         return self._capacity
@@ -234,49 +363,40 @@ class SequenceRB(ReplayBuffer):
         return self._dones
 
     @property
-    def qposes(self):
-        return self._qposes
+    def sim_qps(self):
+        return self._sim_qps
 
     @property
-    def qvels(self):
-        return self._qvels
+    def sim_qvs(self):
+        return self._sim_qvs
 
     @property
-    def des_qposes(self):
-        return self._des_qposes
+    def des_qps(self):
+        return self._des_qps
 
     @property
-    def des_vs(self):
-        return self._des_vs
+    def des_qvs(self):
+        return self._des_qvs
+
+    @property
+    def des_qps_next(self):
+        return self._des_qps_next
+
+    @property
+    def des_qvs_next(self):
+        return self._des_qvs_next
 
     @property
     def weight_means(self):
         return self._weight_means
 
     @property
-    def weight_covs(self):
-        return self._weight_covs
+    def weight_stds(self):
+        return self._weight_stds
 
     @property
     def capacity(self):
         return self._capacity
-
-    def get_valid_starts(self):
-        first_valid_starts = self._valid_starts_buffers[0][
-            self._valid_starts_buffer_usages[0][0] : self._valid_starts_buffer_usages[
-                0
-            ][1]
-        ]
-        second_valid_starts = self._valid_starts_buffers[1][
-            self._valid_starts_buffer_usages[1][0] : self._valid_starts_buffer_usages[
-                1
-            ][1]
-        ]
-        return np.concatenate((first_valid_starts, second_valid_starts))
-
-    @property
-    def is_extended(self):
-        return self._weight_covs is not None
 
 
 class TrueKSequenceIter:
@@ -301,35 +421,27 @@ class TrueKSequenceIter:
                 (self._batch_size, self._k)
             )
             self._current_it += 1
-            if self._buffer.is_extended:
-                return EnvStepsExtended(
-                    self._buffer.states[full_trajectory_indices, :],
-                    self._buffer.next_states[full_trajectory_indices, :],
-                    self._buffer.actions[full_trajectory_indices, :],
-                    self._buffer.rewards[full_trajectory_indices],
-                    self._buffer.dones[full_trajectory_indices],
-                    (
-                        self._buffer.qposes[full_trajectory_indices, :],
-                        self._buffer.qvels[full_trajectory_indices, :],
-                    ),
-                    self._buffer.des_qposes[full_trajectory_indices, :],
-                    self._buffer.des_vs[full_trajectory_indices, :],
-                    self._buffer.weight_means[full_trajectory_indices, :],
-                    self._buffer.weight_covs[full_trajectory_indices, :],
-                )
-            else:
-                return EnvSteps(
-                    self._buffer.states[full_trajectory_indices, :],
-                    self._buffer.next_states[full_trajectory_indices, :],
-                    self._buffer.actions[full_trajectory_indices, :],
-                    self._buffer.rewards[full_trajectory_indices],
-                    self._buffer.dones[full_trajectory_indices],
-                    (
-                        self._buffer.qposes[full_trajectory_indices, :],
-                        self._buffer.qvels[full_trajectory_indices, :],
-                    ),
-                    self._buffer.des_qposes[full_trajectory_indices, :],
-                    self._buffer.des_vs[full_trajectory_indices, :],
-                )
+            return EnvSequence(
+                self._buffer.states[full_trajectory_indices, :],
+                self._buffer.next_states[full_trajectory_indices, :],
+                self._buffer.actions[full_trajectory_indices, :],
+                self._buffer.rewards[full_trajectory_indices],
+                self._buffer.dones[full_trajectory_indices],
+                (
+                    self._buffer.sim_qps[full_trajectory_indices, :],
+                    self._buffer.sim_qvs[full_trajectory_indices, :],
+                ),
+                (
+                    self._buffer.des_qps[full_trajectory_indices, :],
+                    self._buffer.des_qvs[full_trajectory_indices, :],
+                ),
+                (
+                    self._buffer.des_qps_next[full_trajectory_indices, :],
+                    self._buffer.des_qvs_next[full_trajectory_indices, :],
+                ),
+                self._buffer.weight_means[full_trajectory_indices, :],
+                self._buffer.weight_stds[full_trajectory_indices, :],
+                full_trajectory_indices,
+            )
         else:
             raise StopIteration

@@ -1,4 +1,3 @@
-import torch
 from omegaconf import OmegaConf
 from omegaconf.omegaconf import DictConfig
 
@@ -50,23 +49,24 @@ class ConfigRepository(ModelConfigGateway, EnvConfigGateway, TrainConfigGateway)
         network_cfg = self._config.alg.network
         cfg = OmegaConf.create(
             {
-                **OmegaConf.to_container(self._config.alg.hyper),
+                **OmegaConf.to_container(self._config.alg),
                 **OmegaConf.to_container(train_cfg),
                 **OmegaConf.to_container(network_cfg),
             }
         )
-        cfg.alpha = self._config.alg.hyper.alpha
-        cfg.auto_alpha = self._config.alg.hyper.auto_alpha
-        cfg.target_entropy = self._config.alg.hyper.target_entropy
-        cfg.num_steps = self._config.alg.hyper.num_steps
-        cfg.alpha_q = self._config.alg.hyper.alpha_q
-        cfg.num_basis = self._config.alg.hyper.num_basis
-        cfg.num_dof = self._config.alg.hyper.num_dof
-        cfg.basis_bandwidth_factor = self._config.alg.hyper.basis_bandwidth_factor
-        cfg.layer_type = self._config.alg.hyper.get("layer_type", "kl")
-        cfg.mean_bound = self._config.alg.hyper.get("mean_bound", 1.0)
-        cfg.cov_bound = self._config.alg.hyper.get("cov_bound", 1.0)
-        cfg.use_imp_sampling = self._config.alg.hyper.get("use_imp_sampling", False)
+        cfg.alpha = self._config.alg.alpha
+        cfg.auto_alpha = self._config.alg.auto_alpha
+        cfg.target_entropy = self._config.alg.target_entropy
+        cfg.num_steps = self._config.alg.get("num_steps", 1)
+        cfg.alpha_q = self._config.alg.get("alpha_q", 0.0)
+        cfg.num_basis = self._config.alg.mp.get("num_basis", 1)
+        cfg.num_dof = self._config.alg.mp.get("num_dof", 1)
+        cfg.layer_type = self._config.alg.get("layer_type", "kl")
+        cfg.mean_bound = self._config.alg.get(
+            "mean_bound", 100.0
+        )  # just to make it obvious
+        cfg.cov_bound = self._config.alg.get("cov_bound", 100.0)
+        cfg.use_imp_sampling = self._config.alg.get("use_imp_sampling", False)
         return cfg
 
     def get_buffer_config(self) -> DictConfig:
@@ -108,14 +108,6 @@ class ConfigRepository(ModelConfigGateway, EnvConfigGateway, TrainConfigGateway)
         :return: The environment configuration.
         """
         return self._config.env
-
-    def get_device(self) -> str:
-        """
-        Returns the device to use.
-
-        :return: The device to use.
-        """
-        return torch.device(self._config.device)
 
     def get_env_name(self) -> str:
         """

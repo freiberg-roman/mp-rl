@@ -1,0 +1,9 @@
+class Serializable:
+    def load(self, path):
+        ...
+
+    def store(self, path):
+        ...
+
+    def store_under(self, path):
+        ...

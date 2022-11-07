@@ -2,16 +2,18 @@ from pathlib import Path
 from typing import Dict, Iterator, Tuple
 
 import numpy as np
-import torch
+import torch as ch
 import torch.nn.functional as F
+from torch.autograd import Variable
 from torch.nn import Parameter
 from torch.optim import Adam
 
+from mprl.models.common.policy_network import GaussianPolicy
 from mprl.utils import RandomRB
 from mprl.utils.math_helper import hard_update, soft_update
 
-from ..common import Actable, Evaluable, QNetwork, Serializable, Trainable
-from .networks import GaussianPolicy
+from ...utils.serializable import Serializable
+from ..common import Actable, Evaluable, QNetwork, Trainable
 
 
 class SAC(Actable, Evaluable, Serializable, Trainable):
@@ -23,7 +25,6 @@ class SAC(Actable, Evaluable, Serializable, Trainable):
         automatic_entropy_tuning: bool,
         lr: float,
         batch_size: int,
-        device: torch.device,
         state_dim: int,
         action_dim: int,
         network_width: int,
@@ -35,38 +36,38 @@ class SAC(Actable, Evaluable, Serializable, Trainable):
         self.gamma: float = gamma
         self.tau: float = tau
         self.alpha: float = alpha
-        self.device: torch.device = device
         self.buffer = buffer
         self.batch_size = batch_size
         self.automatic_entropy_tuning = automatic_entropy_tuning
+        self.lr = lr
 
         # Networks
         self.critic: QNetwork = QNetwork(
             (state_dim, action_dim), network_width, network_depth
-        ).to(device=self.device)
+        )
         self.critic_target: QNetwork = QNetwork(
             (state_dim, action_dim), network_width, network_depth
-        ).to(self.device)
+        )
         hard_update(self.critic_target, self.critic)
         self.policy: GaussianPolicy = GaussianPolicy(
             (state_dim, action_dim), network_width, network_depth
-        ).to(self.device)
+        )
         self.optimizer_policy = Adam(self.policy.parameters(), lr=lr)
         self.optimizer_critic = Adam(self.critic.parameters(), lr=lr)
         if automatic_entropy_tuning:
             self.target_entropy = -action_dim
-            self.log_alpha = torch.zeros(1, requires_grad=True, device=self.device)
+            self.log_alpha = ch.zeros(1, requires_grad=True)
             self.alpha_optim = Adam([self.log_alpha], lr=lr)
 
     def sequence_reset(self):
         """Reset the internal state of the agent. In this case, the agent is stateless."""
         pass
 
-    @torch.no_grad()
-    def action(self, state: np.ndarray, info) -> np.ndarray:
+    @ch.no_grad()
+    def action_train(self, state: np.ndarray, info) -> np.ndarray:
         _ = info  # not used
-        state = torch.FloatTensor(state).to(self.device).unsqueeze(0)
-        action, _, _ = self.policy.sample(state)
+        state = ch.FloatTensor(state).unsqueeze(0)
+        action = self.policy.sample(state)
         return action.detach().cpu().numpy()[0]
 
     def eval_reset(self) -> np.ndarray:
@@ -78,9 +79,9 @@ class SAC(Actable, Evaluable, Serializable, Trainable):
 
     def action_eval(self, state: np.ndarray, info: any) -> np.ndarray:
         _ = info
-        state = torch.FloatTensor(state).to(self.device).unsqueeze(0)
-        _, _, action = self.policy.sample(state)
-        return action.detach().cpu().numpy()[0]
+        state = ch.FloatTensor(state).unsqueeze(0)
+        mean_action = self.policy.mean(state)
+        return mean_action.detach().cpu().numpy()[0]
 
     def add_step(
         self,
@@ -96,60 +97,67 @@ class SAC(Actable, Evaluable, Serializable, Trainable):
     def parameters(self) -> Iterator[Parameter]:
         return self.policy.parameters()
 
+    def store_under(self, path):
+        return path + "sac/"
+
     # Save model parameters
-    def save(self, path: str) -> None:
+    def store(self, path: str) -> None:
         Path(path).mkdir(parents=True, exist_ok=True)
-        torch.save(
+        ch.save(
             {
                 "policy_state_dict": self.policy.state_dict(),
                 "critic_state_dict": self.critic.state_dict(),
                 "critic_target_state_dict": self.critic_target.state_dict(),
-                "critic_optimizer_state_dict": self.optimizer_critic.state_dict(),
-                "policy_optimizer_state_dict": self.optimizer_policy.state_dict(),
+                "optimizer_critic_state_dict": self.optimizer_critic.state_dict(),
+                "optimizer_policy_state_dict": self.optimizer_policy.state_dict(),
+                **(
+                    {"log_alpha": self.log_alpha}
+                    if self.automatic_entropy_tuning
+                    else {}
+                ),
             },
-            path + "model.pt",
+            path + "/model.pt",
         )
+        self.buffer.store(path + "/" + self.buffer.store_under())
 
     # Load model parameters
     def load(self, path: str) -> None:
-        ckpt_path = path + "/sac/model.pt"
+        ckpt_path = path + "/model.pt"
         if ckpt_path is not None:
-            checkpoint = torch.load(ckpt_path)
+            checkpoint = ch.load(ckpt_path)
             self.policy.load_state_dict(checkpoint["policy_state_dict"])
             self.critic.load_state_dict(checkpoint["critic_state_dict"])
             self.critic_target.load_state_dict(checkpoint["critic_target_state_dict"])
             self.optimizer_critic.load_state_dict(
-                checkpoint["critic_optimizer_state_dict"]
+                checkpoint["optimizer_critic_state_dict"]
             )
             self.optimizer_policy.load_state_dict(
-                checkpoint["policy_optimizer_state_dict"]
+                checkpoint["optimizer_policy_state_dict"]
             )
-
-    def set_eval(self):
-        self.policy.eval()
-        self.critic.eval()
-        self.critic_target.eval()
-
-    def set_train(self):
-        self.policy.train()
-        self.critic.train()
-        self.critic_target.train()
+            if self.automatic_entropy_tuning:
+                self.log_alpha = checkpoint["log_alpha"]
+                self.alpha = self.log_alpha.exp()
+                self.alpha_optim = Adam([self.log_alpha], lr=self.lr)
+        self.buffer.load(path + "/" + self.buffer.store_under())
 
     def update(self) -> dict:
-        batch = next(self.buffer.get_iter(1, self.batch_size)).to_torch_batch()
-        states, next_states, actions, rewards, dones, _ = batch
+        states, next_states, actions, rewards, dones = self.buffer.sample_batch(
+            batch_size=self.batch_size
+        )
 
         # Compute critic loss
-        with torch.no_grad():
-            next_state_action, next_state_log_pi, _ = self.policy.sample(next_states)
+        with ch.no_grad():
+            next_state_action, next_state_log_pi = self.policy.sample_log_prob(
+                next_states
+            )
             qf1_next_target, qf2_next_target = self.critic_target(
                 next_states, next_state_action
             )
             min_qf_next_target = (
-                torch.min(qf1_next_target, qf2_next_target)
+                ch.min(qf1_next_target, qf2_next_target)
                 - self.alpha * next_state_log_pi
             )
-            next_q_value = rewards + (1 - dones.to(torch.float32)) * self.gamma * (
+            next_q_value = rewards + (1 - dones.to(ch.float32)) * self.gamma * (
                 min_qf_next_target
             )
 
@@ -170,9 +178,9 @@ class SAC(Actable, Evaluable, Serializable, Trainable):
         self.optimizer_critic.step()
 
         # Compute policy loss
-        pi, log_pi, _ = self.policy.sample(states)
+        pi, log_pi = self.policy.sample_log_prob(states)
         qf1_pi, qf2_pi = self.critic(states, pi)
-        min_qf_pi = torch.min(qf1_pi, qf2_pi)
+        min_qf_pi = ch.min(qf1_pi, qf2_pi)
         policy_loss = (
             (self.alpha * log_pi) - min_qf_pi
         ).mean()  # Jπ = 𝔼st∼D,εt∼N[α * logπ(f(εt;st)|st) − Q(st,f(εt;st))]
@@ -190,6 +198,7 @@ class SAC(Actable, Evaluable, Serializable, Trainable):
             alpha_loss.backward()
             self.alpha_optim.step()
             self.alpha = self.log_alpha.exp()
+            self.alpha_optim = Adam([self.log_alpha], lr=self.lr)
 
         # Update target networks
         soft_update(self.critic_target, self.critic, self.tau)

@@ -1,32 +1,21 @@
 name: "Hopper"
 
-num_dof: 3
-time_out_after: 1000  # only for SAC activated
 action_dim: 3
-state_dim: 11
-sim_qpos_dim: 6
-sim_qvel_dim: 6
-coordinate_dim: 1
 dt: 0.008
+state_dim: 11
+time_out_after: 1000  # only for SAC activated
+sim_qp_dim: 6
+sim_qv_dim: 6
 
 pd:
   pgains: [1.0, 1.0, 1.0]
   dgains: [0.1, 0.1, 0.1]
-
-idmp:
-  num_basis: 5
-  basis_bandwidth_factor: 1.0
 
 sac:
   alpha: 0.1
   auto_alpha: True
   target_entropy: -3
 
-sac_mixed_mp:
-  alpha: 0.05
-  alpha_q: 0.0
-
 network:
   network_width: 256
   network_depth: 2
-  action_scale: 1.0

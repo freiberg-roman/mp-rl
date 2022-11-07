@@ -2,16 +2,19 @@ import numpy as np
 import wandb
 
 if __name__ == "__main__":
+    id = wandb.util.generate_id()
+    print(id)
     wandb.init(
-        project="test",
+        project="test-wandb",
         name="simple_run",
+        id="1y24vfao",
+        resume="must",
     )
 
-    for _ in range(100):
+    for i in range(0, 400):
         wandb.log(
             {
-                "hist": wandb.Histogram(
-                    np_histogram=np.histogram(np.random.uniform(size=(100,)))
-                )
-            }
+                "value": (i**2) / 100 + 10,
+            },
+            step=i,
         )

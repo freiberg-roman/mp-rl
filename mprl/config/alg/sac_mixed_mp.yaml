@@ -1,7 +1,18 @@
 defaults:
   - ctrl: pd
-  - hyper: sac_mixed_mp
-  - network: ff
   - mp: idmp
+  - network: ff
+  - tr: none
 
 name: "sac_mixed_mp"
+
+alpha: ${env.sac_mixed_mp.alpha}
+alpha_q: ${env.sac_mixed_mp.alpha_q}
+auto_alpha: ${env.sac_mixed_mp.auto_alpha}
+target_entropy: ${env.sac_mixed_mp.target_entropy}
+num_steps: ${env.idmp.num_steps}
+gamma: 0.99
+use_imp_sampling: False
+policy_loss: "mean"  # other is mean_performance
+target_tau: 0.005
+warm_start_steps: 0

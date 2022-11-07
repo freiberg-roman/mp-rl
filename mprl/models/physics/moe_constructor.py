@@ -1,8 +1,8 @@
 from mprl.env import EnvConfigGateway
-from mprl.models import ModelConfigGateway
-from mprl.models.physics.moe import MixtureOfExperts
 
+from ..common.config_gateway import ModelConfigGateway
 from ..physics.moe_prediction import MOEPrediction
+from .moe import MixtureOfExperts
 
 
 class MOEFactory:
@@ -21,7 +21,6 @@ class MOEFactory:
             num_experts=config_model.num_experts,
             network_width=config_model.network_width,
             variance=config_model.variance,
-            use_batch_normalization=config_model.use_batch_normalization,
         )
         predictor = MOEPrediction(
             model,

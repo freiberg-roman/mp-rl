@@ -1,6 +1,3 @@
-import math
-
-import cv2
 import numpy as np
 import wandb
 
@@ -15,20 +12,16 @@ class Evaluator:
         cfg = eval_config_gateway.get_evaluation_config()
         self.num_eval_episodes: int = cfg.num_eval_episodes
         self.env = env
-        self.should_record: bool = cfg.record_video
-        self.record_each = cfg.record_each
-        self.current_evaluation = 0
-        self.record_mode = cfg.record_mode
         self.time_out_after: int = cfg.time_out_after
-        self.images = []
 
-    def evaluate(self, agent: Evaluable, after_performed_steps: int) -> dict:
-        self.images = []
+    def evaluate(
+        self, agent: Evaluable, after_performed_steps: int, render=False
+    ) -> dict:
         to_log = {}
 
         total_reward = 0.0
         success: float = 0.0
-        for i in range(self.num_eval_episodes):
+        for _ in range(self.num_eval_episodes):
             self.env.full_reset()
             agent.eval_reset()  # reset agent's internal state (e.g. motion primitives)
 
@@ -38,36 +31,19 @@ class Evaluator:
             actions = []
             while not done and not time_out:
                 action = agent.action_eval(state, sim_state)
-                state, reward, done, time_out, sim_state, info = self.env.step(action)
-                total_reward += reward
-                successes.append(info.get("success", 0.0))
-                actions.append(action)
+                state, reward, done, time_out = self.env.step(action)
+                if render:
+                    self.env.render()
 
-                # Only record the last episode if we are recording
-                if self.should_record and i == self.num_eval_episodes - 1:
-                    self.images.append(self.env.render(mode="rgb_array"))
+                total_reward += reward
+                info = self.env.get_info()
+                successes.append(info.get("success", -1.0))
+                actions.append(action)
 
             success += float(max(successes))
 
-        if self.should_record and self.current_evaluation % self.record_each == 0:
-            if self.record_mode == "disabled":
-                out: cv2.VideoWriter = cv2.VideoWriter(
-                    self.env.name + "_" + str(after_performed_steps) + ".avi",
-                    cv2.VideoWriter_fourcc(*"DIVX"),
-                    30,
-                    (480, 480),
-                )
-                # save video
-                for im in self.images:
-                    out.write(im)
-                out.release()
-            elif self.record_mode == "online":
-                imgs = np.transpose(np.array(self.images), (0, 3, 1, 2))
-                to_log = {"video": wandb.Video(imgs, fps=math.floor(1 / self.env.dt))}
-
         avg_reward = total_reward / self.num_eval_episodes
         success_rate = success / self.num_eval_episodes
-        self.current_evaluation += 1
         agent_log = agent.eval_log()
         return {
             **{

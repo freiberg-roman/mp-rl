@@ -1,10 +1,9 @@
-from abc import ABC
-
 import torch as ch
 
-from mprl.models import Predictable, Trainable
-from mprl.models.physics.moe import MixtureOfExperts
-from mprl.utils.ds_helper import to_np, to_ts
+from mprl.utils.ds_helper import to_ts
+
+from ..common.interfaces import Predictable, Trainable
+from .moe import MixtureOfExperts
 
 
 class MOEPrediction(Predictable, Trainable):
@@ -61,7 +60,7 @@ class MOEPrediction(Predictable, Trainable):
                 )
 
     def update(self, batch=None):
-        (states, next_states, actions, _, _, _, _, _) = batch.to_torch_batch()
+        (states, next_states, actions, _, _) = batch.to_torch_batch()
         next_state_delta = next_states - states
         states = self.prepare_state(states)
         next_state_delta = self.prepare_delta(next_state_delta)

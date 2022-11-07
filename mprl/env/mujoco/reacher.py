@@ -1,4 +1,3 @@
-import mujoco
 import numpy as np
 
 from mprl.env.mujoco.mj_env import MujocoEnv
@@ -21,11 +20,12 @@ class ReacherEnv(MujocoEnv):
         observation = self._get_obs()
         self.current_steps += 1
         self._total_steps += 1
-        done = (
+        timeout = (
             self.time_out_after is not None
             and self.current_steps >= self.time_out_after
         )
-        return observation, reward, False, done, self.get_sim_state(), {}
+        failure = False
+        return observation, reward, failure, timeout
 
     def random_action(self):
         return np.random.uniform(-1, 1, (2,))

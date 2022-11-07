@@ -1,7 +1,6 @@
 from pathlib import Path
-from typing import Callable, Optional
 
-import torch
+import torch as ch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions.categorical import Categorical
@@ -10,9 +9,10 @@ from torch.distributions.mixture_same_family import MixtureSameFamily
 from torch.distributions.multivariate_normal import MultivariateNormal
 
 from mprl.utils.ds_helper import to_ts
+from mprl.utils.serializable import Serializable
 
 
-class MixtureOfExperts(nn.Module):
+class MixtureOfExperts(nn.Module, Serializable):
     def __init__(
         self,
         state_dim_in: int,
@@ -22,18 +22,14 @@ class MixtureOfExperts(nn.Module):
         network_width: int,
         variance: float = 1.0,
         lr: float = 3e-4,
-        use_batch_normalization: bool = False,
     ):
         super(MixtureOfExperts, self).__init__()
 
-        if use_batch_normalization:
-            self.bn_in = nn.BatchNorm1d(state_dim_in)
         self.linear1 = nn.Linear(
             state_dim_in + action_dim,
             network_width,
         )
         self.linear2 = nn.Linear(network_width, network_width)
-        self.expert_log_prob_contribution = nn.Linear(network_width, num_experts)
         self.expert_heads = []
 
         for _ in range(num_experts):
@@ -41,31 +37,26 @@ class MixtureOfExperts(nn.Module):
 
         self.expert_heads = nn.ModuleList(self.expert_heads)
         self._action_dim = action_dim
-        self.optimizer: torch.optim.Optimizer = torch.optim.Adam(
+        self.optimizer: ch.optim.Optimizer = ch.optim.Adam(
             self.parameters(),
             lr=lr,
         )
         self.variance = variance
-        self.use_batch_normalization = use_batch_normalization
 
     def forward(self, state, action):
-        if self.use_batch_normalization:
-            state = self.bn_in(state)
-        net_in = torch.cat([state, action], dim=-1)
-
+        net_in = ch.cat([state, action], dim=-1)
         x1 = F.silu(self.linear1(net_in))
         x2 = F.silu(self.linear2(x1))
-
-        expert_log_prob = self.expert_log_prob_contribution(x2)
-        categorical_experts = Categorical(logits=expert_log_prob)
-
         means = []
         for head in self.expert_heads:
             means.append(head(x2))
-        means = torch.stack(means, 1)
+        means = ch.stack(means, 1)
 
         ind_expert_dist = Independent(
-            MultivariateNormal(means, self.variance * torch.eye(means.size(dim=-1))), 0
+            MultivariateNormal(means, self.variance * ch.eye(means.size(dim=-1))), 0
+        )
+        categorical_experts = Categorical(
+            probs=ch.ones((len(means), len(self.expert_heads)))
         )
         return MixtureSameFamily(categorical_experts, ind_expert_dist)
 
@@ -77,7 +68,7 @@ class MixtureOfExperts(nn.Module):
         log_prob = self.log_prob(state, action, next_state_delta)
         return (-log_prob).mean()  # NLL
 
-    @torch.no_grad()
+    @ch.no_grad()
     def next_state_delta(self, states, actions, deterministic=False):
         states = to_ts(states)
         actions = to_ts(actions)
@@ -87,24 +78,19 @@ class MixtureOfExperts(nn.Module):
             pred_delta = self.forward(states, actions).mean
         return pred_delta
 
-    def update(
-        self, states: torch.Tensor, actions: torch.Tensor, next_states: torch.Tensor
-    ):
+    def update(self, states: ch.Tensor, actions: ch.Tensor, next_states: ch.Tensor):
         loss = self.loss(states, actions, next_states)
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
         return {"model_loss": loss.item()}
 
-    def save(self, base_path, folder):
-        path = base_path + folder + "/moe/"
+    def store(self, path):
         Path(path).mkdir(parents=True, exist_ok=True)
-        torch.save(self.state_dict(), path + "model.pt")
+        ch.save(self.state_dict(), path + "model.pt")
 
-    def load(self, path, train=True):
-        path = path + "moe/model.pt"
-        self.load_state_dict(torch.load(path))
-        if train:
-            self.train()
-        else:
-            self.eval()
+    def load(self, path):
+        self.load_state_dict(ch.load(path + "model.pt"))
+
+    def store_under(self, path):
+        return path + "physics_models/"

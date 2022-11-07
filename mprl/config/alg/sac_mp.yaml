@@ -1,7 +1,15 @@
 defaults:
   - ctrl: pd
-  - hyper: sac_mp
-  - network: ff
   - mp: idmp
+  - network: ff
+  - tr: none
 
 name: "sac_mp"
+
+alpha: ${env.sac_mp.alpha}
+auto_alpha: False
+gamma: 0.99
+num_steps: ${env.idmp.num_steps}
+target_entropy: -100
+target_tau: 0.005
+warm_start_steps: 0

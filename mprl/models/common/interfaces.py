@@ -10,7 +10,7 @@ class Actable(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def action(self, state: np.ndarray, info: any) -> np.ndarray:
+    def action_train(self, state: np.ndarray, info: any) -> np.ndarray:
         raise NotImplementedError
 
 
@@ -49,26 +49,4 @@ class Trainable(ABC):
 class Predictable(ABC):
     @abstractmethod
     def next_state(self, states, actions, sim_states=None):
-        raise NotImplementedError
-
-
-class Serializable(ABC):
-    @abstractmethod
-    def parameters(self):
-        raise NotImplementedError
-
-    @abstractmethod
-    def save(self, path):
-        raise NotImplementedError
-
-    @abstractmethod
-    def load(self, path):
-        raise NotImplementedError
-
-    @abstractmethod
-    def set_eval(self):
-        raise NotImplementedError
-
-    @abstractmethod
-    def set_train(self):
         raise NotImplementedError

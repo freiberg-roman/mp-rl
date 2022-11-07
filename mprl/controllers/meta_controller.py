@@ -1,4 +1,4 @@
-import torch
+import torch as ch
 
 from mprl.utils.ds_helper import to_ts
 
@@ -8,8 +8,8 @@ from .ctrl import Controller
 class MetaController(Controller):
     """Simple position controller."""
 
-    def __init__(self, pgains: torch.Tensor):
-        self.pgains: torch.Tensor = to_ts(
+    def __init__(self, pgains: ch.Tensor):
+        self.pgains: ch.Tensor = to_ts(
             pgains
         )  # 3 dim for xyz in task space and normalized position of gripper
 

@@ -1,4 +1,3 @@
-name: "dp_ctrl"
-
+name: "pd"
 pgains: ${env.pd.pgains}
 dgains: ${env.pd.dgains}

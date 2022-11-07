@@ -1,32 +1,21 @@
 name: "Ant"
 
-num_dof: 8
-time_out_after: 1000
 action_dim: 8
-state_dim: 27  # exclude contact forces
-sim_qpos_dim: 15
-sim_qvel_dim: 14
-coordinate_dim: 2
 dt: 0.05
+state_dim: 27  # exclude contact forces
+time_out_after: 1000
+sim_qp_dim: 15
+sim_qv_dim: 14
 
 pd:
   pgains: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
   dgains: [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
-
-idmp:
-  num_basis: 10
-  basis_bandwidth_factor: 1.0
 
 sac:
   alpha: 0.1
   auto_alpha: True
   target_entropy: -8
 
-sac_mixed_mp:
-  alpha: 0.05
-  alpha_q: 0.0
-
 network:
   network_width: 256
   network_depth: 2
-  action_scale: 1.0
