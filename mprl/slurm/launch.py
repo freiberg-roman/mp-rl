@@ -23,14 +23,12 @@ def main():
         project_name = val["project_name"]
 
         for i in range(num_jobs):
-            file_content = (
-                "python -m mprl.ui.start alg={} env={} run_id={} project_name".format(
-                    algorithm, env, i, project_name
-                )
+            file_content = "python -m mprl.ui.start alg={} env={} run_id={} project_name={}".format(
+                algorithm, env, i, project_name
             )
-            for (setting, setting_val) in val.items():
-                if isinstance(setting_val, dict):
-                    for (setting_key, setting_val) in setting_val.items():
+            for (setting, setting_val_val) in val.items():
+                if isinstance(setting_val_val, dict):
+                    for (setting_key, setting_val) in setting_val_val.items():
                         file_content += " {}.{}={}".format(
                             setting, setting_key, setting_val
                         )

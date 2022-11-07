@@ -21,7 +21,7 @@ class Evaluator:
 
         total_reward = 0.0
         success: float = 0.0
-        for i in range(self.num_eval_episodes):
+        for _ in range(self.num_eval_episodes):
             self.env.full_reset()
             agent.eval_reset()  # reset agent's internal state (e.g. motion primitives)
 

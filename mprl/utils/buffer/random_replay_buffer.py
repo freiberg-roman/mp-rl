@@ -76,7 +76,6 @@ class RandomRB(Serializable):
         np.save(path + "index.npy", np.array([self._ind], dtype=int))
 
     def load(self, path):
-        path = path
         self._s = np.load(path + "state.npy")
         self._next_s = np.load(path + "next_state.npy")
         self._acts = np.load(path + "actions.npy")

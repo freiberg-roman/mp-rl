@@ -31,7 +31,6 @@ class SACTRFactory:
         env_cfg = self._gateway.get_environment_config()
         cfg_net = self._gateway.get_network_config()
         cfg_hyper = self._gateway.get_hyper_parameter_config()
-        cfg_model = self._gateway.get_model_config()
         dim_weights = (cfg_hyper.num_basis + 1) * cfg_hyper.num_dof
         buffer = SequenceRB(
             capacity=self._gateway.get_buffer_config().capacity,
