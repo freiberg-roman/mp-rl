@@ -1,3 +1,5 @@
+import os
+
 import hydra
 import wandb
 from omegaconf import DictConfig, OmegaConf
@@ -47,10 +49,14 @@ def run(cfg: DictConfig):
 
     trainer = Trainer(training_environment, train_config_gateway=config_repository)
     evaluator = Evaluator(evaluation_environment, eval_config_gateway=config_repository)
-    checkpoint = CheckPoint([trainer, evaluator, agent], cfg.hydra.run.dir)
-    if cfg.continue_run or cfg.eval_current:
-        checkpoint.restore_checkpoint(cfg.checkpoint_source)
 
+    # Checkpointing
+    dir_path = os.getcwd()
+    checkpoint = CheckPoint([trainer, agent], dir_path)
+    if cfg.continue_run or cfg.eval_current:
+        checkpoint.restore_checkpoint(cfg.checkpoint_source, cfg.restore_steps_after)
+
+    # Logging
     cfg_wandb = cfg.logging
     wandb.init(
         project=cfg_wandb.project,
@@ -61,6 +67,7 @@ def run(cfg: DictConfig):
 
     if not cfg.eval_current:
         # Main loop
+        checkpoint.create_checkpoint(trainer.performed_training_steps)
         while trainer.has_training_steps_left:
             result = evaluator.evaluate(
                 agent, after_performed_steps=trainer.performed_training_steps

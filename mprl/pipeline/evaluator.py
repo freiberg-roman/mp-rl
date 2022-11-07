@@ -37,7 +37,7 @@ class Evaluator:
 
                 total_reward += reward
                 info = self.env.get_info()
-                successes.append(info.get("success", 0.0))
+                successes.append(info.get("success", -1.0))
                 actions.append(action)
 
             success += float(max(successes))

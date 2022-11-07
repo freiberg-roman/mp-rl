@@ -5,6 +5,5 @@ class Serializable:
     def store(self, path):
         ...
 
-    @property
-    def store_under(self):
+    def store_under(self, path):
         ...

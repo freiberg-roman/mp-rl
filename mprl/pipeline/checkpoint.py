@@ -12,11 +12,11 @@ class CheckPoint:
     def create_checkpoint(self, performed_steps):
         for item in self.serializable:
             item.store(
-                os.path.join(self.work_dir, str(performed_steps), item.store_under)
+                item.store_under(
+                    os.path.join(self.work_dir, str(performed_steps) + "/")
+                )
             )
 
-    def restore_checkpoint(self, performed_steps):
+    def restore_checkpoint(self, dir, performed_steps):
         for item in self.serializable:
-            item.load(
-                os.path.join(self.work_dir, str(performed_steps), item.store_under)
-            )
+            item.load(item.store_under(os.path.join(dir, str(performed_steps) + "/")))
