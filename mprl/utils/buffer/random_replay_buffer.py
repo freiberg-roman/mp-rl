@@ -63,8 +63,7 @@ class RandomRB(Serializable):
     def store_under(self):
         return "rrb"
 
-    def store(self, base_path, folder):
-        path = base_path + folder + "/rrb/"
+    def store(self, path):
         Path(path).mkdir(parents=True, exist_ok=True)
         np.save(path + "state.npy", self._s)
         np.save(path + "next_state.npy", self._next_s)
@@ -77,7 +76,7 @@ class RandomRB(Serializable):
         np.save(path + "index.npy", np.array([self._ind], dtype=int))
 
     def load(self, path):
-        path = path + "/rrb/"
+        path = path
         self._s = np.load(path + "state.npy")
         self._next_s = np.load(path + "next_state.npy")
         self._acts = np.load(path + "actions.npy")

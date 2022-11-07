@@ -74,7 +74,7 @@ class SequenceRB(Serializable):
         np.save(path + "des_qvs_next.npy", self._des_qvs_next)
         np.save(path + "weight_means.npy", self._weight_means)
         np.save(path + "weight_stds.npy", self._weight_stds)
-        np.save(path + "capacity.npy", np.array([self.capacity], dtype=int))
+        np.save(path + "capacity.npy", np.array([self._capacity], dtype=int))
         np.save(path + "max_capacity.npy", np.array([self._max_capacity], dtype=int))
         np.save(path + "index.npy", np.array([self._ind], dtype=int))
         np.save(path + "current_sequence.npy", np.array([self._current_seq], dtype=int))
@@ -89,15 +89,15 @@ class SequenceRB(Serializable):
             np.array([self._valid_starts_buffer_usages[0][0]], dtype=int),
         )
         np.save(
-            path + "usage_one_one.npy",
+            path + "usage_one_two.npy",
             np.array([self._valid_starts_buffer_usages[0][1]], dtype=int),
         )
         np.save(
-            path + "usage_one_one.npy",
+            path + "usage_two_one.npy",
             np.array([self._valid_starts_buffer_usages[1][0]], dtype=int),
         )
         np.save(
-            path + "usage_one_one.npy",
+            path + "usage_two_two.npy",
             np.array([self._valid_starts_buffer_usages[1][1]], dtype=int),
         )
         np.save(
@@ -119,13 +119,13 @@ class SequenceRB(Serializable):
         self._des_qvs_next = np.load(path + "des_qvs_next.npy")
         self._weight_means = np.load(path + "weight_means.npy")
         self._weight_stds = np.load(path + "weight_stds.npy")
-        self.capacity = np.load(path + "capacity.npy").item()
+        self._capacity = np.load(path + "capacity.npy").item()
         self._max_capacity = np.load(path + "max_capacity.npy").item()
         self._ind = np.load(path + "index.npy").item()
         self._current_seq = np.load(path + "current_sequence.npy")
-        valid_seq_array = np.load(path + "valid_sequence.npy")
+        valid_seq_array = np.load(path + "valid_sequence.npy")[0]
         self._valid_seq = []
-        for i in len(valid_seq_array):
+        for i in range(len(valid_seq_array)):
             self._valid_seq.append(
                 (
                     valid_seq_array[i][0],

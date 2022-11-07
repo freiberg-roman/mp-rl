@@ -307,3 +307,69 @@ def test_extinguish_other_sequence():
         )
 
     assert np.all(buffer.get_valid_starts() == np.array([0, 1, 2, 6]))
+
+
+def test_store_load_srb():
+    env = TestEnv(state_dim=3, action_dim=19)
+    buffer = SequenceRB(
+        capacity=10,
+        state_dim=3,
+        action_dim=19,
+        sim_qp_dim=2,
+        sim_qv_dim=4,
+        minimum_sequence_length=4,
+        weight_mean_dim=3,
+        weight_std_dim=3,
+    )
+    mean = np.random.standard_normal(size=(3))
+    std = np.random.standard_normal(size=(3))
+    for i in [3, 3, 4]:
+        for _ in range(i):
+            state = env.rnd_state()
+            action = env.rnd_action()
+            next_state = env.rnd_state()
+            sim_state = env.rnd_sim_state()
+            buffer.add(
+                state,
+                next_state,
+                action,
+                1.0,
+                False,
+                sim_state,
+                (action, action),
+                (action, action),
+                mean,
+                std,
+            )
+        buffer.close_trajectory()
+
+    buffer.store("./test_buffer/")
+    buffer_two = SequenceRB(
+        capacity=10,
+        state_dim=3,
+        action_dim=19,
+        sim_qp_dim=2,
+        sim_qv_dim=4,
+        minimum_sequence_length=4,
+        weight_mean_dim=3,
+        weight_std_dim=3,
+    )
+    buffer_two.load("./test_buffer/")
+
+    assert np.all(buffer.get_valid_starts() == buffer_two.get_valid_starts())
+    assert np.all(buffer.states == buffer_two.states)
+    assert np.all(buffer.next_states == buffer_two.next_states)
+    assert np.all(buffer.actions == buffer_two.actions)
+    assert np.all(buffer.rewards == buffer_two.rewards)
+    assert np.all(buffer.dones == buffer_two.dones)
+    assert np.all(buffer.sim_qps == buffer_two.sim_qps)
+    assert np.all(buffer.sim_qvs == buffer_two.sim_qvs)
+    assert np.all(buffer.des_qps == buffer_two.des_qps)
+    assert np.all(buffer.des_qvs == buffer_two.des_qvs)
+    assert np.all(buffer.des_qps_next == buffer_two.des_qps_next)
+    assert np.all(buffer.des_qvs_next == buffer_two.des_qvs_next)
+    assert np.all(buffer.weight_means == buffer_two.weight_means)
+    assert np.all(buffer.weight_stds == buffer_two.weight_stds)
+
+    import shutil
+    shutil.rmtree("test_buffer/")

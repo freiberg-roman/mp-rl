@@ -32,7 +32,6 @@ class MixtureOfExperts(nn.Module):
             network_width,
         )
         self.linear2 = nn.Linear(network_width, network_width)
-        self.expert_log_prob_contribution = nn.Linear(network_width, num_experts)
         self.expert_heads = []
 
         for _ in range(num_experts):
@@ -51,13 +50,8 @@ class MixtureOfExperts(nn.Module):
         if self.use_batch_normalization:
             state = self.bn_in(state)
         net_in = ch.cat([state, action], dim=-1)
-
         x1 = F.silu(self.linear1(net_in))
         x2 = F.silu(self.linear2(x1))
-
-        expert_log_prob = self.expert_log_prob_contribution(x2)
-        categorical_experts = Categorical(logits=expert_log_prob)
-
         means = []
         for head in self.expert_heads:
             means.append(head(x2))
@@ -66,6 +60,7 @@ class MixtureOfExperts(nn.Module):
         ind_expert_dist = Independent(
             MultivariateNormal(means, self.variance * ch.eye(means.size(dim=-1))), 0
         )
+        categorical_experts = Categorical(probs=ch.ones(len(self.expert_heads)))
         return MixtureSameFamily(categorical_experts, ind_expert_dist)
 
     def log_prob(self, state, action, next_state_delta):
