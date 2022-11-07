@@ -60,7 +60,7 @@ class MOEPrediction(Predictable, Trainable):
                 )
 
     def update(self, batch=None):
-        (states, next_states, actions, _, _, _, _, _) = batch.to_torch_batch()
+        (states, next_states, actions, _, _) = batch.to_torch_batch()
         next_state_delta = next_states - states
         states = self.prepare_state(states)
         next_state_delta = self.prepare_delta(next_state_delta)

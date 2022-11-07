@@ -55,7 +55,9 @@ class MixtureOfExperts(nn.Module, Serializable):
         ind_expert_dist = Independent(
             MultivariateNormal(means, self.variance * ch.eye(means.size(dim=-1))), 0
         )
-        categorical_experts = Categorical(probs=ch.ones(len(self.expert_heads)))
+        categorical_experts = Categorical(
+            probs=ch.ones((len(means), len(self.expert_heads)))
+        )
         return MixtureSameFamily(categorical_experts, ind_expert_dist)
 
     def log_prob(self, state, action, next_state_delta):

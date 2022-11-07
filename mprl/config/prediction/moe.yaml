@@ -1,11 +1,10 @@
 name: "mixture_of_experts"
 
-action_dim: ${env.moe.action_dim}
+action_dim: ${env.action_dim}
 naive_state_input: False  # use inherent state information for prediction
 network_width: 256
 num_experts: 4
 state_dim_in: ${env.moe.state_dim_in}
 state_dim_out: ${env.moe.state_dim_out}
-use_batch_normalization: False
 variance: 0.2
 

@@ -122,7 +122,7 @@ class SequenceRB(Serializable):
         self._capacity = np.load(path + "capacity.npy").item()
         self._max_capacity = np.load(path + "max_capacity.npy").item()
         self._ind = np.load(path + "index.npy").item()
-        self._current_seq = np.load(path + "current_sequence.npy")
+        self._current_seq = np.load(path + "current_sequence.npy").item()
         valid_seq_array = np.load(path + "valid_sequence.npy")[0]
         self._valid_seq = []
         for i in range(len(valid_seq_array)):

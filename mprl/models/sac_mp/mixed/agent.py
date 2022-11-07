@@ -80,6 +80,7 @@ class SACMixedMP(SACMPBase):
         self.mode: str = policy_loss_type
         self.model = model
         self.use_imp_sampling = use_imp_sampling
+        self.lr = lr
 
         # Networks
         self.policy: GaussianPolicy = GaussianPolicy(
@@ -526,12 +527,14 @@ class SACMixedMP(SACMPBase):
                 "optimizer_critic_state_dict": self.optimizer_critic.state_dict(),
                 "optimizer_policy_state_dict": self.optimizer_policy.state_dict(),
                 **(
-                    {"optimizer_entropy": self.optimizer_alpha.state_dict()}
-                    if self.automatic_entropy_tuning
+                    {"model": self.model.model.state_dict()}
+                    if self.model is not None and isinstance(self.model, Trainable)
                     else {}
                 ),
                 **(
-                    {"model": self.model.state_dict()} if self.model is not None else {}
+                    {"log_alpha": self.log_alpha}
+                    if self.automatic_entropy_tuning
+                    else {}
                 ),
             },
             path + "/model.pt",
@@ -552,9 +555,11 @@ class SACMixedMP(SACMPBase):
                 checkpoint["optimizer_policy_state_dict"]
             )
             if self.automatic_entropy_tuning:
-                self.optimizer_alpha.load_state_dict(checkpoint["optimizer_entropy"])
-            if self.model is not None:
-                self.model.load_state_dict(checkpoint["model"])
+                self.log_alpha = checkpoint["log_alpha"]
+                self.alpha = self.log_alpha.exp()
+                self.optimizer_alpha = Adam([self.log_alpha], lr=self.lr)
+            if self.model is not None and isinstance(self.model, Trainable):
+                self.model.model.load_state_dict(checkpoint["model"])
         self.buffer.load(path + "/" + self.buffer.store_under())
         self.planner_act.reset_planner()
         self.planner_update.reset_planner()

@@ -137,6 +137,7 @@ class SAC(Actable, Evaluable, Serializable, Trainable):
             if self.automatic_entropy_tuning:
                 self.log_alpha = checkpoint["log_alpha"]
                 self.alpha = self.log_alpha.exp()
+                self.alpha_optim = Adam([self.log_alpha], lr=self.lr)
         self.buffer.load(path + "/" + self.buffer.store_under())
 
     def update(self) -> dict:

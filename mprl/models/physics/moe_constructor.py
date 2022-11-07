@@ -21,7 +21,6 @@ class MOEFactory:
             num_experts=config_model.num_experts,
             network_width=config_model.network_width,
             variance=config_model.variance,
-            use_batch_normalization=config_model.use_batch_normalization,
         )
         predictor = MOEPrediction(
             model,
