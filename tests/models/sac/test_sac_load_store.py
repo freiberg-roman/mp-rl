@@ -1,12 +1,6 @@
 from mprl.models.sac import SAC
 from mprl.utils import RandomRB
-
-
-def compare_networks(model1, model2):
-    for p1, p2 in zip(model1.parameters(), model2.parameters()):
-        if p1.data.ne(p2.data).sum() > 0:
-            return False
-    return True
+from mprl.utils.ds_helper import compare_networks
 
 
 def test_sac_load_store():

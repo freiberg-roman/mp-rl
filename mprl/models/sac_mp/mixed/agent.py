@@ -1,3 +1,4 @@
+import itertools
 from pathlib import Path
 from random import randrange
 from typing import Callable, Optional, Tuple
@@ -165,18 +166,20 @@ class SACMixedMP(SACMPBase):
                 checkpoint["policy_optimizer_state_dict"]
             )
 
-    def set_eval(self):
-        self.policy.eval()
-        self.critic.eval()
-        self.critic_target.eval()
-
-    def set_train(self):
-        self.policy.train()
-        self.critic.train()
-        self.critic_target.train()
-
     def parameters(self):
-        return self.policy.parameters()
+        if self.model is not None:
+            return itertools.chain(
+                self.model,
+                self.policy.parameters(),
+                self.critic.parameters(),
+                self.critic_target.parameters(),
+            )
+        else:
+            return itertools.chain(
+                self.policy.parameters(),
+                self.critic.parameters(),
+                self.critic_target.parameters(),
+            )
 
     def update(self) -> dict:
         batch = next(self.buffer.get_iter(1, self.batch_size))
@@ -511,7 +514,7 @@ class SACMixedMP(SACMPBase):
         }
 
     def store_under(self, path):
-        return "sac-mixed-mp"
+        return "sac-mixed-mp/"
 
     def store(self, path):
         Path(path).mkdir(parents=True, exist_ok=True)
@@ -523,9 +526,12 @@ class SACMixedMP(SACMPBase):
                 "optimizer_critic_state_dict": self.optimizer_critic.state_dict(),
                 "optimizer_policy_state_dict": self.optimizer_policy.state_dict(),
                 **(
-                    {}
+                    {"optimizer_entropy": self.optimizer_alpha.state_dict()}
                     if self.automatic_entropy_tuning
-                    else {"optimizer_entropy": self.alpha_optim.state_dict()}
+                    else {}
+                ),
+                **(
+                    {"model": self.model.state_dict()} if self.model is not None else {}
                 ),
             },
             path + "/model.pt",
@@ -540,13 +546,15 @@ class SACMixedMP(SACMPBase):
             self.critic.load_state_dict(checkpoint["critic_state_dict"])
             self.critic_target.load_state_dict(checkpoint["critic_target_state_dict"])
             self.optimizer_critic.load_state_dict(
-                checkpoint["critic_optimizer_state_dict"]
+                checkpoint["optimizer_critic_state_dict"]
             )
             self.optimizer_policy.load_state_dict(
-                checkpoint["policy_optimizer_state_dict"]
+                checkpoint["optimizer_policy_state_dict"]
             )
             if self.automatic_entropy_tuning:
-                self.alpha_optim.load_state_dict(checkpoint["optimizer_entropy"])
+                self.optimizer_alpha.load_state_dict(checkpoint["optimizer_entropy"])
+            if self.model is not None:
+                self.model.load_state_dict(checkpoint["model"])
         self.buffer.load(path + "/" + self.buffer.store_under())
         self.planner_act.reset_planner()
         self.planner_update.reset_planner()
