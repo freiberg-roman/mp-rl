@@ -514,7 +514,7 @@ class SACMixedMP(SACMPBase):
         }
 
     def store_under(self, path):
-        return "sac-mixed-mp/"
+        return path + "sac-mixed-mp/"
 
     def store(self, path):
         Path(path).mkdir(parents=True, exist_ok=True)

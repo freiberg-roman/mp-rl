@@ -95,8 +95,8 @@ class SAC(Actable, Evaluable, Serializable, Trainable):
     def parameters(self) -> Iterator[Parameter]:
         return self.policy.parameters()
 
-    def store_under(self):
-        return "sac/"
+    def store_under(self, path):
+        return path + "sac/"
 
     # Save model parameters
     def store(self, path: str) -> None:
