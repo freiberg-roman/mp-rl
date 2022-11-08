@@ -45,6 +45,7 @@ class SACMixedMP(SACMPBase):
         planner_imp_sampling: MPTrajectory,
         ctrl: Controller,
         buffer: SequenceRB,
+        buffer_policy: SequenceRB,
         decompose_fn: Callable,
         model: Optional[Predictable] = None,
         policy_loss_type: str = "mean",  # other is "weighted"
@@ -72,6 +73,7 @@ class SACMixedMP(SACMPBase):
         self.target_entropy: Optional[float] = target_entropy
         self.num_steps: int = num_steps
         self.buffer: SequenceRB = buffer
+        self.buffer_policy: SequenceRB = buffer_policy
         self.planner_update: MPTrajectory = planner_update
         self.planner_imp_sampling: MPTrajectory = planner_imp_sampling
         self.ctrl: Controller = ctrl
@@ -102,6 +104,8 @@ class SACMixedMP(SACMPBase):
     def sequence_reset(self):
         if len(self.buffer) > 0:
             self.buffer.close_trajectory()
+            if self.buffer_policy is not None:
+                self.buffer_policy.close_trajectory()
         self.planner_act.reset_planner()
 
     def sample(self, state: ch.Tensor) -> ch.Tensor:
@@ -126,7 +130,7 @@ class SACMixedMP(SACMPBase):
         done: bool,
         sim_state: Tuple[np.ndarray, np.ndarray],
     ):
-        self.buffer.add(
+        step = (
             state,
             next_state,
             action,
@@ -135,9 +139,14 @@ class SACMixedMP(SACMPBase):
             sim_state,
             (self.c_des_q, self.c_des_v),
             (self.c_des_q_next, self.c_des_v_next),
-            weight_mean=self.c_weight_mean,
-            weight_std=self.c_weight_std,
+            self.c_weight_mean,
+        self.c_weight_std,
         )
+        self.buffer.add(
+            *step
+        )
+        if self.buffer_policy is not None:
+            self.buffer_policy.add(*step)
 
     # Save model parameters
     def save(self, path):
@@ -317,6 +326,10 @@ class SACMixedMP(SACMPBase):
 
     def _off_policy_mean_loss(self):
         # dimensions (batch_size, sequence_len, data_dimension)
+        if self.buffer_policy is None:
+            buffer = self.buffer_policy
+        else:
+            buffer = self.buffer
         (
             states,
             next_states,
@@ -329,7 +342,7 @@ class SACMixedMP(SACMPBase):
             weight_means,
             weight_stds,
             idxs,
-        ) = self.buffer.sample_batch(self.batch_size)
+        ) = buffer.sample_batch(self.batch_size)
         # dimension (batch_size, sequence_len, weight_dimension)
         if self.use_imp_sampling:
             weights, log_pi = self.policy.sample_log_prob_no_tanh(states)
@@ -380,6 +393,10 @@ class SACMixedMP(SACMPBase):
 
     def _off_policy_mean_performance_loss(self):
         """No importance sampling version here"""
+        if self.buffer_policy is None:
+            buffer = self.buffer_policy
+        else:
+            buffer = self.buffer
         # dimensions (batch_size, sequence_len, data_dimension)
         (
             states,
@@ -393,7 +410,7 @@ class SACMixedMP(SACMPBase):
             weight_means,
             weight_stds,
             idxs,
-        ) = self.buffer.sample_batch(self.batch_size)
+        ) = buffer.sample_batch(self.batch_size)
         # dimension (batch_size, sequence_len, weight_dimension)
         weights, log_pi = self.policy.sample_log_prob(states)
         self.planner_update.init(
@@ -423,6 +440,10 @@ class SACMixedMP(SACMPBase):
 
     def _model_policy_mean_loss(self):
         # dimensions (batch_size, sequence_len, data_dimension)
+        if self.buffer_policy is None:
+            buffer = self.buffer_policy
+        else:
+            buffer = self.buffer
         (
             states,
             _,
@@ -435,7 +456,7 @@ class SACMixedMP(SACMPBase):
             weight_means,
             weight_covs,
             idxs,
-        ) = self.buffer.sample_batch(self.batch_size, sequence=False)
+        ) = buffer.sample_batch(self.batch_size, sequence=False)
         # dimension (batch_size, weight_dimension)
         weights, log_pi = self.policy.sample_log_prob(states)
         self.planner_update.init(weights, bc_pos=des_qps, bc_vel=des_qvs)
@@ -468,6 +489,10 @@ class SACMixedMP(SACMPBase):
         }
 
     def _model_mean_performance_loss(self):
+        if self.buffer_policy is None:
+            buffer = self.buffer_policy
+        else:
+            buffer = self.buffer
         (
             states,
             _,
@@ -480,7 +505,7 @@ class SACMixedMP(SACMPBase):
             weight_means,
             weight_covs,
             idxs,
-        ) = self.buffer.sample_batch(self.batch_size, sequence=False)
+        ) = buffer.sample_batch(self.batch_size, sequence=False)
         # dimension (batch_size, weight_dimension)
         weights, log_pi = self.policy.sample_log_prob(states)
         self.planner_update.init(weights, bc_pos=des_qps, bc_vel=des_qvs)
