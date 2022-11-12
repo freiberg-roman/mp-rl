@@ -1,10 +1,70 @@
-[run.sac]
-project_name="mprl-sac-mp-toml"
+[run.sac1]
+project_name="f-sac-meta"
 algorithm="sac"
-env="half_cheetah"
+env="meta_reach"
 
-cluster_hours=15
+cluster_hours=72
 jobs=3
 
-[run.sac.buffer]
+[run.sac1.buffer]
+capacity=1000000
+
+# ----------------------------
+[run.sac2]
+project_name="f-sac-meta"
+algorithm="sac"
+env="meta_push"
+
+cluster_hours=72
+jobs=3
+
+[run.sac2.buffer]
+capacity=1000000
+
+# ----------------------------
+[run.sac3]
+project_name="f-sac-meta"
+algorithm="sac"
+env="meta_box_close"
+
+cluster_hours=72
+jobs=3
+
+[run.sac3.buffer]
+capacity=1000000
+
+# ----------------------------
+[run.sac4]
+project_name="f-sac-meta"
+algorithm="sac"
+env="meta_button_press"
+
+cluster_hours=72
+jobs=3
+
+[run.sac4.buffer]
+capacity=1000000
+
+# ----------------------------
+[run.sac5]
+project_name="f-sac-meta"
+algorithm="sac"
+env="meta_window_open"
+
+cluster_hours=72
+jobs=3
+
+[run.sac5.buffer]
+capacity=1000000
+
+# ----------------------------
+[run.sac6]
+project_name="f-sac-meta"
+algorithm="sac"
+env="meta_pick_bin"
+
+cluster_hours=72
+jobs=3
+
+[run.sac6.buffer]
 capacity=1000000
