@@ -8,7 +8,7 @@ sim_qp_dim: 16
 sim_qv_dim: 15
 
 pd:
-  pgains: [35, 35, 35, -10]  # weird ctrl for gripper (see tuning in utils)
+  pgains: [10.0, 10.0, 10.0, -3.0]  # weird ctrl for gripper (see tuning in utils)
 
 idmp:
   num_basis: 10
@@ -38,7 +38,7 @@ sac_tr:
 network:
   network_width: 256
   network_depth: 2
-  action_scale: 1.0
+  action_scale: 0.7
 
 moe:
   state_dim_in: 21

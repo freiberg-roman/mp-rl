@@ -30,6 +30,7 @@ class SACMixedMP(SACMPBase):
         alpha: float,
         automatic_entropy_tuning: bool,
         alpha_q: float,
+        q_loss: str,
         num_steps: int,
         lr: float,
         batch_size: int,
@@ -69,6 +70,7 @@ class SACMixedMP(SACMPBase):
         self.tau: float = tau
         self.alpha: float = alpha
         self.alpha_q: float = alpha_q
+        self.q_loss: str = q_loss
         self.automatic_entropy_tuning: bool = automatic_entropy_tuning
         self.target_entropy: Optional[float] = target_entropy
         self.num_steps: int = num_steps
@@ -140,11 +142,9 @@ class SACMixedMP(SACMPBase):
             (self.c_des_q, self.c_des_v),
             (self.c_des_q_next, self.c_des_v_next),
             self.c_weight_mean,
-        self.c_weight_std,
+            self.c_weight_std,
         )
-        self.buffer.add(
-            *step
-        )
+        self.buffer.add(*step)
         if self.buffer_policy is not None:
             self.buffer_policy.add(*step)
 
@@ -197,6 +197,59 @@ class SACMixedMP(SACMPBase):
             model_loss = self.model.update(batch=batch)
         else:
             model_loss = {}
+        if self.q_loss == "off_policy":
+            qf_loss = self._q_off_policy_loss()
+        else:
+            qf_loss = self._q_on_policy_loss()
+
+        # Update critic
+        self.optimizer_critic.zero_grad()
+        qf_loss.backward()
+        self.optimizer_critic.step()
+
+        if self.model is None:
+            if self.mode == "mean":
+                loss, loggable = self._off_policy_mean_loss()
+            elif self.mode == "mean_performance":
+                loss, loggable = self._off_policy_mean_performance_loss()
+            else:
+                raise ValueError("Invalid mode")
+        else:
+            if self.mode == "mean":
+                loss, loggable = self._model_policy_mean_loss()
+            elif self.mode == "mean_performance":
+                loss, loggable = self._model_mean_performance_loss()
+            else:
+                raise ValueError("Invalid mode")
+
+        # Update policy
+        self.optimizer_policy.zero_grad()
+        loss.backward()
+        self.optimizer_policy.step()
+
+        if self.automatic_entropy_tuning:
+            alpha_loss = -(
+                self.log_alpha * (-loggable["entropy"] + self.target_entropy)
+            ).mean()
+            self.optimizer_alpha.zero_grad()
+            alpha_loss.backward()
+            self.optimizer_alpha.step()
+            self.alpha = self.log_alpha.exp()
+            loggable["alpha_loss"] = alpha_loss.item()
+
+        soft_update(self.critic_target, self.critic, self.tau)
+        self.update_target_policy()
+        return {
+            **{
+                "critic_loss": qf_loss.item(),
+                "policy_loss": loss.item(),
+                "alpha": self.alpha,
+            },
+            **loggable,
+            **model_loss,
+        }
+
+    def _q_off_policy_loss(self):
         (
             states,
             next_states,
@@ -248,53 +301,59 @@ class SACMixedMP(SACMPBase):
             qf2, next_q_value
         )  # JQ = 𝔼(st,at)~D[0.5(Q1(st,at) - r(st,at) - γ(𝔼st+1~p[V(st+1)]))^2]
         qf_loss = qf1_loss + qf2_loss
+        return qf_loss
 
-        # Update critic
-        self.optimizer_critic.zero_grad()
-        qf_loss.backward()
-        self.optimizer_critic.step()
+    def _q_on_policy_loss(self):
+        (
+            states,
+            _,
+            actions,
+            rewards,
+            dones,
+            _,
+            (_, _),
+            (_, _),
+            _,
+            _,
+            _,
+        ) = self.buffer.sample_batch(self.batch_size, sequence=True)
 
-        if self.model is None:
-            if self.mode == "mean":
-                loss, loggable = self._off_policy_mean_loss()
-            elif self.mode == "mean_performance":
-                loss, loggable = self._off_policy_mean_performance_loss()
+        # Compute critic loss (target is computed by 3-step TD)
+        with ch.no_grad():
+            # Compute next action
+            if self.use_imp_sampling:
+                _, weights_log_pi_next = self.policy.sample_log_prob_no_tanh(
+                    states[:, 3, :]
+                )
             else:
-                raise ValueError("Invalid mode")
-        else:
-            if self.mode == "mean":
-                loss, loggable = self._model_policy_mean_loss()
-            elif self.mode == "mean_performance":
-                loss, loggable = self._model_mean_performance_loss()
-            else:
-                raise ValueError("Invalid mode")
+                _, weights_log_pi_next = self.policy.sample_log_prob(states[:, 3, :])
+            qf1_next_target, qf2_next_target = self.critic_target(
+                states[:, 3, :],
+                actions[
+                    :, 3, :
+                ],  # as it is on-policy, we use the 3rd step from the buffer
+            )
+            min_qf_next_target = (
+                ch.min(qf1_next_target, qf2_next_target)
+                - self.alpha_q * weights_log_pi_next
+            )
+            discount = ch.tensor([[[1.0], [self.gamma], [self.gamma**2]]])
+            rew = ch.sum(rewards[:, :3, :] * discount, dim=1)
+            next_q_value = rew + (
+                1 - dones[:, 2, :].to(ch.float32)
+            ) * self.gamma**3 * (min_qf_next_target)
 
-        # Update policy
-        self.optimizer_policy.zero_grad()
-        loss.backward()
-        self.optimizer_policy.step()
-
-        if self.automatic_entropy_tuning:
-            alpha_loss = -(
-                self.log_alpha * (-loggable["entropy"] + self.target_entropy)
-            ).mean()
-            self.optimizer_alpha.zero_grad()
-            alpha_loss.backward()
-            self.optimizer_alpha.step()
-            self.alpha = self.log_alpha.exp()
-            loggable["alpha_loss"] = alpha_loss.item()
-
-        soft_update(self.critic_target, self.critic, self.tau)
-        self.update_target_policy()
-        return {
-            **{
-                "critic_loss": qf_loss.item(),
-                "policy_loss": loss.item(),
-                "alpha": self.alpha,
-            },
-            **loggable,
-            **model_loss,
-        }
+        qf1, qf2 = self.critic(
+            states[:, 0, :], actions[:, 0, :]
+        )  # Two Q-functions to mitigate positive bias in the policy improvement step
+        qf1_loss = F.mse_loss(
+            qf1, next_q_value
+        )  # JQ = 𝔼(st,at)~D[0.5(Q1(st,at) - r(st,at) - γ(𝔼st+1~p[V(st+1)]))^2]
+        qf2_loss = F.mse_loss(
+            qf2, next_q_value
+        )  # JQ = 𝔼(st,at)~D[0.5(Q1(st,at) - r(st,at) - γ(𝔼st+1~p[V(st+1)]))^2]
+        qf_loss = qf1_loss + qf2_loss
+        return qf_loss
 
     def importance_weights(self, traj, target_dist, behavior_dist, bc_q, bc_v):
         target_mean, target_std = target_dist
@@ -326,7 +385,7 @@ class SACMixedMP(SACMPBase):
 
     def _off_policy_mean_loss(self):
         # dimensions (batch_size, sequence_len, data_dimension)
-        if self.buffer_policy is None:
+        if self.buffer_policy is not None:
             buffer = self.buffer_policy
         else:
             buffer = self.buffer
@@ -393,7 +452,7 @@ class SACMixedMP(SACMPBase):
 
     def _off_policy_mean_performance_loss(self):
         """No importance sampling version here"""
-        if self.buffer_policy is None:
+        if self.buffer_policy is not None:
             buffer = self.buffer_policy
         else:
             buffer = self.buffer
@@ -440,7 +499,7 @@ class SACMixedMP(SACMPBase):
 
     def _model_policy_mean_loss(self):
         # dimensions (batch_size, sequence_len, data_dimension)
-        if self.buffer_policy is None:
+        if self.buffer_policy is not None:
             buffer = self.buffer_policy
         else:
             buffer = self.buffer
@@ -489,7 +548,7 @@ class SACMixedMP(SACMPBase):
         }
 
     def _model_mean_performance_loss(self):
-        if self.buffer_policy is None:
+        if self.buffer_policy is not None:
             buffer = self.buffer_policy
         else:
             buffer = self.buffer

@@ -10,9 +10,7 @@ from mprl.controllers import MetaController, MPTrajectory, PDController
 from mprl.env.config_gateway import EnvConfigGateway
 from mprl.env.mj_factory import MujocoFactory
 from mprl.models.common.config_gateway import ModelConfigGateway
-from mprl.models.physics.ground_truth import (
-    GroundTruthPrediction,
-)
+from mprl.models.physics.ground_truth import GroundTruthPrediction
 from mprl.models.physics.moe_constructor import MOEFactory
 from mprl.utils import SequenceRB
 
@@ -42,7 +40,10 @@ class SACMixedMPFactory:
             weight_mean_dim=dim_weights,
             weight_std_dim=dim_weights,
         )
-        if self._gateway.get_buffer_config().capacity!= self._gateway.get_buffer_config().capacity_policy:
+        if (
+            self._gateway.get_buffer_config().capacity
+            != self._gateway.get_buffer_config().capacity_policy
+        ):
             buffer_policy = SequenceRB(
                 capacity=self._gateway.get_buffer_config().capacity,
                 state_dim=env_cfg.state_dim,
@@ -119,6 +120,7 @@ class SACMixedMPFactory:
             tau=cfg_hyper.target_tau,
             alpha=cfg_hyper.alpha,
             alpha_q=cfg_hyper.alpha_q,
+            q_loss=cfg_hyper.q_loss,
             automatic_entropy_tuning=cfg_hyper.auto_alpha,
             target_entropy=cfg_hyper.get("target_entropy", None),
             batch_size=cfg_hyper.batch_size,

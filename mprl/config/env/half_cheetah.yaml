@@ -9,7 +9,7 @@ sim_qv_dim: 9
 
 pd:
   pgains: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
-  dgains: [0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+  dgains: [0.02, 0.02, 0.02, 0.02, 0.02, 0.02]
 
 idmp:
   num_basis: 10
@@ -42,7 +42,7 @@ sac_tr:
 network:
   network_width: 256
   network_depth: 2
-  action_scale: 1.0
+  action_scale: 0.8
 
 moe:
   state_dim_in: 16
