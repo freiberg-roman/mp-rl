@@ -1,6 +1,9 @@
+from typing import Tuple
+
 import numpy as np
 
 from mprl.env.mujoco.mj_env import MujocoEnv
+from mprl.utils.ds_helper import to_np
 
 
 class ReacherEnv(MujocoEnv):
@@ -84,3 +87,18 @@ class ReacherEnv(MujocoEnv):
     @property
     def name(self) -> str:
         return "Reacher"
+
+    def decompose_fn(
+        self, states: np.ndarray, sim_states: Tuple[np.ndarray, np.ndarray]
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        states = to_np(states)
+        return (
+            np.concatenate(
+                (
+                    np.expand_dims(np.arctan2(states[..., 2], states[..., 0]), axis=-1),
+                    np.expand_dims(np.arctan2(states[..., 3], states[..., 1]), axis=-1),
+                ),
+                axis=-1,
+            ),
+            states[..., 6:8],
+        )

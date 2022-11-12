@@ -10,10 +10,7 @@ from mprl.controllers import MetaController, MPTrajectory, PDController
 from mprl.env.config_gateway import EnvConfigGateway
 from mprl.env.mj_factory import MujocoFactory
 from mprl.models.common.config_gateway import ModelConfigGateway
-from mprl.models.physics.ground_truth import (
-    GroundTruthPrediction,
-    GroundTruthPredictionMeta,
-)
+from mprl.models.physics.ground_truth import GroundTruthPrediction
 from mprl.models.physics.moe_constructor import MOEFactory
 from mprl.utils import SequenceRB
 
@@ -43,6 +40,22 @@ class SACMixedMPFactory:
             weight_mean_dim=dim_weights,
             weight_std_dim=dim_weights,
         )
+        if (
+            self._gateway.get_buffer_config().capacity
+            != self._gateway.get_buffer_config().capacity_policy
+        ):
+            buffer_policy = SequenceRB(
+                capacity=self._gateway.get_buffer_config().capacity,
+                state_dim=env_cfg.state_dim,
+                action_dim=env_cfg.action_dim,
+                sim_qp_dim=env_cfg.sim_qp_dim,
+                sim_qv_dim=env_cfg.sim_qv_dim,
+                minimum_sequence_length=cfg_hyper.num_steps,
+                weight_mean_dim=dim_weights,
+                weight_std_dim=dim_weights,
+            )
+        else:
+            buffer_policy = None
         is_pos_ctrl = "Meta" in self._env_gateway.get_env_name()
         env = MujocoFactory(self._env_gateway).create()
         if cfg_model.name == "off_policy":
@@ -96,6 +109,7 @@ class SACMixedMPFactory:
 
         return SACMixedMP(
             buffer=buffer,
+            buffer_policy=buffer_policy,
             state_dim=env_cfg.state_dim,
             action_dim=env_cfg.action_dim,
             network_width=cfg_net.network_width,
@@ -106,6 +120,7 @@ class SACMixedMPFactory:
             tau=cfg_hyper.target_tau,
             alpha=cfg_hyper.alpha,
             alpha_q=cfg_hyper.alpha_q,
+            q_loss=cfg_hyper.q_loss,
             automatic_entropy_tuning=cfg_hyper.auto_alpha,
             target_entropy=cfg_hyper.get("target_entropy", None),
             batch_size=cfg_hyper.batch_size,
