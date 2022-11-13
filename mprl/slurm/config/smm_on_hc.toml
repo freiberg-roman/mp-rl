@@ -1,51 +1,51 @@
-[run.smm1]
+[run.smm4]
 project_name="f-smm-hc"
 algorithm="sac_mixed_mp"
 env="half_cheetah"
 cluster_hours=72
 jobs=3
 
-[run.smm1.buffer]
-capacity=1000000
+[run.smm4.buffer]
+capacity=200
 capacity_policy=200
 
-[run.smm1.alg]
-q_loss="off_policy"
+[run.smm4.alg]
+q_loss="on_policy"
 alpha=0.01
 alpha_q=0.01
 
 # ------------------------------
 
-[run.smm2]
+[run.smm5]
 project_name="f-smm-hc"
 algorithm="sac_mixed_mp"
 env="half_cheetah"
 cluster_hours=72
 jobs=3
 
-[run.smm2.buffer]
-capacity=1000000
+[run.smm5.buffer]
+capacity=200
 capacity_policy=200
 
-[run.smm2.alg]
-q_loss="off_policy"
+[run.smm5.alg]
+q_loss="on_policy"
 alpha=0.05
 alpha_q=0.05
 
 # ------------------------------
 
-[run.smm3]
+[run.smm6]
 project_name="f-smm-hc"
 algorithm="sac_mixed_mp"
 env="half_cheetah"
 cluster_hours=72
 jobs=3
 
-[run.smm3.buffer]
-capacity=1000000
+[run.smm6.buffer]
+capacity=200
 capacity_policy=200
 
-[run.smm3.alg]
-q_loss="off_policy"
+[run.smm6.alg]
+q_loss="on_policy"
 alpha=0.005
 alpha_q=0.005

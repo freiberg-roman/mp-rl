@@ -58,11 +58,11 @@ env="half_cheetah"
 cluster_hours=72
 jobs=3
 
-[run.smm1.buffer]
+[run.smm4.buffer]
 capacity=1000000
 capacity_policy=200
 
-[run.smm1.alg]
+[run.smm4.alg]
 q_loss="off_policy"
 policy_loss="mean_performance"
 alpha=0.01
