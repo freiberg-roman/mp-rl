@@ -1,5 +1,5 @@
 [run.smm1]
-project_name="f-smm-hc"
+project_name="f-smm-meta"
 algorithm="sac_mixed_mp"
 env="meta_reach"
 cluster_hours=72
@@ -17,7 +17,7 @@ alpha_q=0.01
 # ------------------------------
 
 [run.smm2]
-project_name="f-smm-hc"
+project_name="f-smm-meta"
 algorithm="sac_mixed_mp"
 env="meta_reach"
 cluster_hours=72
@@ -35,7 +35,7 @@ alpha_q=0.05
 # ------------------------------
 
 [run.smm3]
-project_name="f-smm-hc"
+project_name="f-smm-meta"
 algorithm="sac_mixed_mp"
 env="meta_reach"
 cluster_hours=72
