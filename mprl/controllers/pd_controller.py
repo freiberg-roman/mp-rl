@@ -23,6 +23,7 @@ class PDController(Controller):
         desired_vel: Union[np.ndarray, ch.Tensor],
         current_pos: Union[np.ndarray, ch.Tensor],
         current_vel: Union[np.ndarray, ch.Tensor],
+        action_clip: bool = False,
     ):
         desired_pos = to_ts(desired_pos)
         desired_vel = to_ts(desired_vel)
@@ -31,4 +32,6 @@ class PDController(Controller):
         qd_d = desired_pos - current_pos
         vd_d = desired_vel - current_vel
         target_j_acc = self.pgains * qd_d + self.dgains * vd_d
+        if action_clip:
+            target_j_acc = target_j_acc.clamp(-1, 1)
         return target_j_acc

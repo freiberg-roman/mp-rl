@@ -13,9 +13,13 @@ class MetaController(Controller):
             pgains
         )  # 3 dim for xyz in task space and normalized position of gripper
 
-    def get_action(self, desired_pos, desired_vel, current_pos, current_vel):
+    def get_action(
+        self, desired_pos, desired_vel, current_pos, current_vel, action_clip=False
+    ):
         _, _ = desired_vel, current_vel  # not used
         des_pos = to_ts(desired_pos)
         c_pos = to_ts(current_pos)
         trq = self.pgains * (des_pos - c_pos)
+        if action_clip:
+            trq = trq.clamp(-1, 1)
         return trq

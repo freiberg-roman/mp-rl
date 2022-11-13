@@ -31,6 +31,7 @@ class SACMixedMP(SACMPBase):
         automatic_entropy_tuning: bool,
         alpha_q: float,
         q_loss: str,
+        action_clip: bool,
         num_steps: int,
         lr: float,
         batch_size: int,
@@ -71,6 +72,7 @@ class SACMixedMP(SACMPBase):
         self.alpha: float = alpha
         self.alpha_q: float = alpha_q
         self.q_loss: str = q_loss
+        self.action_clip: bool = action_clip
         self.automatic_entropy_tuning: bool = automatic_entropy_tuning
         self.target_entropy: Optional[float] = target_entropy
         self.num_steps: int = num_steps
@@ -121,6 +123,8 @@ class SACMixedMP(SACMPBase):
         mean, std_log = self.policy.forward(to_ts(state[None]))
         self.c_weight_mean = mean.detach().cpu().numpy()
         self.c_weight_std = std_log.exp().detach().cpu().numpy()
+        if self.action_clip:
+            act = np.clip(act, -1, 1)
         return act
 
     def add_step(
@@ -417,7 +421,11 @@ class SACMixedMP(SACMPBase):
         new_des_qps, new_des_qvs = self.planner_update.get_traj()
         b_q, b_v = self.decompose_fn(states, sim_states)
         new_actions = self.ctrl.get_action(
-            new_des_qps[:, :-1, :], new_des_qvs[:, :-1, :], b_q, b_v
+            new_des_qps[:, :-1, :],
+            new_des_qvs[:, :-1, :],
+            b_q,
+            b_v,
+            action_clip=self.action_clip,
         )
         qf1_pi, qf2_pi = self.critic(states, new_actions)
         min_qf_pi = ch.min(qf1_pi, qf2_pi)
@@ -480,12 +488,12 @@ class SACMixedMP(SACMPBase):
         loss_at_iter = randrange(self.num_steps)
         new_des_qps, new_des_qvs = self.planner_update[loss_at_iter]
         b_q, b_v = self.decompose_fn(states[:, loss_at_iter, :], None)
-        new_actions = self.ctrl.get_action(new_des_qps, new_des_qvs, b_q, b_v)
+        new_actions = self.ctrl.get_action(
+            new_des_qps, new_des_qvs, b_q, b_v, action_clip=self.action_clip
+        )
         qf1_pi, qf2_pi = self.critic(states[:, loss_at_iter, :], new_actions)
         min_qf_pi = ch.min(qf1_pi, qf2_pi)
-        policy_loss = (self.gamma**loss_at_iter) * (
-            -min_qf_pi + self.alpha * log_pi[:, loss_at_iter, :]
-        ).mean()
+        policy_loss = (-min_qf_pi + self.alpha * log_pi[:, loss_at_iter, :]).mean()
         return policy_loss, {
             "entropy": (-log_pi).detach().cpu().mean().item(),
             "weight_mean": weights[..., :-1].detach().cpu().mean().item(),
@@ -524,7 +532,9 @@ class SACMixedMP(SACMPBase):
         min_qf = 0
         for des_qp, des_qv in self.planner_update:
             c_bq, c_bv = self.decompose_fn(c_s, c_s_sim)
-            action = self.ctrl.get_action(des_qp, des_qv, c_bq, c_bv)
+            action = self.ctrl.get_action(
+                des_qp, des_qv, c_bq, c_bv, action_clip=self.action_clip
+            )
 
             # compute q val: dimension (batch_size, 1)
             qf1_pi, qf2_pi = self.critic(c_s, action)
@@ -574,7 +584,9 @@ class SACMixedMP(SACMPBase):
         loss_at_iter = randrange(self.num_steps)
         for i, (des_qp, des_qv) in enumerate(self.planner_update):
             c_bq, c_bv = self.decompose_fn(c_s, c_s_sim)
-            action = self.ctrl.get_action(des_qp, des_qv, c_bq, c_bv)
+            action = self.ctrl.get_action(
+                des_qp, des_qv, c_bq, c_bv, action_clip=self.action_clip
+            )
 
             # compute q val: dimension (batch_size, 1)
             if loss_at_iter == i:

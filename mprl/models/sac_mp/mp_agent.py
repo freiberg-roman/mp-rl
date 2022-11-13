@@ -175,4 +175,4 @@ class SACMPBase(Actable, Evaluable, Serializable, Trainable):
         self.traj_des_log.append(to_np((q)))
         self.traj_log.append(to_np(b_q[0]))
         action = self.ctrl.get_action(q, v, b_q, b_v)
-        return to_np(action.squeeze())
+        return np.clip(to_np(action.squeeze()), -1, 1)
