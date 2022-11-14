@@ -30,6 +30,8 @@ class OriginalMetaWorld(MujocoEnv):
 
     def step(self, action: np.array):
         state, reward, failure, info = self.env.step(action)
+        action_penalty = np.sum((action - np.clip(action, -1, 1)) ** 2)
+        reward -= action_penalty
         self.info = info
         self.current_steps += 1
         self._total_steps += 1
