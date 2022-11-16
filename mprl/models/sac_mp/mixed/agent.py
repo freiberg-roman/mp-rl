@@ -32,6 +32,7 @@ class SACMixedMP(SACMPBase):
         alpha_q: float,
         q_loss: str,
         action_clip: bool,
+        learn_bc: bool,
         num_steps: int,
         lr: float,
         batch_size: int,
@@ -73,6 +74,7 @@ class SACMixedMP(SACMPBase):
         self.alpha_q: float = alpha_q
         self.q_loss: str = q_loss
         self.action_clip: bool = action_clip
+        self.learn_bc: bool = learn_bc
         self.automatic_entropy_tuning: bool = automatic_entropy_tuning
         self.target_entropy: Optional[float] = target_entropy
         self.num_steps: int = num_steps
@@ -254,19 +256,47 @@ class SACMixedMP(SACMPBase):
         }
 
     def _q_off_policy_loss(self):
-        (
-            states,
-            next_states,
-            actions,
-            rewards,
-            dones,
-            sim_states,
-            (des_qps, des_qvs),
-            (_, _),
-            weight_means,
-            weight_stds,
-            _,
-        ) = self.buffer.sample_batch(self.batch_size, sequence=False)
+        if not self.learn_bc:
+            (
+                states,
+                next_states,
+                actions,
+                rewards,
+                dones,
+                sim_states,
+                (des_qps, des_qvs),
+                (_, _),
+                weight_means,
+                weight_stds,
+                _,
+            ) = self.buffer.sample_batch(self.batch_size, sequence=False)
+        else:
+            (
+                states,
+                next_states,
+                actions,
+                rewards,
+                dones,
+                sim_states,
+                (_, _),
+                (_, _),
+                weight_means,
+                weight_stds,
+                _,
+            ) = self.buffer.sample_batch(self.batch_size, sequence=True)
+            if self.use_imp_sampling:
+                weights_bc = self.policy.sample_no_tanh(states[:, 0, :])
+            else:
+                weights_bc = self.policy.sample(states[:, 0, :])
+            b_qp_bc, b_qv_bc = self.decompose_fn(states[:, 0, :], None)
+
+            states = states[:, 3, :]
+            next_states = next_states[:, 3, :]
+            actions = actions[:, 3, :]
+            rewards = rewards[:, 3, :]
+            dones = dones[:, 3, :]
+            self.planner_update.init(weights_bc, bc_pos=b_qp_bc, bc_vel=b_qv_bc)
+            des_qps, des_qvs = self.planner_update[3]
 
         # Compute critic loss
         with ch.no_grad():

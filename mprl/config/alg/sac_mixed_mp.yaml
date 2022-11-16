@@ -16,5 +16,6 @@ use_imp_sampling: False
 policy_loss: "mean"  # other is mean_performance
 q_loss: "off_policy"  # other is on_policy
 action_clip: False
+learn_bc: False
 target_tau: 0.005
 warm_start_steps: 0
