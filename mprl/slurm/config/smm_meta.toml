@@ -1,5 +1,5 @@
 [run.smm1]
-project_name="f-smm-meta"
+project_name="f-smm-meta-v2"
 algorithm="sac_mixed_mp"
 env="meta_reach"
 cluster_hours=72
@@ -17,7 +17,7 @@ alpha_q=0.01
 # ------------------------------
 
 [run.smm2]
-project_name="f-smm-meta"
+project_name="f-smm-meta-v2"
 algorithm="sac_mixed_mp"
 env="meta_reach"
 cluster_hours=72
@@ -35,7 +35,7 @@ alpha_q=0.05
 # ------------------------------
 
 [run.smm3]
-project_name="f-smm-meta"
+project_name="f-smm-meta-v2"
 algorithm="sac_mixed_mp"
 env="meta_reach"
 cluster_hours=72
@@ -52,7 +52,7 @@ alpha_q=0.005
 
 # ------------------------------
 [run.smm4]
-project_name="f-smm-meta"
+project_name="f-smm-meta-v2"
 algorithm="sac_mixed_mp"
 env="meta_push"
 cluster_hours=72
@@ -70,7 +70,7 @@ alpha_q=0.01
 # ------------------------------
 
 [run.smm5]
-project_name="f-smm-meta"
+project_name="f-smm-meta-v2"
 algorithm="sac_mixed_mp"
 env="meta_push"
 cluster_hours=72
@@ -88,7 +88,7 @@ alpha_q=0.05
 # ------------------------------
 
 [run.smm6]
-project_name="f-smm-meta"
+project_name="f-smm-meta-v2"
 algorithm="sac_mixed_mp"
 env="meta_push"
 cluster_hours=72
@@ -105,7 +105,7 @@ alpha_q=0.005
 
 # ------------------------------
 [run.smm7]
-project_name="f-smm-meta"
+project_name="f-smm-meta-v2"
 algorithm="sac_mixed_mp"
 env="meta_button_press"
 cluster_hours=72
@@ -123,7 +123,7 @@ alpha_q=0.01
 # ------------------------------
 
 [run.smm8]
-project_name="f-smm-meta"
+project_name="f-smm-meta-v2"
 algorithm="sac_mixed_mp"
 env="meta_button_press"
 cluster_hours=72
@@ -141,7 +141,7 @@ alpha_q=0.05
 # ------------------------------
 
 [run.smm9]
-project_name="f-smm-meta"
+project_name="f-smm-meta-v2"
 algorithm="sac_mixed_mp"
 env="meta_button_press"
 cluster_hours=72
