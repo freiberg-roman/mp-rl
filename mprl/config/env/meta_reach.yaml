@@ -8,7 +8,7 @@ sim_qp_dim: 16
 sim_qv_dim: 15
 
 pd:
-  pgains: [25.0, 25.0, 25.0, -10.0]  # weird ctrl for gripper (see tuning in utils)
+  pgains: [30.0, 30.0, 30.0, -10.0]  # weird ctrl for gripper (see tuning in utils)
 
 idmp:
   num_basis: 10
