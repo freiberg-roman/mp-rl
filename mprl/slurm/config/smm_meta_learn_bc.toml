@@ -60,7 +60,7 @@ algorithm="sac_mixed_mp"
 env="half_cheetah"
 prediction="ground_truth"
 cluster_hours=72
-jobs=3
+jobs=5
 
 [run.smm4.buffer]
 capacity=100000
