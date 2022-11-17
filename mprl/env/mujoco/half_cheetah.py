@@ -51,6 +51,14 @@ class HalfCheetahEnv(MujocoEnv):
         failed = False
         return observation, reward, failed, timeout
 
+    def reward(self, s, a, s_n):
+        ctrl_cost = self._ctrl_cost_weight * np.sum(np.square(a), axis=-1)
+        x_position_before = s[0][:, 0]  # qpos[0]
+        x_position_after = s_n[0][:, 0]  # qpos[0]
+        x_velocity = (x_position_after - x_position_before) / self.dt
+        forward_reward = self._forward_reward_weight * x_velocity
+        return forward_reward - ctrl_cost
+
     def random_action(self):
         return np.random.uniform(-1, 1, (6,))
 

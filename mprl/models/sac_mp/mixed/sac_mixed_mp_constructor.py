@@ -123,6 +123,7 @@ class SACMixedMPFactory:
             q_loss=cfg_hyper.q_loss,
             action_clip=cfg_hyper.action_clip,
             learn_bc=cfg_hyper.learn_bc,
+            q_model_bc=cfg_hyper.q_model_bc,
             automatic_entropy_tuning=cfg_hyper.auto_alpha,
             target_entropy=cfg_hyper.get("target_entropy", None),
             batch_size=cfg_hyper.batch_size,

@@ -41,6 +41,9 @@ class GroundTruthPrediction(Predictable):
             next_qvels[i] = next_sim_states[1]
         return next_states, (next_qposes, next_qvels)
 
+    def reward(self, s, a, s_n):
+        return self.env.reward(s, a, s_n)
+
 
 class GroundTruthPredictionMeta(Predictable):
     def __init__(self, env: MPRLEnvironment):

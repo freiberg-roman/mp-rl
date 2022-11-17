@@ -11,7 +11,7 @@ from torch.optim import Adam
 
 from mprl.controllers import Controller, MPTrajectory
 from mprl.utils import SequenceRB
-from mprl.utils.ds_helper import to_ts
+from mprl.utils.ds_helper import to_np, to_ts
 from mprl.utils.math_helper import soft_update
 
 from ...common import Predictable, Trainable
@@ -33,6 +33,7 @@ class SACMixedMP(SACMPBase):
         q_loss: str,
         action_clip: bool,
         learn_bc: bool,
+        q_model_bc: bool,
         num_steps: int,
         lr: float,
         batch_size: int,
@@ -75,6 +76,7 @@ class SACMixedMP(SACMPBase):
         self.q_loss: str = q_loss
         self.action_clip: bool = action_clip
         self.learn_bc: bool = learn_bc
+        self.q_model_bc: bool = q_model_bc
         self.automatic_entropy_tuning: bool = automatic_entropy_tuning
         self.target_entropy: Optional[float] = target_entropy
         self.num_steps: int = num_steps
@@ -204,7 +206,10 @@ class SACMixedMP(SACMPBase):
         else:
             model_loss = {}
         if self.q_loss == "off_policy":
-            qf_loss = self._q_off_policy_loss()
+            if not self.q_model_bc:
+                qf_loss = self._q_off_policy_loss()
+            else:
+                qf_loss = self._q_off_policy_loss_model_bc()
         else:
             qf_loss = self._q_on_policy_loss()
 
@@ -254,6 +259,85 @@ class SACMixedMP(SACMPBase):
             **loggable,
             **model_loss,
         }
+
+    def _q_off_policy_loss_model_bc(self):
+        (
+            states,
+            next_states,
+            actions,
+            rewards,
+            dones,
+            sim_states,
+            (des_qps, des_qvs),
+            (_, _),
+            weight_means,
+            weight_stds,
+            _,
+        ) = self.buffer.sample_batch(self.batch_size, sequence=False)
+
+        # Compute 5 step rollout in model for true boundary conditions
+        if self.use_imp_sampling:
+            weights = self.policy.sample_no_tanh(states)
+            _, weights_log_pi_next = self.policy.sample_log_prob_no_tanh(next_states)
+        else:
+            weights = self.policy.sample(states)
+        c_bq, c_bv = self.decompose_fn(states, None)
+        self.planner_update.init(weights, bc_pos=c_bq, bc_vel=c_bv)
+        c_s_n = states
+        c_s_sim_n = sim_states
+        for (des_qp, des_qv), _ in zip(self.planner_update, range(5)):
+            c_s = c_s_n
+            c_s_sim = c_s_sim_n
+            c_bq, c_bv = self.decompose_fn(c_s, None)
+            actions = self.ctrl.get_action(
+                des_qp, des_qv, c_bq, c_bv, action_clip=self.action_clip
+            )
+            c_s_n, c_s_sim_n = self.model.next_state(c_s, actions, c_s_sim)
+            c_s_n = to_ts(c_s_n)
+            des_qps = des_qp
+            des_qvs = des_qv
+        states = c_s
+        next_states = c_s_n
+        rewards = self.model.reward(c_s_sim, to_np(actions), c_s_sim_n)
+        actions = to_ts(actions)
+        rewards = to_ts(rewards)[None].T
+
+        # Compute critic loss
+        with ch.no_grad():
+            # Compute next action
+            if self.use_imp_sampling:
+                weights = self.policy.sample_no_tanh(states)
+                _, weights_log_pi_next = self.policy.sample_log_prob_no_tanh(
+                    next_states
+                )
+            else:
+                weights = self.policy.sample(states)
+                _, weights_log_pi_next = self.policy.sample_log_prob(next_states)
+            self.planner_update.init(weights, bc_pos=des_qps, bc_vel=des_qvs)
+            next_q, next_v = self.planner_update[1]
+            b_next_q, b_next_v = self.decompose_fn(next_states, None)
+            next_state_action = self.ctrl.get_action(next_q, next_v, b_next_q, b_next_v)
+
+            qf1_next_target, qf2_next_target = self.critic_target(
+                next_states, next_state_action
+            )
+            min_qf_next_target = (
+                ch.min(qf1_next_target, qf2_next_target)
+                - self.alpha_q * weights_log_pi_next
+            )
+            next_q_value = rewards + self.gamma * (min_qf_next_target)
+
+        qf1, qf2 = self.critic(
+            states, actions
+        )  # Two Q-functions to mitigate positive bias in the policy improvement step
+        qf1_loss = F.mse_loss(
+            qf1, next_q_value
+        )  # JQ = 𝔼(st,at)~D[0.5(Q1(st,at) - r(st,at) - γ(𝔼st+1~p[V(st+1)]))^2]
+        qf2_loss = F.mse_loss(
+            qf2, next_q_value
+        )  # JQ = 𝔼(st,at)~D[0.5(Q1(st,at) - r(st,at) - γ(𝔼st+1~p[V(st+1)]))^2]
+        qf_loss = qf1_loss + qf2_loss
+        return qf_loss
 
     def _q_off_policy_loss(self):
         if not self.learn_bc:
