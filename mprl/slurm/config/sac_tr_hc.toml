@@ -3,7 +3,7 @@ project_name="f-sac-tr-hc"
 algorithm="sac_tr"
 env="half_cheetah"
 cluster_hours=72
-jobs=3
+jobs=2
 
 [run.smm1.buffer]
 capacity=1000000
@@ -22,7 +22,7 @@ project_name="f-sac-tr-hc"
 algorithm="sac_tr"
 env="half_cheetah"
 cluster_hours=72
-jobs=3
+jobs=2
 
 [run.smm2.buffer]
 capacity=1000000
@@ -41,7 +41,7 @@ project_name="f-sac-tr-hc"
 algorithm="sac_tr"
 env="half_cheetah"
 cluster_hours=72
-jobs=3
+jobs=2
 
 [run.smm3.buffer]
 capacity=1000000
@@ -60,7 +60,7 @@ project_name="f-sac-tr-hc"
 algorithm="sac_tr"
 env="half_cheetah"
 cluster_hours=72
-jobs=3
+jobs=2
 
 [run.smm4.buffer]
 capacity=1000000
@@ -79,7 +79,7 @@ project_name="f-sac-tr-hc"
 algorithm="sac_tr"
 env="half_cheetah"
 cluster_hours=72
-jobs=3
+jobs=2
 
 [run.smm5.buffer]
 capacity=1000000
@@ -98,7 +98,7 @@ project_name="f-sac-tr-hc"
 algorithm="sac_tr"
 env="half_cheetah"
 cluster_hours=72
-jobs=3
+jobs=2
 
 [run.smm6.buffer]
 capacity=1000000
