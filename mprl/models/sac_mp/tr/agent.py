@@ -43,41 +43,48 @@ class SACTRL(SACMixedMP):
         planner_imp_sampling: MPTrajectory,
         ctrl: Controller,
         buffer: SequenceRB,
+        buffer_policy: SequenceRB,
         decompose_fn: Callable,
         model: Optional[Predictable] = None,
         policy_loss_type: str = "mean",  # other is "weighted"
         target_entropy: Optional[float] = None,
-        layer_type: Optional[str] = "w2",
+        layer_type: Optional[str] = "kl",
         mean_bound: Optional[float] = 1.0,
         cov_bound: Optional[float] = 1.0,
         use_imp_sampling: bool = False,
+        learn_bc: bool = False,
     ):
         super().__init__(
-            gamma,
-            tau,
-            alpha,
-            automatic_entropy_tuning,
-            alpha_q,
-            num_steps,
-            lr,
-            batch_size,
-            state_dim,
-            action_dim,
-            num_basis,
-            network_width,
-            network_depth,
-            action_scale,
-            planner_act,
-            planner_eval,
-            planner_update,
-            planner_imp_sampling,
-            ctrl,
-            buffer,
-            decompose_fn,
-            model,
-            policy_loss_type,
-            target_entropy,
-            use_imp_sampling,
+            gamma=gamma,
+            tau=tau,
+            alpha=alpha,
+            automatic_entropy_tuning=automatic_entropy_tuning,
+            alpha_q=alpha_q,
+            num_steps=num_steps,
+            lr=lr,
+            batch_size=batch_size,
+            state_dim=state_dim,
+            action_dim=action_dim,
+            num_basis=num_basis,
+            network_width=network_width,
+            network_depth=network_depth,
+            action_scale=action_scale,
+            planner_act=planner_act,
+            planner_eval=planner_eval,
+            planner_update=planner_update,
+            planner_imp_sampling=planner_imp_sampling,
+            ctrl=ctrl,
+            buffer=buffer,
+            decompose_fn=decompose_fn,
+            model=model,
+            policy_loss_type=policy_loss_type,
+            target_entropy=target_entropy,
+            use_imp_sampling=use_imp_sampling,
+            q_loss="off_policy",
+            action_clip=False,
+            learn_bc=learn_bc,
+            q_model_bc=None,
+            buffer_policy=buffer_policy,
         )
         self.kl_loss_scaler = kl_loss_scale
         del self.policy
@@ -147,6 +154,10 @@ class SACTRL(SACMixedMP):
 
     def _off_policy_mean_loss(self):
         # dimension (batch_size, sequence_len, weight_dimension)
+        if self.buffer_policy is not None:
+            buffer = self.buffer_policy
+        else:
+            buffer = self.buffer
         (
             states,
             next_states,
@@ -155,11 +166,11 @@ class SACTRL(SACMixedMP):
             dones,
             sim_states,
             (des_qps, des_qvs),
-            (_, _),
+            (next_des_qps, next_des_qvs),
             weight_means,
-            weight_covs,
+            weight_stds,
             idxs,
-        ) = self.buffer.sample_batch(self.batch_size)
+        ) = buffer.sample_batch(self.batch_size)
 
         p, proj_p = self.policy.forward(states[:, 0, :])
         if self.use_imp_sampling:
