@@ -19,3 +19,5 @@ q_loss: "off_policy"  # other is on_policy
 learn_bc: False
 target_tau: 0.005
 warm_start_steps: 0
+mean_bound: ${alg.tr.mean_bound}
+cov_bound: ${alg.tr.cov_bound}
