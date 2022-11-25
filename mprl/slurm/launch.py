@@ -24,9 +24,11 @@ def main():
         prediction = val.get("prediction", "off_policy")
 
         for i in range(num_jobs):
-            file_content = "python -m mprl.ui.start alg={} env={} run_id={}" \
-                           "project_name={} prediction={}".format(
-                algorithm, env, i, project_name, prediction
+            file_content = (
+                "python -m mprl.ui.start alg={} env={} run_id={}"
+                "project_name={} prediction={}".format(
+                    algorithm, env, i, project_name, prediction
+                )
             )
             for (setting, setting_val_val) in val.items():
                 if isinstance(setting_val_val, dict):
