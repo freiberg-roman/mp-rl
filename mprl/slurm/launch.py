@@ -25,7 +25,7 @@ def main():
 
         for i in range(num_jobs):
             file_content = (
-                "python -m mprl.ui.start alg={} env={} run_id={}"
+                "python -m mprl.ui.start alg={} env={} run_id={} "
                 "project_name={} prediction={}".format(
                     algorithm, env, i, project_name, prediction
                 )
